@@ -100,54 +100,18 @@ pub struct WordISV {
     eo: String,
 }
 
-pub fn masc_decline(word: &str,  animacy: Animacy)-> Noun {
-    if word.ends_with("o") {
-        Noun::neuter_hard(word)
-    } else if word.ends_with("e") {
-        Noun::neuter_soft(word)
-    } else if word.ends_with("ę") {
-        Noun::neuter_en(word)
-    } else {
-        panic!("neuter word has wrong ending: {}", word)
-    }
-}
-
-pub fn femn_decline(word: &str)-> Noun{
-    if word.ends_with("o") {
-        Noun::neuter_hard(word)
-    } else if word.ends_with("e") {
-        Noun::neuter_soft(word)
-    } else if word.ends_with("ę") {
-        Noun::neuter_en(word)
-    } else {
-        panic!("neuter word has wrong ending: {}", word)
-    }
-}
-
-pub fn neut_decline(word: &str) -> Noun {
-    if word.ends_with("o") {
-        Noun::neuter_hard(word)
-    } else if word.ends_with("e") {
-        Noun::neuter_soft(word)
-    } else if word.ends_with("ę") {
-        Noun::neuter_en(word)
-    } else {
-        panic!("neuter word has wrong ending: {}", word)
-    }
-}
-
-pub fn derive_noun(word: &str, gender: Gender, case: Case, animacy: Animacy, number: Number) -> Noun {
+pub fn derive_noun(word: &str, gender: Gender, animacy: Animacy) -> Noun {
     match gender {
-        Gender::Masculine => masc_decline(word, animacy),
-        Gender::Feminine => femn_decline(word),
-        Gender::Neuter => neut_decline(word),
+        Gender::Masculine => Noun::masc_decline(word, animacy),
+        Gender::Feminine => Noun::femn_decline(word),
+        Gender::Neuter => Noun::neut_decline(word),
     }
 }
 
 pub fn derive_from_pos(word: &str, markers: PartOfSpeech) {
     match markers {
         PartOfSpeech::Noun(gender, case, animacy, number) => {
-            derive_noun(word, gender, case, animacy, number);
+            derive_noun(word, gender, animacy);
         }
         _ => panic!("pos not implemented"),
     }

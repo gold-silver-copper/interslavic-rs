@@ -13,4 +13,8 @@ fn main() {
     while let Some(letter) = chars.next() {
         println!("letter  is {}", letter);
     }
+
+    if word.ends_with("ť") {
+        println!("wooooo");
+    }
 }
