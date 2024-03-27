@@ -1,7 +1,7 @@
 use interslavic::*;
 
 fn main() {
-    // load_word_csv();
+    load_word_csv();
 
     let word = "pęť";
 

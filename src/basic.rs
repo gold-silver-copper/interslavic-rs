@@ -13,6 +13,10 @@ pub fn last_in_slice(s: &str) -> char {
         .into()
 }
 
+pub fn has_more_than_one_word(s: &str) -> bool {
+    s.split_whitespace().count() > 1
+}
+
 pub fn is_vowel(c: char) -> bool {
     matches!(
         c,
@@ -27,7 +31,6 @@ pub fn is_vowel(c: char) -> bool {
             | 'ų'
             | 'y'
             | 'ě'
-            | 'ŕ'
             | 'A'
             | 'E'
             | 'I'
@@ -68,5 +71,9 @@ pub fn is_soft_consonant(c: char) -> bool {
             | 'đ'
             | 'ż'
             | 'ń'
+            | 'c'
+            | 'ŕ'
+            | 'ś'
+            | 'ź'
     )
 }

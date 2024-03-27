@@ -1,4 +1,4 @@
-use crate::Noun;
+use crate::{has_more_than_one_word, Noun};
 use serde_derive::Deserialize;
 use std::fs::File;
 
@@ -7,6 +7,8 @@ pub enum Gender {
     Feminine,
     Neuter,
 }
+
+pub type Declineable = bool;
 
 pub enum Case {
     Nom,
@@ -77,11 +79,10 @@ pub enum PartOfSpeech {
 pub struct WordISV {
     id: i32,
     isv: String,
-    addition: Option<String>,
+
     #[serde(rename = "partOfSpeech")]
     pos: String,
-    #[serde(rename = "type")]
-    isv_type: String, // Renamed from "type" to "isv_type" using serde's rename attribute
+
     en: String,
     ru: String,
     be: String,
@@ -101,10 +102,14 @@ pub struct WordISV {
 }
 
 pub fn derive_noun(word: &str, gender: Gender, animacy: Animacy) -> Noun {
-    match gender {
-        Gender::Masculine => Noun::masc_decline(word, animacy),
-        Gender::Feminine => Noun::femn_decline(word),
-        Gender::Neuter => Noun::neut_decline(word),
+    if has_more_than_one_word(word) {
+        Noun::indeclineable(word)
+    } else {
+        match gender {
+            Gender::Masculine => Noun::masculine_decline(word, animacy),
+            Gender::Feminine => Noun::feminine_decline(word),
+            Gender::Neuter => Noun::neuter_decline(word),
+        }
     }
 }
 
@@ -117,6 +122,46 @@ pub fn derive_from_pos(word: &str, markers: PartOfSpeech) {
     }
 }
 
+pub fn gender_and_animacy_from_pos_string(poss: &str) -> (Option<Gender>, Animacy, Declineable) {
+    let boop: Vec<&str> = poss.split('.').collect();
+
+    let without_whitespace: Vec<String> = boop
+        .iter()
+        .map(|s| s.chars().filter(|c| !c.is_whitespace()).collect())
+        .collect();
+
+    let animacy = if without_whitespace.contains(&String::from("anim")) {
+        Animacy::Animate
+    } else {
+        Animacy::Inanimate
+    };
+    let gender = if without_whitespace.contains(&String::from("m")) {
+        Some(Gender::Masculine)
+    } else if without_whitespace.contains(&String::from("f")) {
+        Some(Gender::Feminine)
+    } else if without_whitespace.contains(&String::from("n")) {
+        Some(Gender::Neuter)
+    } else {
+        None
+    };
+
+    let declineable = if without_whitespace.contains(&String::from("indecl")) {
+        false
+    } else if without_whitespace.contains(&String::from("pl")) {
+        false
+    }
+    //should fix this idk how it affects declineability
+    else if without_whitespace.contains(&String::from("sg")) {
+        false
+    }
+    //should fix this idk how it affects declineability
+    else {
+        true
+    };
+
+    (gender, animacy, declineable)
+}
+
 pub fn load_word_csv() {
     let file_path = "assets/interslavic_words.csv";
     let file = File::open(file_path).unwrap();
@@ -124,6 +169,18 @@ pub fn load_word_csv() {
 
     for result in rdr.deserialize() {
         let record: WordISV = result.unwrap();
-        println!("{:?}", record);
+        let boop = record.isv.trim();
+        //println!("RECORD ISSSS    {:?}", &record);
+        let (gender, animacy, declineable) = gender_and_animacy_from_pos_string(&record.pos);
+
+        if let Some(gend) = gender {
+            if declineable {
+                let mecz = derive_noun(boop, gend, animacy); //meč
+                println!("{:?}", &mecz.pl.gen);
+            } else {
+                let mecz = Noun::indeclineable(boop); //meč
+                println!("{:?}", &mecz.pl.gen);
+            }
+        }
     }
 }
