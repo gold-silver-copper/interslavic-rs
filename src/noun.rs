@@ -32,7 +32,7 @@ impl Noun {
             }
         }
         else if word.ends_with("u") {
-            //členistonogy (-ogo)
+            //kenguru
 
             let word_stem = slice_without_last(word);
 

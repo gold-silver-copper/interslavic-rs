@@ -102,15 +102,13 @@ pub struct WordISV {
 }
 
 pub fn derive_noun(word: &str, gender: Gender, animacy: Animacy) -> Noun {
-    if has_more_than_one_word(word) {
-        Noun::indeclineable(word)
-    } else {
+    
         match gender {
             Gender::Masculine => Noun::masculine_decline(word, animacy),
             Gender::Feminine => Noun::feminine_decline(word),
             Gender::Neuter => Noun::neuter_decline(word),
         }
-    }
+    
 }
 
 pub fn derive_from_pos(word: &str, markers: PartOfSpeech) {
@@ -162,6 +160,29 @@ pub fn gender_and_animacy_from_pos_string(poss: &str) -> (Option<Gender>, Animac
     (gender, animacy, declineable)
 }
 
+pub fn noun_from_csv(word : &str , poss : &str) -> Option<Noun>{
+
+    let (gender, animacy, declineable) = gender_and_animacy_from_pos_string(poss);
+
+    if let Some(gend) = gender {
+        let mecz =
+        if declineable && !has_more_than_one_word(word) {
+            derive_noun(word, gend, animacy) 
+            
+        } else {
+             Noun::indeclineable(word) 
+           
+        };
+        println!("{:?}", &mecz.pl.gen);
+        Some(mecz)
+    }
+    else {None}
+   
+
+
+
+}
+
 pub fn load_word_csv() {
     let file_path = "assets/interslavic_words.csv";
     let file = File::open(file_path).unwrap();
@@ -170,17 +191,9 @@ pub fn load_word_csv() {
     for result in rdr.deserialize() {
         let record: WordISV = result.unwrap();
         let boop = record.isv.trim();
+        let poss = &record.pos;
         //println!("RECORD ISSSS    {:?}", &record);
-        let (gender, animacy, declineable) = gender_and_animacy_from_pos_string(&record.pos);
-
-        if let Some(gend) = gender {
-            if declineable {
-                let mecz = derive_noun(boop, gend, animacy); //meč
-                println!("{:?}", &mecz.pl.gen);
-            } else {
-                let mecz = Noun::indeclineable(boop); //meč
-                println!("{:?}", &mecz.pl.gen);
-            }
-        }
+      
+      noun_from_csv(boop, poss);
     }
 }
