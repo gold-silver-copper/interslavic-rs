@@ -1,5 +1,6 @@
-use std::fs::File;
+use crate::Noun;
 use serde_derive::Deserialize;
+use std::fs::File;
 
 pub enum Gender {
     Masculine,
@@ -37,7 +38,7 @@ pub enum Declension {
 
 pub enum Conjugation {
     First,
-    Second
+    Second,
 }
 
 pub enum Person {
@@ -65,12 +66,11 @@ pub enum Mood {
 }
 
 pub enum PartOfSpeech {
-    Noun(Gender,Case,Animacy,Number, Declension),
-    Verb(Gender, Tense, Person , Number , Aspect , Mood , Conjugation ),
-    Adj(Gender,Case,Animacy,Number),
+    Noun(Gender, Case, Animacy, Number),
+    Verb(Gender, Tense, Person, Number, Aspect, Mood, Conjugation),
+    Adj(Gender, Case, Animacy, Number),
     Adv,
     Part,
-
 }
 //id,isv,addition,partOfSpeech,type,en,sameInLanguages,genesis,ru,be,uk,pl,cs,sk,bg,mk,sr,hr,sl,cu,de,nl,eo,frequency,intelligibility,using_example
 #[derive(Debug, Deserialize)]
@@ -98,47 +98,43 @@ pub struct WordISV {
     de: String,
     nl: String,
     eo: String,
- 
-    
-  
 }
 
-
-pub fn masc_decline(word: &str ,case:Case,animacy:Animacy,number:Number,declension:Declension) {
-
+pub fn masc_decline(word: &str, case: Case, animacy: Animacy, number: Number) {
     match animacy {
-
+        Animacy::Animate => {}
+        Animacy::Inanimate => {}
     }
-
-
-
-
-
 }
 
+pub fn femn_decline(word: &str, case: Case, number: Number) {
+    ()
+}
 
-pub fn derive_noun(word: &str ,gender:Gender ,case:Case,animacy:Animacy,number:Number,declension:Declension) {
+pub fn neut_decline(word: &str, case: Case, number: Number) {
+    if word.ends_with("o") {
+        Noun::neuter_hard(word);
+    } else if word.ends_with("e") {
+    } else if word.ends_with("ę") {
+    } else {
+        panic!("neuter word has wrong ending: {}", word)
+    }
+}
 
+pub fn derive_noun(word: &str, gender: Gender, case: Case, animacy: Animacy, number: Number) {
     match gender {
-
-
-        Gender::Masculine => {masc_decline(word,case,animacy,number,declension)},
-        Gender::Feminine => {femn_decline(word,case,number,declension)},
-        Gender::Neuter => {neut_decline(word,case,number,declension)},
+        Gender::Masculine => masc_decline(word, case, animacy, number),
+        Gender::Feminine => femn_decline(word, case, number),
+        Gender::Neuter => neut_decline(word, case, number),
     }
-
-
-
-
-
 }
 
-pub fn derive_every_pos(word: &str , markers: PartOfSpeech) {
-
+pub fn derive_every_pos(word: &str, markers: PartOfSpeech) {
     match markers {
-
-        PartOfSpeech::Noun(gender ,case,animacy,number,declension) => {derive_noun(word,gender ,case,animacy,number,declension)},
-        _ => panic!("pos not implemented")
+        PartOfSpeech::Noun(gender, case, animacy, number) => {
+            derive_noun(word, gender, case, animacy, number)
+        }
+        _ => panic!("pos not implemented"),
     }
 }
 
@@ -151,8 +147,4 @@ pub fn load_word_csv() {
         let record: WordISV = result.unwrap();
         println!("{:?}", record);
     }
-
-
-
-
 }
