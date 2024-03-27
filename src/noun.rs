@@ -1,21 +1,42 @@
 pub struct Noun {
-    // Singular forms
-    nom_sg: String, // Nominative Singular
-    gen_sg: String, // Genitive Singular
-    dat_sg: String, // Dative Singular
-    acc_sg: String, // Accusative Singular
-    ins_sg: String, // Instrumental Singular
-    loc_sg: String, // Locative Singular
-    voc_sg: String, // Vocative Singular
+    sg: CaseForms, // Singular forms of the noun
+    pl: CaseForms, // Plural forms of the noun
+}
+pub struct CaseForms {
+    nom: String, // Nominative
+    gen: String, // Genitive
+    dat: String, // Dative
+    acc: String, // Accusative
+    ins: String, // Instrumental
+    loc: String, // Locative
+    voc: String, // Vocative
+}
 
-    // Plural forms
-    nom_pl: String, // Nominative Plural
-    gen_pl: String, // Genitive Plural
-    dat_pl: String, // Dative Plural
-    acc_pl: String, // Accusative Plural
-    ins_pl: String, // Instrumental Plural
-    loc_pl: String, // Locative Plural
-    voc_pl: String, // Vocative Plural
+impl CaseForms {
+
+    pub fn neuter_hard_singular(word_stem: &str) -> Self {
+        CaseForms {
+            nom: format!("{word_stem}o"),
+            gen: format!("{word_stem}o"),
+            dat: format!("{word_stem}a"),
+            acc: format!("{word_stem}u"),
+            ins: format!("{word_stem}om"),
+            loc: format!("{word_stem}u"),
+            voc: format!("{word_stem}o"),
+        }
+    }
+    pub fn neuter_hard_plural(word_stem: &str) -> Self {
+        CaseForms {
+            nom: format!("{word_stem}a"),
+            gen: format!("{word_stem}a"),
+            dat: format!("{word_stem}"),
+            acc: format!("{word_stem}am"),
+            ins: format!("{word_stem}ami"),
+            loc: format!("{word_stem}ah"),
+            voc: format!("{word_stem}a"),
+        }
+    }
+    
 }
 
 fn slice_without_last(s: &str) -> String {
@@ -30,21 +51,13 @@ impl Noun {
     pub fn neuter_hard(word: &str) -> Self {
         let word_stem = slice_without_last(word);
 
+      
+
         Noun {
-            nom_sg: format!("{word_stem}o"),
-            acc_sg: format!("{word_stem}o"),
-            gen_sg: format!("{word_stem}a"),
-            dat_sg: format!("{word_stem}u"),
-            ins_sg: format!("{word_stem}om"),
-            loc_sg: format!("{word_stem}u"),
-            voc_sg: format!("{word_stem}o"),
-            nom_pl: format!("{word_stem}a"),
-            acc_pl: format!("{word_stem}a"),
-            gen_pl: format!("{word_stem}"),
-            dat_pl: format!("{word_stem}am"),
-            ins_pl: format!("{word_stem}ami"),
-            loc_pl: format!("{word_stem}ah"),
-            voc_pl: format!("{word_stem}a"),
+
+
+            sg: CaseForms::neuter_hard_singular(&word_stem),
+            pl: CaseForms::neuter_hard_plural(&word_stem)
         }
     }
 }
