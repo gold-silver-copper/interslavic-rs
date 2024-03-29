@@ -21,10 +21,19 @@ impl Noun {
 
     pub fn new(word: &str, gender: Gender, animate: bool, declineable:bool) -> Self {
 
+        let cn: ConjugatedNoun =  
+             if declineable && !has_more_than_one_word(word) {
+                ConjugatedNoun::derive_noun(word,&gender,animate)
+            } else {
+                ConjugatedNoun::indeclineable(word)
+            }
+            
+        ;
+
         Noun {
 
             nom_sg: word.into(),
-            conjugated_noun: ConjugatedNoun::derive_noun(word,&gender,animate),
+            conjugated_noun: cn,
             animate: animate,
             gender: gender,
             declineable: declineable,

@@ -1,4 +1,4 @@
-use crate::{has_more_than_one_word, ConjugatedNoun, Verb};
+use crate::{has_more_than_one_word, ConjugatedNoun, Verb, Noun};
 use serde_derive::Deserialize;
 use std::{collections::HashMap, fs::File};
 
@@ -61,7 +61,7 @@ pub enum VerbTense {
 type ISVID = i32;
 
 pub enum PartOfSpeech {
-    ConjugatedNoun(ConjugatedNoun),
+    Noun(Noun),
     Verb(Verb),
     Adj,
     Adv,
@@ -176,22 +176,16 @@ impl WordCore {
 
 
 
-pub fn noun_from_csv(record: &ISVEntry) -> Option<ConjugatedNoun> {
+pub fn noun_from_entry(record: &ISVEntry) -> Noun {
     let gender = record.gender_from_poss();
     let declineable = record.is_declineable_from_poss();
-    let animacy = record.is_animate_from_poss();
+    let animate = record.is_animate_from_poss();
 
-    if gender != Gender::Error {
-        let mecz = if declineable && !has_more_than_one_word(&record.isv) {
-            ConjugatedNoun::derive_noun(&record.isv, &gender, animacy)
-        } else {
-            ConjugatedNoun::indeclineable(&record.isv)
-        };
-        println!("{:?}", &mecz.pl.gen);
-        Some(mecz)
-    } else {
-        None
-    }
+    let noun = Noun::new(&record.isv, gender, animate, declineable);
+
+    println!("{:?}", &noun.nom_pl());
+
+    noun
 }
 
 
@@ -207,7 +201,9 @@ pub fn load_word_csv() -> ISVWordMap {
         let mut record: ISVEntry = result.unwrap();
         record.isv = record.isv.trim().to_string();
 
-        noun_from_csv(&record);
+        if record.gender_from_poss() != Gender::Error {noun_from_entry(&record);}
+
+        
       
         let record_id = record.id.clone();
         let record_string = record.isv.clone();
