@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct CaseForms {
     pub nom: String, // Nominative
     pub gen: String, // Genitive

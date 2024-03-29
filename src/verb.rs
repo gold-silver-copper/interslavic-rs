@@ -1,6 +1,7 @@
 use crate::basic::*;
 use crate::enums::*;
 
+#[derive(Debug)]
 pub struct Verb {
     pub infinitive: String,
     pub verb_stem: String,

@@ -1,7 +1,7 @@
-use interslavic::*;
+use interslavic::WordCore;
 
 fn main() {
-    load_word_csv();
+    WordCore::new();
 
     let word = "pęť";
 

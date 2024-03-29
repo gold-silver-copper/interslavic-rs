@@ -2,7 +2,7 @@ use crate::{has_more_than_one_word, ConjugatedNoun, Verb, Noun};
 use serde_derive::Deserialize;
 use std::{collections::HashMap, fs::File};
 
-#[derive(PartialEq)]
+#[derive(PartialEq,Debug)]
 pub enum Gender {
     Masculine,
     Feminine,
@@ -96,55 +96,71 @@ pub struct ISVEntry {
 
 impl ISVEntry {
 
-    pub fn is_animate_from_poss(&self) -> bool {
-        let boop: Vec<&str> = self.pos.split('.').collect();
+    pub fn check_poss_for_string(&self, compare_str: &str) -> bool{
+
+        let mut boop = self.pos.replace("."," ");
+        boop = boop.replace("/", " ");
+        boop = boop.replace("#", " ");
+
+
+        let wee: Vec<&str> = boop.split(' ').collect();
     
-        let without_whitespace: Vec<String> = boop
+        let without_whitespace: Vec<String> = wee
             .iter()
             .map(|s| s.chars().filter(|c| !c.is_whitespace()).collect())
             .collect();
     
-        if without_whitespace.contains(&String::from("anim")) {
+        if without_whitespace.contains(&String::from(compare_str)) {
             true
         } else {
             false
         }
     }
+
+    pub fn is_animate(&self) -> bool {
+        self.check_poss_for_string( "anim")
+    }
+    pub fn is_verb(&self) -> bool {
+        self.check_poss_for_string( "v")
+    }
+
+    pub fn is_perfect(&self) -> bool {
+        self.check_poss_for_string( "pf")
+    }
+    pub fn is_imperfect(&self) -> bool {
+        self.check_poss_for_string( "ipf")
+    }
+    pub fn is_transitive(&self) -> bool {
+        self.check_poss_for_string( "tr")
+    }
+    pub fn is_intransitive(&self) -> bool {
+        self.check_poss_for_string( "intr")
+    }
     
-    pub fn gender_from_poss(&self) -> Gender {
-        let boop: Vec<&str> = self.pos.split('.').collect();
+    pub fn get_gender(&self) -> Gender {
     
-        let without_whitespace: Vec<String> = boop
-            .iter()
-            .map(|s| s.chars().filter(|c| !c.is_whitespace()).collect())
-            .collect();
     
-        if without_whitespace.contains(&String::from("m")) {
+        if self.check_poss_for_string( "m") {
             Gender::Masculine
-        } else if without_whitespace.contains(&String::from("f")) {
+        } else if self.check_poss_for_string( "f") {
             Gender::Feminine
-        } else if without_whitespace.contains(&String::from("n")) {
+        } else if self.check_poss_for_string( "n"){
             Gender::Neuter
         } else {
             Gender::Error
         }
     }
     
-    pub fn is_declineable_from_poss(&self) -> bool {
-        let boop: Vec<&str> = self.pos.split('.').collect();
+    pub fn is_declineable(&self) -> bool {
+        
     
-        let without_whitespace: Vec<String> = boop
-            .iter()
-            .map(|s| s.chars().filter(|c| !c.is_whitespace()).collect())
-            .collect();
-    
-        if without_whitespace.contains(&String::from("indecl")) {
+        if self.check_poss_for_string( "indecl")  {
             false
-        } else if without_whitespace.contains(&String::from("pl")) {
+        } else if self.check_poss_for_string( "pl")  {
             false
         }
         //should fix this idk how it affects declineability
-        else if without_whitespace.contains(&String::from("sg")) {
+        else if self.check_poss_for_string( "sg")  {
             false
         }
         //should fix this idk how it affects declineability
@@ -169,56 +185,75 @@ pub struct WordCore {
 impl WordCore {
     pub fn new() -> Self {
         WordCore {
-            word_map: load_word_csv(),
+            word_map: WordCore::load_word_csv(),
         }
+    }
+
+    pub fn load_word_csv() -> ISVWordMap {
+        let file_path = "assets/interslavic_words.csv";
+        let file = File::open(file_path).unwrap();
+        let mut rdr = csv::Reader::from_reader(file);
+    
+        let mut wordbase = ISVWordMap::new();
+    
+        for result in rdr.deserialize() {
+            let mut record: ISVEntry = result.unwrap();
+            record.isv = record.isv.trim().to_string();
+    
+            if record.get_gender() != Gender::Error {noun_from_entry(&record);}
+            else if record.is_verb() {verb_from_entry(&record);}
+    
+            
+          
+            let record_id = record.id.clone();
+            let record_string = record.isv.clone();
+    
+            if wordbase.contains_key(&record_string) {
+                let hmap = wordbase.get_mut(&record_string).unwrap();
+                hmap.insert(record_id, record);
+            } else {
+                let mut hmap = HomographMap::new();
+                hmap.insert(record_id, record);
+                wordbase.insert(record_string, hmap);
+            }
+    
+            //println!("RECORD ISSSS    {:?}", &record);
+        }
+    
+        wordbase
     }
 }
 
 
 
 pub fn noun_from_entry(record: &ISVEntry) -> Noun {
-    let gender = record.gender_from_poss();
-    let declineable = record.is_declineable_from_poss();
-    let animate = record.is_animate_from_poss();
+    let gender = record.get_gender();
+    let declineable = record.is_declineable();
+    let animate = record.is_animate();
 
     let noun = Noun::new(&record.isv, gender, animate, declineable);
 
-    println!("{:?}", &noun.nom_pl());
+    //println!("{:#?}", &noun);
 
     noun
 }
 
+pub fn verb_from_entry(record: &ISVEntry) -> Verb {
 
+    let trans = record.is_transitive();
+    let intrans = record.is_intransitive();
+    let perfect = record.is_perfect();
+    let imperfect = record.is_imperfect();
 
-pub fn load_word_csv() -> ISVWordMap {
-    let file_path = "assets/interslavic_words.csv";
-    let file = File::open(file_path).unwrap();
-    let mut rdr = csv::Reader::from_reader(file);
+    let verb = Verb::new(&record.isv,perfect,trans,);
 
-    let mut wordbase = ISVWordMap::new();
+    println!("{:#?}", &verb);
 
-    for result in rdr.deserialize() {
-        let mut record: ISVEntry = result.unwrap();
-        record.isv = record.isv.trim().to_string();
-
-        if record.gender_from_poss() != Gender::Error {noun_from_entry(&record);}
-
-        
-      
-        let record_id = record.id.clone();
-        let record_string = record.isv.clone();
-
-        if wordbase.contains_key(&record_string) {
-            let hmap = wordbase.get_mut(&record_string).unwrap();
-            hmap.insert(record_id, record);
-        } else {
-            let mut hmap = HomographMap::new();
-            hmap.insert(record_id, record);
-            wordbase.insert(record_string, hmap);
-        }
-
-        //println!("RECORD ISSSS    {:?}", &record);
-    }
-
-    wordbase
+    verb
 }
+
+
+
+
+
+

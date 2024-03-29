@@ -5,7 +5,7 @@ use crate::Gender;
 
 
 
-
+#[derive(Debug)]
 pub struct Noun {
     pub nom_sg: String,
     pub conjugated_noun: ConjugatedNoun,
@@ -59,7 +59,7 @@ impl Noun {
 
 
 }
-
+#[derive(Debug)]
 pub struct ConjugatedNoun {
     pub sg: CaseForms, // Singular forms of the noun
     pub pl: CaseForms, // Plural forms of the noun
