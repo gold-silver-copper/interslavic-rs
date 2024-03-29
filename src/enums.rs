@@ -245,6 +245,8 @@ pub fn verb_from_entry(record: &ISVEntry) -> Verb {
     let perfect = record.is_perfect();
     let imperfect = record.is_imperfect();
 
+    
+
     let verb = Verb::new(&record.isv,perfect,trans,);
 
     println!("{:#?}", &verb);
