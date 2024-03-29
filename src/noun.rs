@@ -1,20 +1,78 @@
 use crate::basic::*;
-use crate::Animacy;
+
 use crate::CaseForms;
+use crate::Gender;
+
+
+
+
 pub struct Noun {
+    pub nom_sg: String,
+    pub conjugated_noun: ConjugatedNoun,
+    pub animate: bool,
+    pub gender: Gender,
+    pub declineable: bool,
+ 
+
+
+}
+
+impl Noun {
+
+    pub fn new(word: &str, gender: Gender, animate: bool, declineable:bool) -> Self {
+
+        Noun {
+
+            nom_sg: word.into(),
+            conjugated_noun: ConjugatedNoun::derive_noun(word,&gender,animate),
+            animate: animate,
+            gender: gender,
+            declineable: declineable,
+            
+        }
+    }
+
+    pub fn nom_sg(&self) -> String {
+        self.nom_sg.to_string()
+    }
+
+
+
+    pub fn nom_pl(&self) -> String {
+
+        self.conjugated_noun.pl.nom.clone()
+
+      
+
+
+
+    }
+
+
+}
+
+pub struct ConjugatedNoun {
     pub sg: CaseForms, // Singular forms of the noun
     pub pl: CaseForms, // Plural forms of the noun
 }
 
-impl Noun {
-    pub fn masculine_decline(word: &str, animacy: Animacy) -> Noun {
+impl ConjugatedNoun {
+    pub fn derive_noun(word: &str, gender: &Gender, animacy: bool) -> ConjugatedNoun {
+        match gender {
+            Gender::Masculine => ConjugatedNoun::masculine_decline(word, animacy),
+            Gender::Feminine => ConjugatedNoun::feminine_decline(word),
+            Gender::Neuter => ConjugatedNoun::neuter_decline(word),
+            _ => panic!("GENDER IS ERROR"),
+        }
+    }
+    pub fn masculine_decline(word: &str, animate: bool) -> ConjugatedNoun {
         if word.ends_with("a") {
             let word_stem = slice_without_last(word);
 
             if is_hard_consonant(last_in_slice(&word_stem)) {
-                Noun::masculine_a_hard(&word_stem)
+                ConjugatedNoun::masculine_a_hard(&word_stem)
             } else if is_soft_consonant(last_in_slice(&word_stem)) {
-                Noun::masculine_a_soft(&word_stem)
+                ConjugatedNoun::masculine_a_soft(&word_stem)
             } else {
                 panic!("masc word has wrong ending: {}", &word_stem)
             }
@@ -24,75 +82,71 @@ impl Noun {
             let word_stem = slice_without_last(word);
 
             if is_hard_consonant(last_in_slice(&word_stem)) {
-                Noun::masculine_anim_hard(&word_stem)
+                ConjugatedNoun::masculine_anim_hard(&word_stem)
             } else if is_soft_consonant(last_in_slice(&word_stem)) {
-                Noun::masculine_anim_soft(&word_stem)
+                ConjugatedNoun::masculine_anim_soft(&word_stem)
             } else {
                 panic!("masc word has wrong ending: {}", &word_stem)
             }
-        }
-        else if word.ends_with("u") {
+        } else if word.ends_with("u") {
             //kenguru
 
             let word_stem = slice_without_last(word);
 
             if is_hard_consonant(last_in_slice(&word_stem)) {
-                Noun::masculine_anim_hard(word)
+                ConjugatedNoun::masculine_anim_hard(word)
             } else if is_soft_consonant(last_in_slice(&word_stem)) {
-                Noun::masculine_anim_soft(word)
+                ConjugatedNoun::masculine_anim_soft(word)
             } else {
                 panic!("masc word has wrong ending: {}", &word_stem)
             }
         } else if word.ends_with("o") {
-            Noun::neuter_hard(word)
+            ConjugatedNoun::neuter_hard(word)
         } else {
-            match animacy {
-                Animacy::Animate => {
-                    if is_hard_consonant(last_in_slice(word)) {
-                        Noun::masculine_anim_hard(word)
-                    } else if is_soft_consonant(last_in_slice(word)) {
-                        Noun::masculine_anim_soft(word)
-                    } else {
-                        panic!("masc word has wrong ending: {}", word)
-                    }
+            if animate {
+                if is_hard_consonant(last_in_slice(word)) {
+                    ConjugatedNoun::masculine_anim_hard(word)
+                } else if is_soft_consonant(last_in_slice(word)) {
+                    ConjugatedNoun::masculine_anim_soft(word)
+                } else {
+                    panic!("masc word has wrong ending: {}", word)
                 }
-                Animacy::Inanimate => {
-                    if is_hard_consonant(last_in_slice(word)) {
-                        Noun::masculine_inanim_hard(word)
-                    } else if is_soft_consonant(last_in_slice(word)) {
-                        Noun::masculine_inanim_soft(word)
-                    } else {
-                        panic!("masc word has wrong ending: {}", word)
-                    }
+            } else {
+                if is_hard_consonant(last_in_slice(word)) {
+                    ConjugatedNoun::masculine_inanim_hard(word)
+                } else if is_soft_consonant(last_in_slice(word)) {
+                    ConjugatedNoun::masculine_inanim_soft(word)
+                } else {
+                    panic!("masc word has wrong ending: {}", word)
                 }
             }
         }
     }
 
-    pub fn feminine_decline(word: &str) -> Noun {
+    pub fn feminine_decline(word: &str) -> ConjugatedNoun {
         let word_stem = slice_without_last(word);
         if is_consonant(last_in_slice(word)) {
-            Noun::fem_cons(word)
+            ConjugatedNoun::fem_cons(word)
         } else if is_soft_consonant(last_in_slice(&word_stem)) {
-            Noun::fem_soft(word)
+            ConjugatedNoun::fem_soft(word)
         } else if is_hard_consonant(last_in_slice(&word_stem)) {
-            Noun::fem_hard(word)
+            ConjugatedNoun::fem_hard(word)
         } else if is_vowel(last_in_slice(&word_stem)) {
-            Noun::fem_hard(word)
+            ConjugatedNoun::fem_hard(word)
         } else {
             panic!("fem word has wrong ending: {}", word)
         }
     }
 
-    pub fn neuter_decline(word: &str) -> Noun {
+    pub fn neuter_decline(word: &str) -> ConjugatedNoun {
         if word.ends_with("o") {
-            Noun::neuter_hard(word)
+            ConjugatedNoun::neuter_hard(word)
         } else if word.ends_with("e") {
-            Noun::neuter_soft(word)
+            ConjugatedNoun::neuter_soft(word)
         } else if word.ends_with("ę") {
-            Noun::neuter_en(word)
+            ConjugatedNoun::neuter_en(word)
         } else if word.ends_with("a") {
-            Noun::feminine_decline(word)
+            ConjugatedNoun::feminine_decline(word)
         } else {
             panic!("neuter word has wrong ending: {}", word)
         }
@@ -101,7 +155,7 @@ impl Noun {
     pub fn neuter_hard(word: &str) -> Self {
         let word_stem = slice_without_last(word);
 
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::neuter_hard_singular(&word_stem),
             pl: CaseForms::neuter_hard_plural(&word_stem),
         }
@@ -109,7 +163,7 @@ impl Noun {
     pub fn neuter_soft(word: &str) -> Self {
         let word_stem = slice_without_last(word);
 
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::neuter_soft_singular(&word_stem),
             pl: CaseForms::neuter_soft_plural(&word_stem),
         }
@@ -117,7 +171,7 @@ impl Noun {
     pub fn neuter_en(word: &str) -> Self {
         let word_stem = slice_without_last(word);
 
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::neuter_en_singular(&word_stem),
             pl: CaseForms::neuter_en_plural(&word_stem),
         }
@@ -126,7 +180,7 @@ impl Noun {
     pub fn fem_hard(word: &str) -> Self {
         let word_stem = slice_without_last(word);
 
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::feminine_hard_singular(&word_stem),
             pl: CaseForms::feminine_hard_plural(&word_stem),
         }
@@ -134,59 +188,59 @@ impl Noun {
     pub fn fem_soft(word: &str) -> Self {
         let word_stem = slice_without_last(word);
 
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::feminine_soft_singular(&word_stem),
             pl: CaseForms::feminine_soft_plural(&word_stem),
         }
     }
     pub fn fem_cons(word: &str) -> Self {
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::feminine_cons_singular(word),
             pl: CaseForms::feminine_cons_plural(word),
         }
     }
 
     pub fn masculine_anim_hard(word: &str) -> Self {
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::masculine_anim_hard_singular(word),
             pl: CaseForms::masculine_anim_hard_plural(word),
         }
     }
 
     pub fn masculine_anim_soft(word: &str) -> Self {
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::masculine_anim_soft_singular(word),
             pl: CaseForms::masculine_anim_soft_plural(word),
         }
     }
 
     pub fn masculine_inanim_hard(word: &str) -> Self {
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::masculine_inanim_hard_singular(word),
             pl: CaseForms::masculine_inanim_hard_plural(word),
         }
     }
 
     pub fn masculine_inanim_soft(word: &str) -> Self {
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::masculine_inanim_soft_singular(word),
             pl: CaseForms::masculine_inanim_soft_plural(word),
         }
     }
     pub fn masculine_a_hard(word: &str) -> Self {
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::feminine_hard_singular(word),
             pl: CaseForms::masculine_anim_hard_plural(word),
         }
     }
     pub fn masculine_a_soft(word: &str) -> Self {
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::feminine_soft_singular(word),
             pl: CaseForms::masculine_anim_soft_plural(word),
         }
     }
     pub fn indeclineable(word: &str) -> Self {
-        Noun {
+        ConjugatedNoun {
             sg: CaseForms::indeclineable(word),
             pl: CaseForms::indeclineable(word),
         }

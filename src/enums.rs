@@ -1,14 +1,16 @@
-use crate::{has_more_than_one_word, Noun};
+use crate::{has_more_than_one_word, ConjugatedNoun, Verb};
 use serde_derive::Deserialize;
-use std::fs::File;
+use std::{collections::HashMap, fs::File};
 
+#[derive(PartialEq)]
 pub enum Gender {
     Masculine,
     Feminine,
     Neuter,
+    Error,
 }
 
-pub type Declineable = bool;
+
 
 pub enum Case {
     Nom,
@@ -20,14 +22,10 @@ pub enum Case {
     Voc,
 }
 
-pub enum Animacy {
-    Animate,
-    Inanimate,
-}
+
 
 pub enum Number {
     Sing,
-    Dual,
     Plur,
 }
 
@@ -49,35 +47,30 @@ pub enum Person {
     Third,
 }
 
-pub enum Tense {
-    Present,
-    Past,
-    Future,
+pub enum VerbTense {
+    Infinitive,
+    Imperative(Gender),
+    Present(Person, Number),
+    Perfect(Gender, Person, Number),
 }
 
-pub enum Aspect {
-    Perfect,
-    Imperfect,
-    Pluperfect,
-}
 
-pub enum Mood {
-    Indicative,
-    Conditional,
-    Imperative,
-}
+
+
+
+type ISVID = i32;
 
 pub enum PartOfSpeech {
-    Noun(Gender, Case, Animacy, Number),
-    Verb(Gender, Tense, Person, Number, Aspect, Mood, Conjugation),
-    Adj(Gender, Case, Animacy, Number),
+    ConjugatedNoun(ConjugatedNoun),
+    Verb(Verb),
+    Adj,
     Adv,
     Part,
 }
 //id,isv,addition,partOfSpeech,type,en,sameInLanguages,genesis,ru,be,uk,pl,cs,sk,bg,mk,sr,hr,sl,cu,de,nl,eo,frequency,intelligibility,using_example
 #[derive(Debug, Deserialize)]
-pub struct WordISV {
-    id: i32,
+pub struct ISVEntry {
+    id: ISVID,
     isv: String,
 
     #[serde(rename = "partOfSpeech")]
@@ -101,99 +94,135 @@ pub struct WordISV {
     eo: String,
 }
 
-pub fn derive_noun(word: &str, gender: Gender, animacy: Animacy) -> Noun {
+impl ISVEntry {
+
+    pub fn is_animate_from_poss(&self) -> bool {
+        let boop: Vec<&str> = self.pos.split('.').collect();
     
-        match gender {
-            Gender::Masculine => Noun::masculine_decline(word, animacy),
-            Gender::Feminine => Noun::feminine_decline(word),
-            Gender::Neuter => Noun::neuter_decline(word),
-        }
+        let without_whitespace: Vec<String> = boop
+            .iter()
+            .map(|s| s.chars().filter(|c| !c.is_whitespace()).collect())
+            .collect();
     
-}
-
-pub fn derive_from_pos(word: &str, markers: PartOfSpeech) {
-    match markers {
-        PartOfSpeech::Noun(gender, case, animacy, number) => {
-            derive_noun(word, gender, animacy);
-        }
-        _ => panic!("pos not implemented"),
-    }
-}
-
-pub fn gender_and_animacy_from_pos_string(poss: &str) -> (Option<Gender>, Animacy, Declineable) {
-    let boop: Vec<&str> = poss.split('.').collect();
-
-    let without_whitespace: Vec<String> = boop
-        .iter()
-        .map(|s| s.chars().filter(|c| !c.is_whitespace()).collect())
-        .collect();
-
-    let animacy = if without_whitespace.contains(&String::from("anim")) {
-        Animacy::Animate
-    } else {
-        Animacy::Inanimate
-    };
-    let gender = if without_whitespace.contains(&String::from("m")) {
-        Some(Gender::Masculine)
-    } else if without_whitespace.contains(&String::from("f")) {
-        Some(Gender::Feminine)
-    } else if without_whitespace.contains(&String::from("n")) {
-        Some(Gender::Neuter)
-    } else {
-        None
-    };
-
-    let declineable = if without_whitespace.contains(&String::from("indecl")) {
-        false
-    } else if without_whitespace.contains(&String::from("pl")) {
-        false
-    }
-    //should fix this idk how it affects declineability
-    else if without_whitespace.contains(&String::from("sg")) {
-        false
-    }
-    //should fix this idk how it affects declineability
-    else {
-        true
-    };
-
-    (gender, animacy, declineable)
-}
-
-pub fn noun_from_csv(word : &str , poss : &str) -> Option<Noun>{
-
-    let (gender, animacy, declineable) = gender_and_animacy_from_pos_string(poss);
-
-    if let Some(gend) = gender {
-        let mecz =
-        if declineable && !has_more_than_one_word(word) {
-            derive_noun(word, gend, animacy) 
-            
+        if without_whitespace.contains(&String::from("anim")) {
+            true
         } else {
-             Noun::indeclineable(word) 
-           
+            false
+        }
+    }
+    
+    pub fn gender_from_poss(&self) -> Gender {
+        let boop: Vec<&str> = self.pos.split('.').collect();
+    
+        let without_whitespace: Vec<String> = boop
+            .iter()
+            .map(|s| s.chars().filter(|c| !c.is_whitespace()).collect())
+            .collect();
+    
+        if without_whitespace.contains(&String::from("m")) {
+            Gender::Masculine
+        } else if without_whitespace.contains(&String::from("f")) {
+            Gender::Feminine
+        } else if without_whitespace.contains(&String::from("n")) {
+            Gender::Neuter
+        } else {
+            Gender::Error
+        }
+    }
+    
+    pub fn is_declineable_from_poss(&self) -> bool {
+        let boop: Vec<&str> = self.pos.split('.').collect();
+    
+        let without_whitespace: Vec<String> = boop
+            .iter()
+            .map(|s| s.chars().filter(|c| !c.is_whitespace()).collect())
+            .collect();
+    
+        if without_whitespace.contains(&String::from("indecl")) {
+            false
+        } else if without_whitespace.contains(&String::from("pl")) {
+            false
+        }
+        //should fix this idk how it affects declineability
+        else if without_whitespace.contains(&String::from("sg")) {
+            false
+        }
+        //should fix this idk how it affects declineability
+        else {
+            true
+        }
+    }
+
+
+
+
+}
+
+type HomographMap = HashMap<ISVID, ISVEntry>;
+
+type ISVWordMap = HashMap<String, HomographMap>;
+
+pub struct WordCore {
+    word_map: ISVWordMap,
+}
+
+impl WordCore {
+    pub fn new() -> Self {
+        WordCore {
+            word_map: load_word_csv(),
+        }
+    }
+}
+
+
+
+pub fn noun_from_csv(record: &ISVEntry) -> Option<ConjugatedNoun> {
+    let gender = record.gender_from_poss();
+    let declineable = record.is_declineable_from_poss();
+    let animacy = record.is_animate_from_poss();
+
+    if gender != Gender::Error {
+        let mecz = if declineable && !has_more_than_one_word(&record.isv) {
+            ConjugatedNoun::derive_noun(&record.isv, &gender, animacy)
+        } else {
+            ConjugatedNoun::indeclineable(&record.isv)
         };
         println!("{:?}", &mecz.pl.gen);
         Some(mecz)
+    } else {
+        None
     }
-    else {None}
-   
-
-
-
 }
 
-pub fn load_word_csv() {
+
+
+pub fn load_word_csv() -> ISVWordMap {
     let file_path = "assets/interslavic_words.csv";
     let file = File::open(file_path).unwrap();
     let mut rdr = csv::Reader::from_reader(file);
 
+    let mut wordbase = ISVWordMap::new();
+
     for result in rdr.deserialize() {
-        let record: WordISV = result.unwrap();
-        let boop = record.isv.trim();
-        let poss = &record.pos;
-        //println!("RECORD ISSSS    {:?}", &record);
+        let mut record: ISVEntry = result.unwrap();
+        record.isv = record.isv.trim().to_string();
+
+        noun_from_csv(&record);
       
-      noun_from_csv(boop, poss);
+        let record_id = record.id.clone();
+        let record_string = record.isv.clone();
+
+        if wordbase.contains_key(&record_string) {
+            let hmap = wordbase.get_mut(&record_string).unwrap();
+            hmap.insert(record_id, record);
+        } else {
+            let mut hmap = HomographMap::new();
+            hmap.insert(record_id, record);
+            wordbase.insert(record_string, hmap);
+        }
+
+        //println!("RECORD ISSSS    {:?}", &record);
     }
+
+    wordbase
 }
