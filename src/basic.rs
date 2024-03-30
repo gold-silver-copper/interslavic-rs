@@ -40,7 +40,7 @@ pub fn is_vowel(c: char) -> bool {
 }
 
 pub fn is_consonant(c: char) -> bool {
-    c.is_alphabetic() && !is_vowel(c)
+    !is_vowel(c)
 }
 
 pub fn is_hard_consonant(c: char) -> bool {

@@ -32,6 +32,7 @@ pub enum Declension {
     Athematic,
 }
 
+#[derive(Debug)]
 pub enum Conjugation {
     First,
     Second,

@@ -7,6 +7,7 @@ pub struct Verb {
     pub verb_stem: String,
     pub perfect: bool,
     pub transitive: bool,
+    //  pub conjugation: Conjugation,
 }
 
 impl Verb {
@@ -16,15 +17,28 @@ impl Verb {
             verb_stem: slice_without_last(&slice_without_last(word)),
             perfect: perf,
             transitive: trans,
+            // conjugation: Conjugation::First,
         }
     }
 
-    pub fn derive_verb(word: &str, tense: VerbTense) -> String {
+    pub fn get_verb_stem_and_conjugation(infinitive: &str) -> (String, Conjugation) {
+        let mut ti_removed = slice_without_last(&slice_without_last(infinitive));
+
+        if is_consonant(last_in_slice(&ti_removed)) {
+            (ti_removed, Conjugation::First)
+        } else if ti_removed.ends_with("ovati") {
+            (ti_removed.replace("ovati", "uj"), Conjugation::First)
+        } else {
+            (ti_removed, Conjugation::First)
+        }
+    }
+
+    pub fn derive_verb(&self, tense: VerbTense) -> String {
         match tense {
-            VerbTense::Infinitive => word.into(),
-            VerbTense::Imperative(g) => word.into(),
-            VerbTense::Present(p, n) => word.into(),
-            VerbTense::Perfect(g, p, n) => word.into(),
+            VerbTense::Infinitive => self.infinitive(),
+            VerbTense::Imperative(g) => self.infinitive(),
+            VerbTense::Present(p, n) => self.infinitive(),
+            VerbTense::Perfect(g, p, n) => self.infinitive(),
         }
     }
 
