@@ -1,4 +1,4 @@
-use crate::{has_more_than_one_word, ConjugatedNoun, Noun, Verb, Adjective};
+use crate::{has_more_than_one_word, Adjective, ConjugatedNoun, Noun, Verb};
 use serde_derive::Deserialize;
 use std::{collections::HashMap, fs::File};
 #[derive(Debug, PartialEq, Clone)]
@@ -23,7 +23,6 @@ pub enum Number {
     Plur,
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Conjugation {
     First,
@@ -38,18 +37,18 @@ pub enum Person {
 #[derive(Debug, PartialEq, Clone)]
 pub enum VerbTense {
     Infinitive,
-    Imperative(Person,Number),
+    Imperative(Person, Number),
     Present(Person, Number),
     Perfect(Gender, Person, Number),
-    Imperfect(Person,Number),
-    Future(Person,Number),
+    Imperfect(Person, Number),
+    Future(Person, Number),
     PluPerfect(Gender, Person, Number),
     Conditional(Gender, Person, Number),
     PresentActiveParticiple(Gender),
     PresentPassiveParticiple(Gender),
     PastActiveParticiple(Gender),
     PastPassiveParticiple(Gender),
-    LParticiple(Gender,Number),
+    LParticiple(Gender, Number),
     Noun,
 }
 

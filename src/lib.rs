@@ -1,9 +1,9 @@
+mod adjective;
 mod basic;
 mod caseforms;
 mod enums;
 mod noun;
 mod verb;
-mod adjective;
 pub use adjective::*;
 
 pub use verb::*;

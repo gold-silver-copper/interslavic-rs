@@ -34,7 +34,10 @@ impl Verb {
         println!("{:#?}", &v.present(&Person::Second, &Number::Sing));
         println!("{:#?}", &v.l_participle(&fem_g, &Number::Sing));
         println!("{:#?}", &v.perfect(&fem_g, &Person::Third, &Number::Plur));
-        println!("{:#?}", Verb::byti(VerbTense::LParticiple(Gender::Feminine,Number::Plur)));
+        println!(
+            "{:#?}",
+            Verb::byti(VerbTense::LParticiple(Gender::Feminine, Number::Plur))
+        );
         v
     }
 
@@ -130,10 +133,10 @@ impl Verb {
     pub fn derive_verb(&self, tense: &VerbTense) -> String {
         match tense {
             VerbTense::Infinitive => self.infinitive(),
-            VerbTense::Imperative(p,n) => self.infinitive(),
+            VerbTense::Imperative(p, n) => self.infinitive(),
             VerbTense::Present(p, n) => self.infinitive(),
             VerbTense::Perfect(g, p, n) => self.infinitive(),
-            _=>todo!()
+            _ => todo!(),
         }
     }
 
@@ -173,10 +176,9 @@ impl Verb {
     }
     pub fn conditional(&self, g: &Gender, p: &Person, n: &Number) -> String {
         let l_part = self.l_participle(&g, &n);
-        let be = Verb::byti(VerbTense::Conditional(g.clone(),p.clone(), n.clone()));
+        let be = Verb::byti(VerbTense::Conditional(g.clone(), p.clone(), n.clone()));
         format!("{be} {l_part}")
     }
-  
 
     pub fn byti(vt: VerbTense) -> String {
         match &vt {
@@ -193,7 +195,7 @@ impl Verb {
                     Person::Third => "sųt".to_string(),
                 },
             },
-            VerbTense::Imperfect(p,n, )=>  match n {
+            VerbTense::Imperfect(p, n) => match n {
                 Number::Sing => match p {
                     Person::First => "běh".to_string(),
                     Person::Second => "běše".to_string(),
@@ -205,7 +207,7 @@ impl Verb {
                     Person::Third => "běhų".to_string(),
                 },
             },
-            VerbTense::Future(p,n, )=>  match n {
+            VerbTense::Future(p, n) => match n {
                 Number::Sing => match p {
                     Person::First => "bųdų".to_string(),
                     Person::Second => "bųdeš".to_string(),
@@ -217,7 +219,7 @@ impl Verb {
                     Person::Third => "bųdųt".to_string(),
                 },
             },
-            VerbTense::Conditional(g, p,n) => match n {
+            VerbTense::Conditional(g, p, n) => match n {
                 Number::Sing => match p {
                     Person::First => "byh".to_string(),
                     Person::Second => "byš".to_string(),
@@ -241,7 +243,7 @@ impl Verb {
                     Person::Third => "bųd́te".to_string(),
                 },
             },
-            VerbTense::LParticiple(g,n)=>   match n {
+            VerbTense::LParticiple(g, n) => match n {
                 Number::Sing => match g {
                     Gender::Feminine => format!("byla"),
                     Gender::Masculine => format!("byl"),
@@ -250,12 +252,19 @@ impl Verb {
                 Number::Plur => {
                     format!("byli")
                 }
-            }, 
-            VerbTense::Perfect(g, p, n)=> format!("{} {}",Verb::byti(VerbTense::Present(p.clone(), n.clone())), Verb::byti(VerbTense::LParticiple(g.clone(), n.clone()))),
-            VerbTense::PluPerfect(g, p, n)=> format!("{} {}",Verb::byti(VerbTense::Imperfect(p.clone(), n.clone())), Verb::byti(VerbTense::LParticiple(g.clone(), n.clone()))),
+            },
+            VerbTense::Perfect(g, p, n) => format!(
+                "{} {}",
+                Verb::byti(VerbTense::Present(p.clone(), n.clone())),
+                Verb::byti(VerbTense::LParticiple(g.clone(), n.clone()))
+            ),
+            VerbTense::PluPerfect(g, p, n) => format!(
+                "{} {}",
+                Verb::byti(VerbTense::Imperfect(p.clone(), n.clone())),
+                Verb::byti(VerbTense::LParticiple(g.clone(), n.clone()))
+            ),
 
-           
-            _ => panic!("THIS BYTI NOT IMPLEMENTED {:#?}",vt),
+            _ => panic!("THIS BYTI NOT IMPLEMENTED {:#?}", vt),
         }
     }
 
@@ -295,74 +304,51 @@ impl Verb {
     }
 
     pub fn present_active_participle(&self) -> String {
-
-       let pluralthree =  self.present(&Person::Third, &Number::Plur);
-       replace_last_occurence(&pluralthree, "t", "či")
-
+        let pluralthree = self.present(&Person::Third, &Number::Plur);
+        replace_last_occurence(&pluralthree, "t", "či")
     }
     pub fn past_active_participle(&self) -> String {
-
         if is_vowel(last_in_slice(&self.infinitive_stem)) {
-            format!("{}vši",&self.infinitive_stem)
-
+            format!("{}vši", &self.infinitive_stem)
+        } else {
+            format!("{}ši", &self.infinitive_stem)
         }
-        else {format!("{}ši",&self.infinitive_stem)}
+    }
 
-
-
-        
- 
-     }
-
-     pub fn present_passive_participle(&self) -> String {
-
-        let stemmy =  &self.present_tense_stem;
+    pub fn present_passive_participle(&self) -> String {
+        let stemmy = &self.present_tense_stem;
 
         let ending = match self.conjugation {
-
-            Conjugation::Second=>"my",
-            Conjugation::First=> {
-                if is_hard_consonant(last_in_slice(stemmy)) {"omy"}
-                else {"emy"}
+            Conjugation::Second => "my",
+            Conjugation::First => {
+                if is_hard_consonant(last_in_slice(stemmy)) {
+                    "omy"
+                } else {
+                    "emy"
+                }
             }
-
         };
 
-       format!("{}{}",stemmy,ending)
- 
-     }
+        format!("{}{}", stemmy, ending)
+    }
 
-     pub fn past_passive_participle(&self) -> String {
-
+    pub fn past_passive_participle(&self) -> String {
         if self.infinitive.ends_with("iti") {
             j_merge_stem_past_passive(&self.infinitive_stem)
-
+        } else if self.infinitive.ends_with("nuti") {
+            format!("{}eny", slice_without_last(&self.infinitive_stem))
+        } else if last_n_chars(&self.present_tense_stem, 3).contains("j") {
+            format!("{}ty", &self.infinitive_stem)
+        } else if is_vowel(last_in_slice(&self.infinitive_stem)) {
+            format!("{}ny", &self.infinitive_stem)
+        } else {
+            format!("{}eny", &self.infinitive_stem)
         }
+    }
 
-        else if self.infinitive.ends_with("nuti") {
-            format!("{}eny",slice_without_last(&self.infinitive_stem))
-
-        }
-        else if  last_n_chars(&self.present_tense_stem, 3).contains("j")  {
-            format!("{}ty",&self.infinitive_stem)
-        }
-
-        else if is_vowel(last_in_slice(&self.infinitive_stem)) {
-            format!("{}ny",&self.infinitive_stem)
-
-        }
-        else {format!("{}eny",&self.infinitive_stem)}
-
-
-
-        
- 
-     }
-
-     pub fn verbal_noun(&self) -> String {
-
+    pub fn verbal_noun(&self) -> String {
         replace_last_occurence(&self.past_passive_participle(), "y", "je")
-     }
+    }
 
     pub fn present(&self, p: &Person, n: &Number) -> String {
         let mut stem = self.present_tense_stem.clone();
@@ -413,31 +399,27 @@ impl Verb {
     pub fn imperative(&self, p: &Person, n: &Number) -> String {
         let mut stem = self.present_tense_stem.clone();
 
-        let prefix =  match p {
-                Person::First => "",
-                Person::Second => "",
-                Person::Third => "nehaj ",
-            }
-        ;
+        let prefix = match p {
+            Person::First => "",
+            Person::Second => "",
+            Person::Third => "nehaj ",
+        };
 
-        let ending =  match n {
-                Number::Sing => match p {
-                    _ => "",
-                   
-                },
-                Number::Plur => match p {
-                    Person::First => "mo",
-                    Person::Second => "te",
-                    Person::Third => "te",
-                },
-            };
+        let ending = match n {
+            Number::Sing => match p {
+                _ => "",
+            },
+            Number::Plur => match p {
+                Person::First => "mo",
+                Person::Second => "te",
+                Person::Third => "te",
+            },
+        };
 
-        if is_consonant(last_in_slice(&stem))  {
+        if is_consonant(last_in_slice(&stem)) {
             stem = format!("{stem}i");
-        } 
+        }
 
-        
-                format!("{}{}{}",prefix, stem, ending)
-     
+        format!("{}{}{}", prefix, stem, ending)
     }
 }

@@ -52,11 +52,9 @@ pub fn is_hard_consonant(c: char) -> bool {
 
 pub fn is_soft_consonant(c: char) -> bool {
     !is_hard_consonant(c.clone()) && !is_vowel(c.clone())
-    
 }
 
-pub fn ends_with_soft_consonant(word:&str) -> bool {
-
+pub fn ends_with_soft_consonant(word: &str) -> bool {
     is_soft_consonant(last_in_slice(word))
 }
 
@@ -69,85 +67,53 @@ pub fn replace_last_occurence(input: &str, pattern: &str, replacement: &str) -> 
     }
 }
 
-pub const J_MERGE_CHARS: [&str; 11] = ["st", "zd","sk","zg", "s", "z", "t", "d","k","g","h",];
+pub const J_MERGE_CHARS: [&str; 11] = ["st", "zd", "sk", "zg", "s", "z", "t", "d", "k", "g", "h"];
 
-pub fn iotation_merge(root:&str,suffix:&str) -> String {
-    
-
+pub fn iotation_merge(root: &str, suffix: &str) -> String {
     if suffix.chars().nth(0) == Some('j') {
         for entry in J_MERGE_CHARS {
             if root.ends_with(entry) {
-                match entry {
-                    "st" => return replace_last_occurence(root, entry, "ščų"),
-                    "zd" => return replace_last_occurence(root, entry, "ždžų"),
-                    "s" => return replace_last_occurence(root, entry, "šų"),
-                    "z" => return replace_last_occurence(root, entry, "žų"),
-                    "t" => return replace_last_occurence(root, entry, "čų"),
-                    "d" => return replace_last_occurence(root, entry, "džų"),
-                    _ => (),
-                }
-                
+                let new_root = match entry {
+                    "st" => replace_last_occurence(root, entry, "šć"),
+                    "zd" => replace_last_occurence(root, entry, "ždž"),
+                    "sk" => replace_last_occurence(root, entry, "šč"),
+                    "zg" => replace_last_occurence(root, entry, "žž"),
+                    "s" => replace_last_occurence(root, entry, "š"),
+                    "z" => replace_last_occurence(root, entry, "ž"),
+                    "t" => replace_last_occurence(root, entry, "ć"),
+                    "d" => replace_last_occurence(root, entry, "dž"),
+                    "k" => replace_last_occurence(root, entry, "č"),
+                    "g" => replace_last_occurence(root, entry, "ž"),
+                    "h" => replace_last_occurence(root, entry, "š"),
+                    _ => root.to_string(),
+                };
+                let new_suffix = suffix.get(1..).unwrap();
+                return format!("{new_root}{new_suffix}");
             }
         }
 
         format!("{root}{suffix}")
-
+    } else {
+        format!("{root}{suffix}")
     }
-    else {format!("{root}{suffix}")}
 }
 
 pub fn j_merge_stem_second_present(stem_in: &str) -> String {
     let stem = &slice_without_last(stem_in);
 
-    for entry in J_MERGE_CHARS {
-        if stem.ends_with(entry) {
-            match entry {
-                "st" => return replace_last_occurence(stem, entry, "ščų"),
-                "zd" => return replace_last_occurence(stem, entry, "ždžų"),
-                "s" => return replace_last_occurence(stem, entry, "šų"),
-                "z" => return replace_last_occurence(stem, entry, "žų"),
-                "t" => return replace_last_occurence(stem, entry, "čų"),
-                "d" => return replace_last_occurence(stem, entry, "džų"),
-                _ => (),
-            }
-        }
-    }
-    format!("{}{}", stem, "jų")
+    iotation_merge(stem, "jų")
 }
-
 
 pub fn j_merge_stem_past_passive(stem_in: &str) -> String {
     let stem = &slice_without_last(stem_in);
 
-    for entry in J_MERGE_CHARS {
-        if stem.ends_with(entry) {
-            match entry {
-                "st" => return replace_last_occurence(stem, entry, "ščeny"),
-                "zd" => return replace_last_occurence(stem, entry, "ždženy"),
-                "s" => return replace_last_occurence(stem, entry, "šeny"),
-                "z" => return replace_last_occurence(stem, entry, "ženy"),
-                "t" => return replace_last_occurence(stem, entry, "čeny"),
-                "d" => return replace_last_occurence(stem, entry, "dženy"),
-                _ => (),
-            }
-        }
-    }
-    format!("{}{}", stem, "jeny")
+    iotation_merge(stem, "jeny")
 }
 
-pub fn last_n_chars(word: &str , n:usize) -> String {
-
-
-
+pub fn last_n_chars(word: &str, n: usize) -> String {
     if n <= word.len() {
         word[word.len() - n..].to_string()
-       
     } else {
         word.to_string()
     }
-
-
-
-
 }
-
