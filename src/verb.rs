@@ -4,7 +4,7 @@ use crate::enums::*;
 #[derive(Debug)]
 pub struct Verb {
     pub infinitive: String,
-    pub basic_stem: String,
+    pub infinitive_stem: String,
     pub present_tense_stem: String,
     pub perfect: bool,
     pub transitive: bool,
@@ -24,13 +24,15 @@ impl Verb {
             Verb::get_present_stem_and_conjugation(&record.isv, optional_stem);
         let v = Verb {
             infinitive: record.isv.clone(),
-            basic_stem: slice_without_last(&slice_without_last(&record.isv)),
+            infinitive_stem: slice_without_last(&slice_without_last(&record.isv)),
             present_tense_stem: present_stem,
             perfect: perfect,
             transitive: trans,
             conjugation: conj,
         };
-        println!("{:#?}", &v.present(Person::Second, Number::Sing));
+        let fem_g = Gender::Feminine;
+        println!("{:#?}", &v.present(&Person::Second, &Number::Sing));
+        println!("{:#?}", &v.l_participle(&fem_g, &Number::Sing));
         v
     }
 
@@ -123,7 +125,7 @@ impl Verb {
         }
     }
 
-    pub fn derive_verb(&self, tense: VerbTense) -> String {
+    pub fn derive_verb(&self, tense: &VerbTense) -> String {
         match tense {
             VerbTense::Infinitive => self.infinitive(),
             VerbTense::Imperative(g) => self.infinitive(),
@@ -135,7 +137,60 @@ impl Verb {
     pub fn infinitive(&self) -> String {
         self.infinitive.clone()
     }
-    pub fn present(&self, p: Person, n: Number) -> String {
+
+    pub fn l_participle(&self, g: &Gender, n: &Number) -> String {
+        let stem = &self.infinitive_stem;
+
+        match n {
+            Number::Sing => match g {
+                Gender::Feminine => format!("{stem}la"),
+                Gender::Masculine => format!("{stem}l"),
+                Gender::Neuter => format!("{stem}lo"),
+                Gender::Error => format!("{stem}lx"),
+            },
+            Number::Plur => {
+                format!("{stem}li")
+            }
+        }
+    }
+
+    pub fn perfect(&self, g: &Gender, p: &Person, n: &Number) -> String {
+        let mut stem = self.present_tense_stem.clone();
+
+        let l_part = self.l_participle(&g, &n);
+
+        let mut ending = match self.conjugation {
+            Conjugation::First => match n {
+                Number::Sing => match p {
+                    Person::First => "h",
+                    Person::Second => "še",
+                    Person::Third => "e",
+                },
+                Number::Plur => match p {
+                    Person::First => "emo",
+                    Person::Second => "ete",
+                    Person::Third => "ųt",
+                },
+            },
+            Conjugation::Second => match n {
+                Number::Sing => match p {
+                    Person::First => "jų",
+                    Person::Second => "iš",
+                    Person::Third => "i",
+                },
+                Number::Plur => match p {
+                    Person::First => "imo",
+                    Person::Second => "ite",
+                    Person::Third => "et",
+                },
+            },
+        };
+        String::default()
+
+     
+    }
+
+    pub fn present(&self, p: &Person, n: &Number) -> String {
         let mut stem = self.present_tense_stem.clone();
 
         let mut ending = match self.conjugation {
@@ -171,7 +226,6 @@ impl Verb {
             stem = replace_last_occurence(&stem, "g", "ž");
         } else if self.conjugation == Conjugation::Second && (ending.chars().nth(0) == Some('j')) {
             return j_merge_stem_second_present(&stem);
-           
         }
 
         match self.conjugation {
@@ -182,12 +236,7 @@ impl Verb {
         }
     }
 
-    pub fn imperative(&self, g: Gender) {}
+    pub fn imperative(&self, g: &Gender) {}
 
-    pub fn perfect(&self, g: Gender, p: Person, n: Number) {}
-}
-
-pub struct TenseForms {
-    pub sg_1: String,
-    pub sg_2: String,
+   
 }
