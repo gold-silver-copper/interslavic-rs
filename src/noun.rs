@@ -2,7 +2,7 @@ use crate::basic::*;
 use crate::enums::*;
 use crate::CaseForms;
 
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Noun {
     pub nom_sg: String,
     pub conjugated_noun: ConjugatedNoun,
@@ -14,12 +14,19 @@ pub struct Noun {
 impl Noun {
     pub fn new(record: &ISVEntry) -> Self {
         let gender = record.get_gender();
+
+        let boop = if gender == None {
+            Gender::Neuter
+        } else {
+            gender.unwrap()
+        };
+
         let declineable = record.is_declineable();
         let animate = record.is_animate();
 
         let word = &record.isv;
-        let cn: ConjugatedNoun = if declineable && !has_more_than_one_word(word) {
-            ConjugatedNoun::derive_noun(word, &gender, animate)
+        let cn: ConjugatedNoun = if declineable {
+            ConjugatedNoun::derive_noun(word, &boop, animate)
         } else {
             ConjugatedNoun::indeclineable(word)
         };
@@ -28,7 +35,7 @@ impl Noun {
             nom_sg: word.into(),
             conjugated_noun: cn,
             animate: animate,
-            gender: gender,
+            gender: boop,
             declineable: declineable,
         }
     }
@@ -41,7 +48,7 @@ impl Noun {
         self.conjugated_noun.pl.nom.clone()
     }
 }
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ConjugatedNoun {
     pub sg: CaseForms, // Singular forms of the noun
     pub pl: CaseForms, // Plural forms of the noun

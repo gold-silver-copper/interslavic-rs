@@ -1,14 +1,13 @@
 use crate::{has_more_than_one_word, ConjugatedNoun, Noun, Verb};
 use serde_derive::Deserialize;
 use std::{collections::HashMap, fs::File};
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Gender {
     Masculine,
     Feminine,
     Neuter,
-    Error,
 }
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Case {
     Nom,
     Acc,
@@ -18,12 +17,12 @@ pub enum Case {
     Loc,
     Voc,
 }
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Number {
     Sing,
     Plur,
 }
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Declension {
     First,
     Second,
@@ -31,27 +30,37 @@ pub enum Declension {
     Athematic,
 }
 
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Conjugation {
     First,
     Second,
 }
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Person {
     First,
     Second,
     Third,
 }
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum VerbTense {
     Infinitive,
-    Imperative(Gender),
+    Imperative(Person,Number),
     Present(Person, Number),
     Perfect(Gender, Person, Number),
+    Imperfect(Person,Number),
+    Future(Person,Number),
+    PluPerfect(Gender, Person, Number),
+    Conditional(Gender, Person, Number),
+    PresentActiveParticiple(Gender),
+    PresentPassiveParticiple(Gender),
+    PastActiveParticiple(Gender),
+    PastPassiveParticiple(Gender),
+    LParticiple(Gender,Number),
+    Noun,
 }
 
 type ISVID = i32;
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Word {
     Noun(Noun),
     Verb(Verb),
@@ -150,15 +159,15 @@ impl ISVEntry {
         self.check_poss_for_string("intr")
     }
 
-    pub fn get_gender(&self) -> Gender {
+    pub fn get_gender(&self) -> Option<Gender> {
         if self.check_poss_for_string("m") {
-            Gender::Masculine
+            Some(Gender::Masculine)
         } else if self.check_poss_for_string("f") {
-            Gender::Feminine
+            Some(Gender::Feminine)
         } else if self.check_poss_for_string("n") {
-            Gender::Neuter
+            Some(Gender::Neuter)
         } else {
-            Gender::Error
+            None
         }
     }
 
@@ -210,7 +219,7 @@ impl WordCore {
             let record_string = record.isv.clone();
 
             if !has_more_than_one_word(&record_string) {
-                let word_to_insert = if record.get_gender() != Gender::Error {
+                let word_to_insert = if record.get_gender() != None {
                     Word::Noun(Noun::new(&record))
                 } else if record.is_verb() {
                     Word::Verb(Verb::new(&record))

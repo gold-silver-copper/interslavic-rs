@@ -51,31 +51,8 @@ pub fn is_hard_consonant(c: char) -> bool {
 }
 
 pub fn is_soft_consonant(c: char) -> bool {
-    matches!(
-        c,
-        'č' | 'š'
-            | 'ž'
-            | 'j'
-            | 'ć'
-            | 'ď'
-            | 'ť'
-            | 'ň'
-            | 'ľ'
-            | '\u{301}'
-            | '\u{300}'
-            | '\u{302}'
-            | '\u{303}'
-            | '\u{304}'
-            | '\u{305}'
-            | '\u{306}'
-            | 'đ'
-            | 'ż'
-            | 'ń'
-            | 'c'
-            | 'ŕ'
-            | 'ś'
-            | 'ź'
-    )
+    !is_hard_consonant(c.clone()) && !is_vowel(c.clone())
+    
 }
 
 pub fn replace_last_occurence(input: &str, pattern: &str, replacement: &str) -> String {
@@ -106,4 +83,40 @@ pub fn j_merge_stem_second_present(stem_in: &str) -> String {
         }
     }
     format!("{}{}", stem, "jų")
+}
+
+
+pub fn j_merge_stem_past_passive(stem_in: &str) -> String {
+    let stem = &slice_without_last(stem_in);
+
+    for entry in J_MERGE_CHARS {
+        if stem.ends_with(entry) {
+            match entry {
+                "st" => return replace_last_occurence(stem, entry, "ščeny"),
+                "zd" => return replace_last_occurence(stem, entry, "ždženy"),
+                "s" => return replace_last_occurence(stem, entry, "šeny"),
+                "z" => return replace_last_occurence(stem, entry, "ženy"),
+                "t" => return replace_last_occurence(stem, entry, "čeny"),
+                "d" => return replace_last_occurence(stem, entry, "dženy"),
+                _ => (),
+            }
+        }
+    }
+    format!("{}{}", stem, "jeny")
+}
+
+pub fn last_n_chars(word: &str , n:usize) -> String {
+
+
+
+    if n <= word.len() {
+        word[word.len() - n..].to_string()
+       
+    } else {
+        word.to_string()
+    }
+
+
+
+
 }

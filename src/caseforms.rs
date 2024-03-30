@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct CaseForms {
     pub nom: String, // Nominative
     pub gen: String, // Genitive
