@@ -66,6 +66,7 @@ pub enum Word {
 pub struct ISVEntry {
     id: ISVID,
     isv: String,
+    addition: String,
 
     #[serde(rename = "partOfSpeech")]
     pos: String,
@@ -106,6 +107,37 @@ impl ISVEntry {
         } else {
             false
         }
+    }
+
+    pub fn get_addition_verb_stem(&self) -> Option<String> {
+
+
+        let mut boop = self.addition.replace("(", " ");
+        boop = boop.replace(")", " ");
+        boop = boop.replace("/", " ");
+        boop = boop.replace(";", " ");
+        boop = boop.replace("#", " ");
+
+        let wee: Vec<&str> = boop.split(' ').collect();
+
+        let mut result = None;
+
+        for meow in wee {
+
+            if  (meow.chars().nth(0) == self.isv.chars().nth(0))  {
+
+            //    panic!("matched an addition stem :D {}", meow);
+
+                result = Some(meow.into())
+
+
+            }
+        }
+
+  
+
+        result
+
     }
 
     pub fn is_animate(&self) -> bool {
@@ -190,7 +222,9 @@ impl WordCore {
         let perfect = record.is_perfect();
         let imperfect = record.is_imperfect();
 
-        let verb = Verb::new(&record.isv, perfect, trans);
+        let optional = record.get_addition_verb_stem();
+
+        let verb = Verb::new(&record.isv, perfect, trans, optional);
 
         println!("{:#?}", &verb);
 
@@ -208,25 +242,36 @@ impl WordCore {
             let mut record: ISVEntry = result.unwrap();
             record.isv = record.isv.trim().to_string();
 
-            let word_to_insert = if record.get_gender() != Gender::Error {
-                Word::Noun(WordCore::noun_from_entry(&record))
-            } else if record.is_verb() {
-                Word::Verb(WordCore::verb_from_entry(&record))
-            } else {
-                Word::Error
-            };
+           
 
             let record_id = record.id.clone();
             let record_string = record.isv.clone();
 
-            if wordbase.contains_key(&record_string) {
-                let hmap = wordbase.get_mut(&record_string).unwrap();
-                hmap.insert(record_id, word_to_insert);
-            } else {
-                let mut hmap = HomographMap::new();
-                hmap.insert(record_id, word_to_insert);
-                wordbase.insert(record_string, hmap);
+
+            if !has_more_than_one_word(&record_string) {
+
+                let word_to_insert = if record.get_gender() != Gender::Error {
+                    Word::Noun(WordCore::noun_from_entry(&record))
+                } else if record.is_verb() {
+                    Word::Verb(WordCore::verb_from_entry(&record))
+                } else {
+                    Word::Error
+                };
+
+                if wordbase.contains_key(&record_string) {
+                    let hmap = wordbase.get_mut(&record_string).unwrap();
+                    hmap.insert(record_id, word_to_insert);
+                } else {
+                    let mut hmap = HomographMap::new();
+                    hmap.insert(record_id, word_to_insert);
+                    wordbase.insert(record_string, hmap);
+                }
+
+
+
             }
+
+           
 
             //println!("RECORD ISSSS    {:?}", &record);
         }

@@ -77,3 +77,19 @@ pub fn is_soft_consonant(c: char) -> bool {
             | 'ź'
     )
 }
+
+
+
+pub fn replace_last_occurence(input:&str,pattern:&str,replacement:&str) -> String {
+
+    if let Some(last_index) = input.rfind(pattern) {
+        let (before_last, after_last) = input.split_at(last_index);
+        let replaced = format!("{}{}", before_last, after_last.replace(pattern, replacement));
+        replaced
+    } else {
+        input.into()
+    }
+
+
+
+}
