@@ -2,7 +2,7 @@ use crate::basic::*;
 use crate::enums::*;
 use crate::CaseForms;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct Noun {
     pub nom_sg: String,
     pub conjugated_noun: ConjugatedNoun,
@@ -41,7 +41,7 @@ impl Noun {
         self.conjugated_noun.pl.nom.clone()
     }
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct ConjugatedNoun {
     pub sg: CaseForms, // Singular forms of the noun
     pub pl: CaseForms, // Plural forms of the noun

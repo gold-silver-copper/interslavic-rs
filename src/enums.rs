@@ -1,15 +1,14 @@
 use crate::{has_more_than_one_word, ConjugatedNoun, Noun, Verb};
 use serde_derive::Deserialize;
 use std::{collections::HashMap, fs::File};
-
-#[derive(PartialEq, Debug)]
+#[derive(Debug, PartialEq,Clone)]
 pub enum Gender {
     Masculine,
     Feminine,
     Neuter,
     Error,
 }
-
+#[derive(Debug, PartialEq,Clone)]
 pub enum Case {
     Nom,
     Acc,
@@ -19,12 +18,12 @@ pub enum Case {
     Loc,
     Voc,
 }
-
+#[derive(Debug, PartialEq,Clone)]
 pub enum Number {
     Sing,
     Plur,
 }
-
+#[derive(Debug, PartialEq,Clone)]
 pub enum Declension {
     First,
     Second,
@@ -32,18 +31,18 @@ pub enum Declension {
     Athematic,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub enum Conjugation {
     First,
     Second,
 }
-
+#[derive(Debug, PartialEq,Clone)]
 pub enum Person {
     First,
     Second,
     Third,
 }
-
+#[derive(Debug, PartialEq,Clone)]
 pub enum VerbTense {
     Infinitive,
     Imperative(Gender),
@@ -52,7 +51,7 @@ pub enum VerbTense {
 }
 
 type ISVID = i32;
-
+#[derive(Debug, PartialEq,Clone)]
 pub enum Word {
     Noun(Noun),
     Verb(Verb),

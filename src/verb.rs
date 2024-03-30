@@ -1,7 +1,7 @@
 use crate::basic::*;
 use crate::enums::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct Verb {
     pub infinitive: String,
     pub infinitive_stem: String,
@@ -155,39 +155,42 @@ impl Verb {
     }
 
     pub fn perfect(&self, g: &Gender, p: &Person, n: &Number) -> String {
-        let mut stem = self.present_tense_stem.clone();
+        
 
         let l_part = self.l_participle(&g, &n);
+        let be = Verb::byti(VerbTense::Present(p.clone(), n.clone()));
 
-        let mut ending = match self.conjugation {
-            Conjugation::First => match n {
-                Number::Sing => match p {
-                    Person::First => "h",
-                    Person::Second => "še",
-                    Person::Third => "e",
-                },
-                Number::Plur => match p {
-                    Person::First => "emo",
-                    Person::Second => "ete",
-                    Person::Third => "ųt",
-                },
-            },
-            Conjugation::Second => match n {
-                Number::Sing => match p {
-                    Person::First => "jų",
-                    Person::Second => "iš",
-                    Person::Third => "i",
-                },
-                Number::Plur => match p {
-                    Person::First => "imo",
-                    Person::Second => "ite",
-                    Person::Third => "et",
-                },
-            },
-        };
+
+        
+        
+
+
         String::default()
 
      
+    }
+
+    pub fn byti( vt:VerbTense) -> String {
+        match vt{
+
+            VerbTense::Infinitive=>"byti".to_string(),
+            VerbTense::Present(p,n  )=>{
+                match n {
+                    Number::Sing => match p {
+                        Person::First => "jesm".to_string(),
+                        Person::Second => "jesi".to_string(),
+                        Person::Third => "je".to_string(),
+                    },
+                    Number::Plur => match p {
+                        Person::First => "jesmo".to_string(),
+                        Person::Second => "jeste".to_string(),
+                        Person::Third => "sųt".to_string(),
+                    },
+                }
+            }
+            _=>"byti".to_string(),
+        }
+        
     }
 
     pub fn present(&self, p: &Person, n: &Number) -> String {
