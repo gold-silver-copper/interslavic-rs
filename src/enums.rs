@@ -1,4 +1,4 @@
-use crate::{has_more_than_one_word, ConjugatedNoun, Noun, Verb};
+use crate::{has_more_than_one_word, ConjugatedNoun, Noun, Verb, Adjective};
 use serde_derive::Deserialize;
 use std::{collections::HashMap, fs::File};
 #[derive(Debug, PartialEq, Clone)]
@@ -22,13 +22,7 @@ pub enum Number {
     Sing,
     Plur,
 }
-#[derive(Debug, PartialEq, Clone)]
-pub enum Declension {
-    First,
-    Second,
-    Third,
-    Athematic,
-}
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Conjugation {
@@ -64,8 +58,7 @@ type ISVID = i32;
 pub enum Word {
     Noun(Noun),
     Verb(Verb),
-    Adj,
-    Adv,
+    Adj(Adjective),
     Part,
     Error,
 }
@@ -145,6 +138,9 @@ impl ISVEntry {
     pub fn is_verb(&self) -> bool {
         self.check_poss_for_string("v")
     }
+    pub fn is_adj(&self) -> bool {
+        self.check_poss_for_string("adj") || self.check_poss_for_string("adv")
+    }
 
     pub fn is_perfect(&self) -> bool {
         self.check_poss_for_string("pf")
@@ -223,6 +219,8 @@ impl WordCore {
                     Word::Noun(Noun::new(&record))
                 } else if record.is_verb() {
                     Word::Verb(Verb::new(&record))
+                } else if record.is_adj() {
+                    Word::Adj(Adjective::new(&record))
                 } else {
                     Word::Error
                 };

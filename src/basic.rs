@@ -55,6 +55,11 @@ pub fn is_soft_consonant(c: char) -> bool {
     
 }
 
+pub fn ends_with_soft_consonant(word:&str) -> bool {
+
+    is_soft_consonant(last_in_slice(word))
+}
+
 pub fn replace_last_occurence(input: &str, pattern: &str, replacement: &str) -> String {
     if let Some(last_index) = input.rfind(pattern) {
         let (before_last, _after_last) = input.split_at(last_index);
@@ -64,7 +69,32 @@ pub fn replace_last_occurence(input: &str, pattern: &str, replacement: &str) -> 
     }
 }
 
-pub const J_MERGE_CHARS: [&str; 6] = ["st", "zd", "s", "z", "t", "d"];
+pub const J_MERGE_CHARS: [&str; 11] = ["st", "zd","sk","zg", "s", "z", "t", "d","k","g","h",];
+
+pub fn iotation_merge(root:&str,suffix:&str) -> String {
+    
+
+    if suffix.chars().nth(0) == Some('j') {
+        for entry in J_MERGE_CHARS {
+            if root.ends_with(entry) {
+                match entry {
+                    "st" => return replace_last_occurence(root, entry, "ščų"),
+                    "zd" => return replace_last_occurence(root, entry, "ždžų"),
+                    "s" => return replace_last_occurence(root, entry, "šų"),
+                    "z" => return replace_last_occurence(root, entry, "žų"),
+                    "t" => return replace_last_occurence(root, entry, "čų"),
+                    "d" => return replace_last_occurence(root, entry, "džų"),
+                    _ => (),
+                }
+                
+            }
+        }
+
+        format!("{root}{suffix}")
+
+    }
+    else {format!("{root}{suffix}")}
+}
 
 pub fn j_merge_stem_second_present(stem_in: &str) -> String {
     let stem = &slice_without_last(stem_in);
@@ -120,3 +150,4 @@ pub fn last_n_chars(word: &str , n:usize) -> String {
 
 
 }
+
