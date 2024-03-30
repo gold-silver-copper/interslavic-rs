@@ -1,7 +1,6 @@
 use crate::basic::*;
-
+use crate::enums::*;
 use crate::CaseForms;
-use crate::Gender;
 
 #[derive(Debug)]
 pub struct Noun {
@@ -13,7 +12,12 @@ pub struct Noun {
 }
 
 impl Noun {
-    pub fn new(word: &str, gender: Gender, animate: bool, declineable: bool) -> Self {
+    pub fn new(record: &ISVEntry) -> Self {
+        let gender = record.get_gender();
+        let declineable = record.is_declineable();
+        let animate = record.is_animate();
+
+        let word = &record.isv;
         let cn: ConjugatedNoun = if declineable && !has_more_than_one_word(word) {
             ConjugatedNoun::derive_noun(word, &gender, animate)
         } else {

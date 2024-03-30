@@ -32,7 +32,7 @@ pub enum Declension {
     Athematic,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Conjugation {
     First,
     Second,
@@ -64,12 +64,12 @@ pub enum Word {
 //id,isv,addition,partOfSpeech,type,en,sameInLanguages,genesis,ru,be,uk,pl,cs,sk,bg,mk,sr,hr,sl,cu,de,nl,eo,frequency,intelligibility,using_example
 #[derive(Debug, Deserialize)]
 pub struct ISVEntry {
-    id: ISVID,
-    isv: String,
-    addition: String,
+    pub id: ISVID,
+    pub isv: String,
+    pub addition: String,
 
     #[serde(rename = "partOfSpeech")]
-    pos: String,
+    pub pos: String,
 
     en: String,
     ru: String,
@@ -110,8 +110,6 @@ impl ISVEntry {
     }
 
     pub fn get_addition_verb_stem(&self) -> Option<String> {
-
-
         let mut boop = self.addition.replace("(", " ");
         boop = boop.replace(")", " ");
         boop = boop.replace("/", " ");
@@ -123,21 +121,14 @@ impl ISVEntry {
         let mut result = None;
 
         for meow in wee {
-
-            if  (meow.chars().nth(0) == self.isv.chars().nth(0))  {
-
-            //    panic!("matched an addition stem :D {}", meow);
+            if (meow.chars().nth(0) == self.isv.chars().nth(0)) {
+                //    panic!("matched an addition stem :D {}", meow);
 
                 result = Some(meow.into())
-
-
             }
         }
 
-  
-
         result
-
     }
 
     pub fn is_animate(&self) -> bool {
@@ -204,33 +195,6 @@ impl WordCore {
         }
     }
 
-    pub fn noun_from_entry(record: &ISVEntry) -> Noun {
-        let gender = record.get_gender();
-        let declineable = record.is_declineable();
-        let animate = record.is_animate();
-
-        let noun = Noun::new(&record.isv, gender, animate, declineable);
-
-        //println!("{:#?}", &noun);
-
-        noun
-    }
-
-    pub fn verb_from_entry(record: &ISVEntry) -> Verb {
-        let trans = record.is_transitive();
-        let intrans = record.is_intransitive();
-        let perfect = record.is_perfect();
-        let imperfect = record.is_imperfect();
-
-        let optional = record.get_addition_verb_stem();
-
-        let verb = Verb::new(&record.isv, perfect, trans, optional);
-
-        println!("{:#?}", &verb);
-
-        verb
-    }
-
     pub fn load_word_csv() -> ISVWordMap {
         let file_path = "assets/interslavic_words.csv";
         let file = File::open(file_path).unwrap();
@@ -241,19 +205,16 @@ impl WordCore {
         for result in rdr.deserialize() {
             let mut record: ISVEntry = result.unwrap();
             record.isv = record.isv.trim().to_string();
-
-           
+            record.isv = record.isv.replace("#", "");
 
             let record_id = record.id.clone();
             let record_string = record.isv.clone();
 
-
             if !has_more_than_one_word(&record_string) {
-
                 let word_to_insert = if record.get_gender() != Gender::Error {
-                    Word::Noun(WordCore::noun_from_entry(&record))
+                    Word::Noun(Noun::new(&record))
                 } else if record.is_verb() {
-                    Word::Verb(WordCore::verb_from_entry(&record))
+                    Word::Verb(Verb::new(&record))
                 } else {
                     Word::Error
                 };
@@ -266,12 +227,7 @@ impl WordCore {
                     hmap.insert(record_id, word_to_insert);
                     wordbase.insert(record_string, hmap);
                 }
-
-
-
             }
-
-           
 
             //println!("RECORD ISSSS    {:?}", &record);
         }

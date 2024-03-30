@@ -78,18 +78,32 @@ pub fn is_soft_consonant(c: char) -> bool {
     )
 }
 
-
-
-pub fn replace_last_occurence(input:&str,pattern:&str,replacement:&str) -> String {
-
+pub fn replace_last_occurence(input: &str, pattern: &str, replacement: &str) -> String {
     if let Some(last_index) = input.rfind(pattern) {
-        let (before_last, after_last) = input.split_at(last_index);
-        let replaced = format!("{}{}", before_last, after_last.replace(pattern, replacement));
-        replaced
+        let (before_last, _after_last) = input.split_at(last_index);
+        format!("{}{}", before_last, replacement)
     } else {
         input.into()
     }
+}
 
+pub const J_MERGE_CHARS: [&str; 6] = ["st", "zd", "s", "z", "t", "d"];
 
+pub fn j_merge_stem_second_present(stem_in: &str) -> String {
+    let stem = &slice_without_last(stem_in);
 
+    for entry in J_MERGE_CHARS {
+        if stem.ends_with(entry) {
+            match entry {
+                "st" => return replace_last_occurence(stem, entry, "ščų"),
+                "zd" => return replace_last_occurence(stem, entry, "ždžų"),
+                "s" => return replace_last_occurence(stem, entry, "šų"),
+                "z" => return replace_last_occurence(stem, entry, "žų"),
+                "t" => return replace_last_occurence(stem, entry, "čų"),
+                "d" => return replace_last_occurence(stem, entry, "džų"),
+                _ => (),
+            }
+        }
+    }
+    format!("{}{}", stem, "jų")
 }
