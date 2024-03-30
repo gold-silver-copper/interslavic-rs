@@ -1,16 +1,14 @@
-use crate::{has_more_than_one_word, ConjugatedNoun, Verb, Noun};
+use crate::{has_more_than_one_word, ConjugatedNoun, Noun, Verb};
 use serde_derive::Deserialize;
 use std::{collections::HashMap, fs::File};
 
-#[derive(PartialEq,Debug)]
+#[derive(PartialEq, Debug)]
 pub enum Gender {
     Masculine,
     Feminine,
     Neuter,
     Error,
 }
-
-
 
 pub enum Case {
     Nom,
@@ -21,8 +19,6 @@ pub enum Case {
     Loc,
     Voc,
 }
-
-
 
 pub enum Number {
     Sing,
@@ -54,18 +50,15 @@ pub enum VerbTense {
     Perfect(Gender, Person, Number),
 }
 
-
-
-
-
 type ISVID = i32;
 
-pub enum PartOfSpeech {
+pub enum Word {
     Noun(Noun),
     Verb(Verb),
     Adj,
     Adv,
     Part,
+    Error,
 }
 //id,isv,addition,partOfSpeech,type,en,sameInLanguages,genesis,ru,be,uk,pl,cs,sk,bg,mk,sr,hr,sl,cu,de,nl,eo,frequency,intelligibility,using_example
 #[derive(Debug, Deserialize)]
@@ -95,21 +88,18 @@ pub struct ISVEntry {
 }
 
 impl ISVEntry {
-
-    pub fn check_poss_for_string(&self, compare_str: &str) -> bool{
-
-        let mut boop = self.pos.replace("."," ");
+    pub fn check_poss_for_string(&self, compare_str: &str) -> bool {
+        let mut boop = self.pos.replace(".", " ");
         boop = boop.replace("/", " ");
         boop = boop.replace("#", " ");
 
-
         let wee: Vec<&str> = boop.split(' ').collect();
-    
+
         let without_whitespace: Vec<String> = wee
             .iter()
             .map(|s| s.chars().filter(|c| !c.is_whitespace()).collect())
             .collect();
-    
+
         if without_whitespace.contains(&String::from(compare_str)) {
             true
         } else {
@@ -118,49 +108,45 @@ impl ISVEntry {
     }
 
     pub fn is_animate(&self) -> bool {
-        self.check_poss_for_string( "anim")
+        self.check_poss_for_string("anim")
     }
     pub fn is_verb(&self) -> bool {
-        self.check_poss_for_string( "v")
+        self.check_poss_for_string("v")
     }
 
     pub fn is_perfect(&self) -> bool {
-        self.check_poss_for_string( "pf")
+        self.check_poss_for_string("pf")
     }
     pub fn is_imperfect(&self) -> bool {
-        self.check_poss_for_string( "ipf")
+        self.check_poss_for_string("ipf")
     }
     pub fn is_transitive(&self) -> bool {
-        self.check_poss_for_string( "tr")
+        self.check_poss_for_string("tr")
     }
     pub fn is_intransitive(&self) -> bool {
-        self.check_poss_for_string( "intr")
+        self.check_poss_for_string("intr")
     }
-    
+
     pub fn get_gender(&self) -> Gender {
-    
-    
-        if self.check_poss_for_string( "m") {
+        if self.check_poss_for_string("m") {
             Gender::Masculine
-        } else if self.check_poss_for_string( "f") {
+        } else if self.check_poss_for_string("f") {
             Gender::Feminine
-        } else if self.check_poss_for_string( "n"){
+        } else if self.check_poss_for_string("n") {
             Gender::Neuter
         } else {
             Gender::Error
         }
     }
-    
+
     pub fn is_declineable(&self) -> bool {
-        
-    
-        if self.check_poss_for_string( "indecl")  {
+        if self.check_poss_for_string("indecl") {
             false
-        } else if self.check_poss_for_string( "pl")  {
+        } else if self.check_poss_for_string("pl") {
             false
         }
         //should fix this idk how it affects declineability
-        else if self.check_poss_for_string( "sg")  {
+        else if self.check_poss_for_string("sg") {
             false
         }
         //should fix this idk how it affects declineability
@@ -168,13 +154,9 @@ impl ISVEntry {
             true
         }
     }
-
-
-
-
 }
 
-type HomographMap = HashMap<ISVID, ISVEntry>;
+type HomographMap = HashMap<ISVID, Word>;
 
 type ISVWordMap = HashMap<String, HomographMap>;
 
@@ -189,73 +171,65 @@ impl WordCore {
         }
     }
 
+    pub fn noun_from_entry(record: &ISVEntry) -> Noun {
+        let gender = record.get_gender();
+        let declineable = record.is_declineable();
+        let animate = record.is_animate();
+
+        let noun = Noun::new(&record.isv, gender, animate, declineable);
+
+        //println!("{:#?}", &noun);
+
+        noun
+    }
+
+    pub fn verb_from_entry(record: &ISVEntry) -> Verb {
+        let trans = record.is_transitive();
+        let intrans = record.is_intransitive();
+        let perfect = record.is_perfect();
+        let imperfect = record.is_imperfect();
+
+        let verb = Verb::new(&record.isv, perfect, trans);
+
+        println!("{:#?}", &verb);
+
+        verb
+    }
+
     pub fn load_word_csv() -> ISVWordMap {
         let file_path = "assets/interslavic_words.csv";
         let file = File::open(file_path).unwrap();
         let mut rdr = csv::Reader::from_reader(file);
-    
+
         let mut wordbase = ISVWordMap::new();
-    
+
         for result in rdr.deserialize() {
             let mut record: ISVEntry = result.unwrap();
             record.isv = record.isv.trim().to_string();
-    
-            if record.get_gender() != Gender::Error {noun_from_entry(&record);}
-            else if record.is_verb() {verb_from_entry(&record);}
-    
-            
-          
+
+            let word_to_insert = if record.get_gender() != Gender::Error {
+                Word::Noun(WordCore::noun_from_entry(&record))
+            } else if record.is_verb() {
+                Word::Verb(WordCore::verb_from_entry(&record))
+            } else {
+                Word::Error
+            };
+
             let record_id = record.id.clone();
             let record_string = record.isv.clone();
-    
+
             if wordbase.contains_key(&record_string) {
                 let hmap = wordbase.get_mut(&record_string).unwrap();
-                hmap.insert(record_id, record);
+                hmap.insert(record_id, word_to_insert);
             } else {
                 let mut hmap = HomographMap::new();
-                hmap.insert(record_id, record);
+                hmap.insert(record_id, word_to_insert);
                 wordbase.insert(record_string, hmap);
             }
-    
+
             //println!("RECORD ISSSS    {:?}", &record);
         }
-    
+
         wordbase
     }
 }
-
-
-
-pub fn noun_from_entry(record: &ISVEntry) -> Noun {
-    let gender = record.get_gender();
-    let declineable = record.is_declineable();
-    let animate = record.is_animate();
-
-    let noun = Noun::new(&record.isv, gender, animate, declineable);
-
-    //println!("{:#?}", &noun);
-
-    noun
-}
-
-pub fn verb_from_entry(record: &ISVEntry) -> Verb {
-
-    let trans = record.is_transitive();
-    let intrans = record.is_intransitive();
-    let perfect = record.is_perfect();
-    let imperfect = record.is_imperfect();
-
-    
-
-    let verb = Verb::new(&record.isv,perfect,trans,);
-
-    println!("{:#?}", &verb);
-
-    verb
-}
-
-
-
-
-
-

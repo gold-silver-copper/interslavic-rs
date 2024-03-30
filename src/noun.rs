@@ -3,8 +3,6 @@ use crate::basic::*;
 use crate::CaseForms;
 use crate::Gender;
 
-
-
 #[derive(Debug)]
 pub struct Noun {
     pub nom_sg: String,
@@ -12,32 +10,22 @@ pub struct Noun {
     pub animate: bool,
     pub gender: Gender,
     pub declineable: bool,
- 
-
-
 }
 
 impl Noun {
-
-    pub fn new(word: &str, gender: Gender, animate: bool, declineable:bool) -> Self {
-
-        let cn: ConjugatedNoun =  
-             if declineable && !has_more_than_one_word(word) {
-                ConjugatedNoun::derive_noun(word,&gender,animate)
-            } else {
-                ConjugatedNoun::indeclineable(word)
-            }
-            
-        ;
+    pub fn new(word: &str, gender: Gender, animate: bool, declineable: bool) -> Self {
+        let cn: ConjugatedNoun = if declineable && !has_more_than_one_word(word) {
+            ConjugatedNoun::derive_noun(word, &gender, animate)
+        } else {
+            ConjugatedNoun::indeclineable(word)
+        };
 
         Noun {
-
             nom_sg: word.into(),
             conjugated_noun: cn,
             animate: animate,
             gender: gender,
             declineable: declineable,
-            
         }
     }
 
@@ -45,19 +33,9 @@ impl Noun {
         self.nom_sg.to_string()
     }
 
-
-
     pub fn nom_pl(&self) -> String {
-
         self.conjugated_noun.pl.nom.clone()
-
-      
-
-
-
     }
-
-
 }
 #[derive(Debug)]
 pub struct ConjugatedNoun {
