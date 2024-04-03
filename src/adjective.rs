@@ -19,7 +19,7 @@ impl Adjective {
 
         Adjective { base_form: boop }
     }
-
+    //enter any adjective type word such as "krasny" along with gender case number and animacy parameters to get a string of the properly declined adjective
     pub fn basic_declension(word: &str, g: &Gender, c: &Case, n: &Number, animate: bool) -> String {
         let adj_stem = slice_without_last(word);
         let stem_is_soft = ends_with_soft_consonant(&adj_stem);
