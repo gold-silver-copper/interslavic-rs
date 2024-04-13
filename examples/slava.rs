@@ -1,7 +1,7 @@
 use interslavic::WordCore;
 
 fn main() {
-    WordCore::new();
+    let boop = WordCore::new();
 
     let word = "pęť";
 
@@ -16,5 +16,11 @@ fn main() {
 
     if word.ends_with("ť") {
         println!("wooooo");
+    }
+
+    let asd = boop.get_noun("kråva");
+    match asd {
+        Some(cn) => println!("{:#?}", &cn.ins_pl()),
+        _ => println!("OH NO"),
     }
 }

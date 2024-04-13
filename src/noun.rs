@@ -47,6 +47,49 @@ impl Noun {
     pub fn nom_pl(&self) -> String {
         self.conjugated_noun.pl.nom.clone()
     }
+
+    pub fn acc_sg(&self) -> String {
+        self.conjugated_noun.sg.acc.clone()
+    }
+
+    pub fn acc_pl(&self) -> String {
+        self.conjugated_noun.pl.acc.clone()
+    }
+    pub fn dat_sg(&self) -> String {
+        self.conjugated_noun.sg.dat.clone()
+    }
+
+    pub fn dat_pl(&self) -> String {
+        self.conjugated_noun.pl.dat.clone()
+    }
+    pub fn gen_sg(&self) -> String {
+        self.conjugated_noun.sg.gen.clone()
+    }
+
+    pub fn gen_pl(&self) -> String {
+        self.conjugated_noun.pl.gen.clone()
+    }
+    pub fn ins_sg(&self) -> String {
+        self.conjugated_noun.sg.ins.clone()
+    }
+
+    pub fn ins_pl(&self) -> String {
+        self.conjugated_noun.pl.ins.clone()
+    }
+    pub fn loc_sg(&self) -> String {
+        self.conjugated_noun.sg.loc.clone()
+    }
+
+    pub fn loc_pl(&self) -> String {
+        self.conjugated_noun.pl.loc.clone()
+    }
+    pub fn voc_sg(&self) -> String {
+        self.conjugated_noun.sg.voc.clone()
+    }
+
+    pub fn voc_pl(&self) -> String {
+        self.conjugated_noun.pl.voc.clone()
+    }
 }
 #[derive(Debug, PartialEq, Clone)]
 pub struct ConjugatedNoun {

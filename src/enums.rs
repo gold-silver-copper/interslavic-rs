@@ -198,9 +198,45 @@ impl WordCore {
         }
     }
 
-    pub fn get_word() -> String {}
+    pub fn get_noun(&self, desired_noun: &str) -> Option<Noun> {
+        match self.word_map.get(desired_noun) {
+            Some(hgmap) => WordCore::grab_noun_from_hgmap(hgmap),
+            None => None,
+        }
+    }
 
-    pub fn load_word_csv() -> ISVWordMap {
+    pub fn get_verb(&self, desired_verb: &str) -> Option<Verb> {
+        match self.word_map.get(desired_verb) {
+            Some(hgmap) => WordCore::grab_verb_from_hgmap(hgmap),
+            None => None,
+        }
+    }
+
+    fn grab_noun_from_hgmap(hgmap: &HomographMap) -> Option<Noun> {
+        for potential in hgmap {
+            match potential.1 {
+                Word::Noun(noun) => {
+                    return Some(noun.clone());
+                }
+                _ => (),
+            }
+        }
+        None
+    }
+
+    fn grab_verb_from_hgmap(hgmap: &HomographMap) -> Option<Verb> {
+        for potential in hgmap {
+            match potential.1 {
+                Word::Verb(verb) => {
+                    return Some(verb.clone());
+                }
+                _ => (),
+            }
+        }
+        None
+    }
+
+    fn load_word_csv() -> ISVWordMap {
         let file_path = "assets/interslavic_words.csv";
         let file = File::open(file_path).unwrap();
         let mut rdr = csv::Reader::from_reader(file);
