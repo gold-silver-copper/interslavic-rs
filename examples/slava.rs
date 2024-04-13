@@ -1,4 +1,4 @@
-use interslavic::WordCore;
+use interslavic::{Gender, Number, Person, VerbTense, WordCore};
 
 fn main() {
     let boop = WordCore::new();
@@ -21,6 +21,13 @@ fn main() {
     let asd = boop.get_noun("kråva");
     match asd {
         Some(cn) => println!("{:#?}", &cn.ins_pl()),
+        _ => println!("OH NO"),
+    }
+
+    let ccc = VerbTense::Perfect(Gender::Feminine, Person::Third, Number::Sing);
+    let asd = boop.get_verb("udariti");
+    match asd {
+        Some(cn) => println!("{:#?}", &cn.derive_verb(&ccc)),
         _ => println!("OH NO"),
     }
 }

@@ -30,7 +30,9 @@ impl Verb {
             transitive: trans,
             conjugation: conj,
         };
-        let fem_g = Gender::Feminine;
+
+        /*
+         let fem_g = Gender::Feminine;
         println!("{:#?}", &v.present(&Person::Second, &Number::Sing));
         println!("{:#?}", &v.l_participle(&fem_g, &Number::Sing));
         println!("{:#?}", &v.perfect(&fem_g, &Person::Third, &Number::Plur));
@@ -38,6 +40,8 @@ impl Verb {
             "{:#?}",
             Verb::byti(VerbTense::LParticiple(Gender::Feminine, Number::Plur))
         );
+        */
+
         v
     }
 
@@ -133,9 +137,9 @@ impl Verb {
     pub fn derive_verb(&self, tense: &VerbTense) -> String {
         match tense {
             VerbTense::Infinitive => self.infinitive(),
-            VerbTense::Imperative(p, n) => self.infinitive(),
-            VerbTense::Present(p, n) => self.infinitive(),
-            VerbTense::Perfect(g, p, n) => self.infinitive(),
+            VerbTense::Imperative(p, n) => self.imperative(p, n),
+            VerbTense::Present(p, n) => self.present(p, n),
+            VerbTense::Perfect(g, p, n) => self.perfect(g, p, n),
             _ => todo!(),
         }
     }
