@@ -21,7 +21,7 @@ serde_derive = "1.0.197"
 
 
 [dev-dependencies]
-
+my_display_macro = { path = "../my_display_macro" }
 
 [[example]]
 name = "slava"

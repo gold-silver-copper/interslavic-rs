@@ -1,8 +1,9 @@
 use interslavic::{Gender, Number, Person, VerbTense, WordCore};
+use my_display_macro::SimpleDisplay;
 
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, SimpleDisplay)]
 pub enum MonsterType {
     Žuk,
     Dragon(i64),
@@ -10,24 +11,6 @@ pub enum MonsterType {
     // Add other variants...
 }
 
-impl fmt::Display for MonsterType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Using `format!("{:?}", self)` to get the Debug representation of the enum variant
-        let debug_str = format!("{:?}", self);
-
-        // Find the position of the opening parenthesis (if any) and truncate the string there
-        let end_pos = debug_str.find('(').unwrap_or(debug_str.len());
-
-        // Extract the substring from the beginning up to the opening parenthesis
-        let trimmed_str = &debug_str[..end_pos];
-
-        // Convert the trimmed string to lowercase
-        let lowercase_str = trimmed_str.to_lowercase();
-
-        // Write the lowercase string to the formatter
-        write!(f, "{}", lowercase_str)
-    }
-}
 fn main() {
     let boop = WordCore::new();
 
