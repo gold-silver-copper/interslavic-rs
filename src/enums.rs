@@ -198,6 +198,8 @@ impl WordCore {
         }
     }
 
+    pub fn get_word() -> String {}
+
     pub fn load_word_csv() -> ISVWordMap {
         let file_path = "assets/interslavic_words.csv";
         let file = File::open(file_path).unwrap();
