@@ -56,8 +56,7 @@ fn main() {
     println!("{:#?}", lik);
     //output: budila
 
-    let guessed_noun = inflector.decline_noun("sluga", &Case::Ins, &Number::Singular);
-    println!("{:#?}", guessed_noun.0);
+
 }
 
 ```
