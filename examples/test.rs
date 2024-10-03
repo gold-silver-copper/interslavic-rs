@@ -1,4 +1,4 @@
-use interslavic_rs::*;
+use interslavic::*;
 
 fn main() {
     let mut inflector = ISV::default();

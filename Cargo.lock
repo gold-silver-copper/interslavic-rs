@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "interslavic-rs"
+name = "interslavic"
 version = "0.2.1"
 dependencies = [
  "csv",
