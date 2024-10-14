@@ -51,8 +51,17 @@ impl ISV {
         for result in csv_reader.deserialize() {
             let record: WordEntry = result.unwrap();
 
-            //make sure its not a verb
-            if !record.part_of_speech.contains("v.") {
+            //make sure its a noun
+            if !record.part_of_speech.contains("v.")
+                && !record.part_of_speech.contains("adj.")
+                && !record.part_of_speech.contains("conj.")
+                && !record.part_of_speech.contains("adv.")
+                && !record.part_of_speech.contains("particle")
+                && !record.part_of_speech.contains("prefix")
+                && !record.part_of_speech.contains("prep.")
+                && !record.part_of_speech.contains("pron.")
+                && !record.part_of_speech.contains("num.")
+            {
                 // Check if the partOfSpeech is "m.anim"
                 if record.part_of_speech.contains("m.anim.") {
                     m_anim_words.push(record.isv.to_lowercase());
@@ -63,9 +72,11 @@ impl ISV {
                 } else if record.part_of_speech.contains("n.") {
                     n_words.push(record.isv.to_lowercase());
                 }
+                if record.addition.contains("(") {
+                    println!("{:#?} {:#?}", record.isv, record.addition);
+                }
             }
         }
-        println!("{:#?}", m_anim_words);
 
         self.animate_nouns = m_anim_words;
         self.nonanimate_nouns = m_nonanim_words;

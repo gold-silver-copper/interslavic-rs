@@ -13,6 +13,7 @@ pub struct ISV {
     pub nonanimate_nouns: Vec<String>,
     pub feminine_nouns: Vec<String>,
     pub neuter_nouns: Vec<String>,
+    pub irregular_noun_stems: Vec<String>,
 }
 
 pub struct ISVUTILS {}
