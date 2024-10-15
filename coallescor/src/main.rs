@@ -1,4 +1,5 @@
 fn main() {
+    initialize_dictionary("isv_words.csv");
     println!("Hello, world!");
 }
 /* //if you do not initialize the dictionary, animate nouns will not be inflected correctly, nor will words with irregular stems
@@ -81,8 +82,10 @@ pub fn initialize_dictionary(isv_words: &str) {
         }
     }
 
+    /*
     self.animate_nouns = m_anim_words;
     self.nonanimate_nouns = m_nonanim_words;
     self.feminine_nouns = f_words;
     self.neuter_nouns = n_words;
+    */
 }
