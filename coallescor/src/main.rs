@@ -1,14 +1,19 @@
-fn main() {
-    initialize_dictionary("isv_words.csv");
-    println!("Hello, world!");
-}
-/* //if you do not initialize the dictionary, animate nouns will not be inflected correctly, nor will words with irregular stems
-inflector.initialize_dictionary("isv_words.csv"); */
 use csv::ReaderBuilder;
 use serde::Deserialize;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 use std::fs::File;
 use std::io::BufReader;
+fn main() {
+    initialize_dictionary("isv_words.csv");
+    println!("Hello, world!");
+    let russian_text = "Привет, как дела?";
+    let interslavic_text = transliterate_russian_to_interslavic(russian_text);
+    println!("Interslavic: {}", interslavic_text);
+}
+/* //if you do not initialize the dictionary, animate nouns will not be inflected correctly, nor will words with irregular stems
+inflector.initialize_dictionary("isv_words.csv"); */
 
 #[derive(Debug, Default, Deserialize)]
 struct WordEntry {
@@ -46,14 +51,23 @@ pub fn initialize_dictionary(isv_words: &str) {
     let mut csv_reader = ReaderBuilder::new().has_headers(true).from_reader(reader);
 
     // Create a vector to hold words that are m.anim
-    let mut m_anim_words: Vec<String> = Vec::new();
-    let mut m_nonanim_words: Vec<String> = Vec::new();
-    let mut f_words: Vec<String> = Vec::new();
-    let mut n_words: Vec<String> = Vec::new();
+    let mut m_anim_words: HashSet<String> = HashSet::new();
+    let mut m_nonanim_words: HashSet<String> = HashSet::new();
+    let mut f_words: HashSet<String> = HashSet::new();
+    let mut n_words: HashSet<String> = HashSet::new();
+
+    let mut irregular_verbs: HashSet<String> = HashSet::new();
 
     // Iterate through the records
     for result in csv_reader.deserialize() {
         let record: WordEntry = result.unwrap();
+
+        if record.part_of_speech.contains("v.") && !record.part_of_speech.contains("adv.") {
+            let boop = irregular_verbs.insert(record.isv.to_lowercase());
+            if record.addition.contains("(") && boop {
+                println!("{:#?} {:#?}", record.isv, record.addition);
+            }
+        }
 
         //make sure its a noun
         if !record.part_of_speech.contains("v.")
@@ -68,16 +82,16 @@ pub fn initialize_dictionary(isv_words: &str) {
         {
             // Check if the partOfSpeech is "m.anim"
             if record.part_of_speech.contains("m.anim.") {
-                m_anim_words.push(record.isv.to_lowercase());
+                m_anim_words.insert(record.isv.to_lowercase());
             } else if record.part_of_speech.contains("m.") {
-                m_nonanim_words.push(record.isv.to_lowercase());
+                m_nonanim_words.insert(record.isv.to_lowercase());
             } else if record.part_of_speech.contains("f.") {
-                f_words.push(record.isv.to_lowercase());
+                f_words.insert(record.isv.to_lowercase());
             } else if record.part_of_speech.contains("n.") {
-                n_words.push(record.isv.to_lowercase());
+                n_words.insert(record.isv.to_lowercase());
             }
             if record.addition.contains("(") {
-                println!("{:#?} {:#?}", record.isv, record.addition);
+                //      println!("{:#?} {:#?}", record.isv, record.addition);
             }
         }
     }
@@ -88,4 +102,85 @@ pub fn initialize_dictionary(isv_words: &str) {
     self.feminine_nouns = f_words;
     self.neuter_nouns = n_words;
     */
+}
+
+/// Transliterates a string from Russian Cyrillic to Interslavic.
+fn transliterate_russian_to_interslavic(input: &str) -> String {
+    let mut cyrillic_to_interslavic = HashMap::new();
+
+    // Mapping of Russian Cyrillic to Interslavic strings
+    cyrillic_to_interslavic.insert('А', "A");
+    cyrillic_to_interslavic.insert('Б', "B");
+    cyrillic_to_interslavic.insert('В', "V");
+    cyrillic_to_interslavic.insert('Г', "G");
+    cyrillic_to_interslavic.insert('Д', "D");
+    cyrillic_to_interslavic.insert('Е', "Je");
+    cyrillic_to_interslavic.insert('Ё', "Jo");
+    cyrillic_to_interslavic.insert('Ж', "Ž");
+    cyrillic_to_interslavic.insert('З', "Z");
+    cyrillic_to_interslavic.insert('И', "I");
+    cyrillic_to_interslavic.insert('Й', "J");
+    cyrillic_to_interslavic.insert('К', "K");
+    cyrillic_to_interslavic.insert('Л', "L");
+    cyrillic_to_interslavic.insert('М', "M");
+    cyrillic_to_interslavic.insert('Н', "N");
+    cyrillic_to_interslavic.insert('О', "O");
+    cyrillic_to_interslavic.insert('П', "P");
+    cyrillic_to_interslavic.insert('Р', "R");
+    cyrillic_to_interslavic.insert('С', "S");
+    cyrillic_to_interslavic.insert('Т', "T");
+    cyrillic_to_interslavic.insert('У', "U");
+    cyrillic_to_interslavic.insert('Ф', "F");
+    cyrillic_to_interslavic.insert('Х', "H");
+    cyrillic_to_interslavic.insert('Ц', "C");
+    cyrillic_to_interslavic.insert('Ч', "Č");
+    cyrillic_to_interslavic.insert('Ш', "Š");
+    cyrillic_to_interslavic.insert('Щ', "Šč");
+    cyrillic_to_interslavic.insert('Ъ', "");
+    cyrillic_to_interslavic.insert('Ы', "Y");
+    cyrillic_to_interslavic.insert('Ь', "");
+    cyrillic_to_interslavic.insert(' ', " ");
+    cyrillic_to_interslavic.insert('Э', "E");
+    cyrillic_to_interslavic.insert('Ю', "Ju");
+    cyrillic_to_interslavic.insert('Я', "Ja");
+
+    cyrillic_to_interslavic.insert('а', "a");
+    cyrillic_to_interslavic.insert('б', "b");
+    cyrillic_to_interslavic.insert('в', "v");
+    cyrillic_to_interslavic.insert('г', "g");
+    cyrillic_to_interslavic.insert('д', "d");
+    cyrillic_to_interslavic.insert('е', "ě");
+    cyrillic_to_interslavic.insert('ё', "jo");
+    cyrillic_to_interslavic.insert('ж', "ž");
+    cyrillic_to_interslavic.insert('з', "z");
+    cyrillic_to_interslavic.insert('и', "i");
+    cyrillic_to_interslavic.insert('й', "j");
+    cyrillic_to_interslavic.insert('к', "k");
+    cyrillic_to_interslavic.insert('л', "l");
+    cyrillic_to_interslavic.insert('м', "m");
+    cyrillic_to_interslavic.insert('н', "n");
+    cyrillic_to_interslavic.insert('о', "o");
+    cyrillic_to_interslavic.insert('п', "p");
+    cyrillic_to_interslavic.insert('р', "r");
+    cyrillic_to_interslavic.insert('с', "s");
+    cyrillic_to_interslavic.insert('т', "t");
+    cyrillic_to_interslavic.insert('у', "u");
+    cyrillic_to_interslavic.insert('ф', "f");
+    cyrillic_to_interslavic.insert('х', "h");
+    cyrillic_to_interslavic.insert('ц', "c");
+    cyrillic_to_interslavic.insert('ч', "č");
+    cyrillic_to_interslavic.insert('ш', "š");
+    cyrillic_to_interslavic.insert('щ', "šč");
+    cyrillic_to_interslavic.insert('ъ', "");
+    cyrillic_to_interslavic.insert('ы', "y");
+    cyrillic_to_interslavic.insert('ь', "j");
+    cyrillic_to_interslavic.insert('э', "e");
+    cyrillic_to_interslavic.insert('ю', "ju");
+    cyrillic_to_interslavic.insert('я', "ja");
+
+    // Transliterating the input
+    input
+        .chars()
+        .map(|c| cyrillic_to_interslavic.get(&c).unwrap_or(&"").to_string())
+        .collect::<String>()
 }
