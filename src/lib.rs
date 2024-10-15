@@ -2,19 +2,16 @@ mod case_endings;
 use case_endings::*;
 mod verb_endings;
 use verb_endings::*;
-mod dictionary_initialization;
+
 mod irregular_verbs;
-use dictionary_initialization::*;
+
 use irregular_verbs::*;
+mod known_nouns;
+
+use known_nouns::*;
 
 #[derive(Debug, Clone, Default)]
-pub struct ISV {
-    pub animate_nouns: Vec<String>,
-    pub nonanimate_nouns: Vec<String>,
-    pub feminine_nouns: Vec<String>,
-    pub neuter_nouns: Vec<String>,
-    pub irregular_noun_stems: Vec<String>,
-}
+pub struct ISV {}
 
 pub struct ISVUTILS {}
 
@@ -218,7 +215,6 @@ impl ISV {
     }
 
     pub fn conjugate_verb(
-        &self,
         word: &str,
         person: &Person,
         number: &Number,
@@ -244,7 +240,7 @@ impl ISV {
             _ => panic!("TENSE NOT IMPLEMENTED"),
         }
     }
-    pub fn l_participle(&self, word: &str, gender: &Gender, number: &Number) -> Verb {
+    pub fn l_participle(word: &str, gender: &Gender, number: &Number) -> Verb {
         if word == "idti" {
             match number {
                 Number::Singular => String::from("šli"),
@@ -279,7 +275,6 @@ impl ISV {
 // ADJECTIVE STUFF
 impl ISV {
     pub fn decline_adj(
-        &self,
         word: &str,
         case: &Case,
         number: &Number,
@@ -342,10 +337,10 @@ impl ISV {
 
 //NOUN STUFF
 impl ISV {
-    pub fn decline_noun(&self, word: &str, case: &Case, number: &Number) -> Noun {
+    pub fn decline_noun(word: &str, case: &Case, number: &Number) -> Noun {
         let word = word.to_lowercase();
-        let gender = self.guess_gender(&word);
-        let word_is_animate = self.noun_is_animate(&word);
+        let gender = ISV::guess_gender(&word);
+        let word_is_animate = ISV::noun_is_animate(&word);
         let word_stem_is_soft = ISV::stem_of_noun_is_soft(&word);
         let word_stem = ISV::get_noun_stem(&word, number);
 
@@ -389,18 +384,16 @@ impl ISV {
         let merged = format!("{}{}", word_stem, ending);
         return (merged, gender.clone());
     }
-    pub fn noun_is_animate(&self, word: &str) -> bool {
-        self.animate_nouns.contains(&word.to_string())
+    pub fn noun_is_animate(word: &str) -> bool {
+        ANIMATE_MASCULINE_NOUNS.contains(&word)
     }
 
-    pub fn guess_gender(&self, word: &str) -> Gender {
-        let word_string = word.to_string();
-        if self.animate_nouns.contains(&word_string) || self.nonanimate_nouns.contains(&word_string)
-        {
+    pub fn guess_gender(word: &str) -> Gender {
+        if ANIMATE_MASCULINE_NOUNS.contains(&word) || INANIMATE_MASCULINE_NOUNS.contains(&word) {
             return Gender::Masculine;
-        } else if self.feminine_nouns.contains(&word_string) {
+        } else if FEMININE_NOUNS.contains(&word) {
             return Gender::Feminine;
-        } else if self.neuter_nouns.contains(&word_string) {
+        } else if NEUTER_NOUNS.contains(&word) {
             return Gender::Neuter;
         }
         let last_one = ISV::last_n_chars(word, 1);
