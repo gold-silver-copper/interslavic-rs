@@ -1,0 +1,11 @@
+[package]
+name = "interslavic"
+version = "0.2.1"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Fast Interslavic morphology with generated dictionary metadata"
+readme = "../../README.md"
+
+[dependencies]
+interslavic-core = { path = "../interslavic-core", version = "0.2.1" }

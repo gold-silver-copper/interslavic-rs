@@ -1,62 +1,90 @@
-# Inflector for the Interslavic language
+# Interslavic morphology for Rust
 
 [![Crates.io](https://img.shields.io/crates/v/interslavic.svg)](https://crates.io/crates/interslavic)
 [![Documentation](https://docs.rs/interslavic/badge.svg)](https://docs.rs/interslavic/latest/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/bevyengine/bevy/blob/master/LICENSE)
-[![Downloads](https://img.shields.io/crates/d/interslavic.svg)](https://crates.io/crates/interslavic)
 
+`interslavic` provides fast noun declension, adjective declension, and verb conjugation for Interslavic.
 
-This crate provides a decliner/conjugator/inflector for Interslavic.
+The crate is structured like [`gold-silver-copper/english`](https://github.com/gold-silver-copper/english):
 
-It uses data from the official dictionary at  https://interslavic-dictionary.com/
+- `crates/interslavic-core` — pure rule-based morphology, no bundled dictionary data.
+- `crates/interslavic` — public API plus generated dictionary metadata and rule fallback.
+- `crates/extractor` — parses official Interslavic dictionary TSV data and generates Rust tables.
+- `crates/xtask` — reproducible developer command for refreshing generated data.
 
+Dictionary metadata is generated ahead of time from the official Interslavic dictionary data used by [`sonic16x/interslavic`](https://github.com/sonic16x/interslavic), especially the Google Sheets TSV export:
 
-Sample usage:
+```text
+https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/export?format=tsv&gid=1987833874
+```
+
+This crate does **not** use Wiktionary data and does **not** require loading `isv_words.csv` at runtime.
+
+## Usage
 
 ```rust
 use interslavic::*;
+
 fn main() {
-    let mut inflector = ISV::default();
-    //if you do not initialize the dictionary, animate nouns will not be inflected correctly, nor will words with irregular stems
-    inflector.initialize_dictionary("isv_words.csv");
-
-    let noun = inflector.decline_noun("mųž", &Case::Gen, &Number::Singular);
-    //the output is a tuple of a string and gender
-    println!("{:#?}", noun.0);
-    //output: mųža
-
-    let adj = inflector.decline_adj(
-        "samy",
-        &Case::Gen,
-        &Number::Singular,
-        &Gender::Masculine,
-        true,
+    assert_eq!(
+        Interslavic::noun("mųž", Case::Gen, Number::Singular),
+        "mųža"
     );
-       //the output is just a string
-    println!("{:#?}", adj);
-    //output: samogo
 
-
-    let verbik = "učiti";
-
-
-    let verb = inflector.conjugate_verb(
-            verbik,
-            &Person::First,
-            &Number::Singular,
-            &Gender::Feminine,
-            &Tense::Present,
+    assert_eq!(
+        Interslavic::adjective(
+            "samy",
+            Case::Gen,
+            Number::Singular,
+            Gender::Masculine,
+            Animacy::Animate,
+        ),
+        "samogo"
     );
-    println!("{:#?}", verb);
-    //output: učų
 
+    assert_eq!(
+        Interslavic::verb("učiti", Person::First, Number::Singular, Tense::Present),
+        "učų"
+    );
 
-
-    let lik = inflector.l_participle("buditi", &Gender::Feminine, &Number::Singular);
-    println!("{:#?}", lik);
-    //output: budila
-
-
+    assert_eq!(
+        Interslavic::l_participle("buditi", &Gender::Feminine, &Number::Singular),
+        "budila"
+    );
 }
+```
 
+Older names such as `ISV::decline_noun`, `ISV::decline_adj`, and `ISV::conjugate_verb` remain available for compatibility. `initialize_dictionary` is now a no-op because generated data is bundled at compile time.
+
+## Refreshing dictionary data
+
+Regenerate bundled data from the official TSV export:
+
+```bash
+cargo xtask refresh-data --with-checks
+```
+
+Use a local TSV instead:
+
+```bash
+cargo xtask refresh-data --input data/raw/dictionary.tsv --with-checks
+```
+
+Generated Rust tables are written to:
+
+```text
+crates/interslavic/src/generated/dictionary.rs
+```
+
+Intermediate artifacts are written to:
+
+```text
+data/intermediate/
+```
+
+## Development
+
+```bash
+cargo test
+cargo run -p interslavic --example test
 ```

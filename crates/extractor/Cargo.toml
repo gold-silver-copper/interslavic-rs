@@ -1,0 +1,9 @@
+[package]
+name = "extractor"
+version = "0.2.1"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Build-time data extractor for the interslavic crate"
+
+[dependencies]

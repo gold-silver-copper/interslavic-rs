@@ -9,18 +9,18 @@ pub const IRREGULAR_STEMS: &[(&str, &str)] = &[
     ("biti", "bije"),
     ("brati", "bere"),
     ("idti", "ide"),
-    ("oděti", "oděne "),
-    ("jesti", "je "),
+    ("oděti", "oděne"),
+    ("jesti", "je"),
 ];
 
-pub fn irregular_present_stem(infinitive: &str) -> String {
+pub fn irregular_present_stem(infinitive: &str) -> Option<String> {
     for (inf, third) in IRREGULAR_STEMS {
         for prefix in PREFIXES {
             let combined = format!("{}{}", prefix, inf);
             if combined == infinitive {
-                return format!("{}{}", prefix, third);
+                return Some(format!("{}{}", prefix, third));
             }
         }
     }
-    "".into()
+    None
 }

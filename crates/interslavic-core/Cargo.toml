@@ -1,0 +1,9 @@
+[package]
+name = "interslavic-core"
+version = "0.2.1"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Rule-based Interslavic morphology without bundled dictionary data"
+
+[dependencies]
