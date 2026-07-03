@@ -5,11 +5,13 @@
 
 `interslavic` provides fast noun declension, adjective declension, and verb conjugation for Interslavic.
 
+The morphology engine is now a Rust-oriented port of the noun, adjective, and verb rules used by [`@interslavic/utils`](https://www.npmjs.com/package/@interslavic/utils) in [`sonic16x/interslavic`](https://github.com/sonic16x/interslavic), including dictionary `addition` metadata for irregular stems and common alternative forms.
+
 The crate is structured like [`gold-silver-copper/english`](https://github.com/gold-silver-copper/english):
 
-- `crates/interslavic-core` — pure rule-based morphology, no bundled dictionary data.
+- `crates/interslavic-core` — Rust port of the core `@interslavic/utils` morphology rules, no bundled dictionary data.
 - `crates/interslavic` — public API plus generated dictionary metadata and rule fallback.
-- `crates/extractor` — parses official Interslavic dictionary TSV data and generates Rust tables.
+- `crates/extractor` — parses official Interslavic dictionary TSV data and generates Rust tables, including additions/part-of-speech metadata.
 - `crates/xtask` — reproducible developer command for refreshing generated data.
 
 Dictionary metadata is generated ahead of time from the official Interslavic dictionary data used by [`sonic16x/interslavic`](https://github.com/sonic16x/interslavic), especially the Google Sheets TSV export:

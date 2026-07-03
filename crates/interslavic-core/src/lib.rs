@@ -1,13 +1,10 @@
 #![doc = "Rule-based Interslavic morphology without bundled dictionary data."]
 
 mod adjective;
-mod case_endings;
 pub mod grammar;
-mod irregular_verbs;
 mod noun;
 pub mod utils;
 mod verb;
-mod verb_endings;
 
 pub use crate::adjective::Adjective;
 pub use crate::grammar::*;

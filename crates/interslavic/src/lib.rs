@@ -6,7 +6,7 @@ pub use interslavic_core::{Adjective, InterslavicCore, Noun, NounMeta, Verb};
 
 mod generated;
 
-use generated::dictionary::{NounEntry, ADJECTIVES, NOUNS, VERBS};
+use generated::dictionary::{AdjectiveEntry, NounEntry, VerbEntry, ADJECTIVES, NOUNS, VERBS};
 
 /// Public entry point for Interslavic morphology.
 ///
@@ -56,8 +56,15 @@ impl Interslavic {
 
     /// Decline a noun and return the inferred/dictionary gender.
     pub fn decline_noun(word: &str, case: &Case, number: &Number) -> Noun {
-        let meta = get_noun(word).map(noun_meta);
-        InterslavicCore::decline_noun_with_meta(word, *case, *number, meta)
+        let entry = get_noun(word);
+        let meta = entry.map(noun_meta);
+        InterslavicCore::decline_noun_with_addition(
+            word,
+            entry.map_or("", |entry| entry.addition),
+            *case,
+            *number,
+            meta,
+        )
     }
 
     /// Decline an adjective.
@@ -68,7 +75,7 @@ impl Interslavic {
         gender: Gender,
         animacy: Animacy,
     ) -> String {
-        let _ = get_adjective(word);
+        let _entry = get_adjective(word);
         InterslavicCore::adjective(word, case, number, gender, animacy)
     }
 
@@ -85,8 +92,18 @@ impl Interslavic {
 
     /// Conjugate a verb.
     pub fn verb(word: &str, person: Person, number: Number, tense: Tense) -> String {
-        let _ = get_verb(word);
-        InterslavicCore::verb(word, person, number, tense)
+        if let Some(entry) = get_verb(word) {
+            InterslavicCore::verb_with_addition(
+                word,
+                entry.addition,
+                entry.part_of_speech,
+                person,
+                number,
+                tense,
+            )
+        } else {
+            InterslavicCore::verb(word, person, number, tense)
+        }
     }
 
     /// Backwards-compatible verb API. `gender` is currently relevant for participles,
@@ -216,20 +233,20 @@ fn get_noun(word: &str) -> Option<NounEntry> {
         .map(|idx| NOUNS[idx])
 }
 
-fn get_verb(word: &str) -> Option<&'static str> {
+fn get_verb(word: &str) -> Option<VerbEntry> {
     let needle = normalize_lookup(word);
     VERBS
         .binary_search_by(|entry| entry.word.cmp(needle.as_str()))
         .ok()
-        .map(|idx| VERBS[idx].word)
+        .map(|idx| VERBS[idx])
 }
 
-fn get_adjective(word: &str) -> Option<&'static str> {
+fn get_adjective(word: &str) -> Option<AdjectiveEntry> {
     let needle = normalize_lookup(word);
     ADJECTIVES
         .binary_search_by(|entry| entry.word.cmp(needle.as_str()))
         .ok()
-        .map(|idx| ADJECTIVES[idx].word)
+        .map(|idx| ADJECTIVES[idx])
 }
 
 #[cfg(test)]

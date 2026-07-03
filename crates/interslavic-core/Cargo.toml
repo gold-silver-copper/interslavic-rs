@@ -7,3 +7,4 @@ repository.workspace = true
 description = "Rule-based Interslavic morphology without bundled dictionary data"
 
 [dependencies]
+regex = "1"

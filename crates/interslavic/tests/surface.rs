@@ -14,6 +14,56 @@ fn dictionary_backed_surface_api() {
 }
 
 #[test]
+fn sonic_utils_noun_samples() {
+    assert_eq!(Interslavic::noun("mųž", Case::Voc, Number::Singular), "mųžu");
+    assert_eq!(Interslavic::noun("žena", Case::Voc, Number::Singular), "ženo");
+    assert_eq!(Interslavic::noun("slovo", Case::Gen, Number::Singular), "slova / slovese");
+    assert_eq!(Interslavic::noun("oko", Case::Nom, Number::Plural), "oči / očesa");
+    assert_eq!(Interslavic::noun("člověk", Case::Nom, Number::Plural), "ljudi");
+    assert_eq!(Interslavic::noun("dėń", Case::Gen, Number::Singular), "dne / dnja");
+}
+
+#[test]
+fn sonic_utils_adjective_and_verb_samples() {
+    assert_eq!(
+        Interslavic::adjective(
+            "naš",
+            Case::Gen,
+            Number::Singular,
+            Gender::Masculine,
+            Animacy::Animate,
+        ),
+        "našego"
+    );
+    assert_eq!(
+        Interslavic::adjective(
+            "dobry",
+            Case::Acc,
+            Number::Singular,
+            Gender::Feminine,
+            Animacy::Inanimate,
+        ),
+        "dobrų"
+    );
+    assert_eq!(
+        Interslavic::verb("byti", Person::First, Number::Singular, Tense::Present),
+        "jesm"
+    );
+    assert_eq!(
+        Interslavic::verb("jesti", Person::Third, Number::Plural, Tense::Present),
+        "jedųt"
+    );
+    assert_eq!(
+        Interslavic::verb("dati", Person::Second, Number::Singular, Tense::Present),
+        "daš"
+    );
+    assert_eq!(
+        Interslavic::verb("buditi", Person::First, Number::Singular, Tense::Present),
+        "buđų"
+    );
+}
+
+#[test]
 fn readme_forms() {
     assert_eq!(
         Interslavic::decline_adj(
