@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct CaseEndings {
     pub nom_sg: &'static str,
@@ -108,10 +110,10 @@ pub const NEUTER_SOFT_ENDINGS: CaseEndings = CaseEndings {
 };
 pub const FEMININE_HARD_ENDINGS: CaseEndings = CaseEndings {
     nom_sg: "a",   // Nominative Singular
-    acc_sg: "u",   // Accusative Singular
+    acc_sg: "ų",   // Accusative Singular
     gen_sg: "y",   // Genitive Singular
     dat_sg: "ě",   // Dative Singular
-    ins_sg: "oju", // Instrumental Singular
+    ins_sg: "ojų", // Instrumental Singular
     loc_sg: "ě",   // Locative Singular
 
     nom_pl: "y",   // Nominative Plural
@@ -123,10 +125,10 @@ pub const FEMININE_HARD_ENDINGS: CaseEndings = CaseEndings {
 };
 pub const FEMININE_SOFT_ENDINGS: CaseEndings = CaseEndings {
     nom_sg: "a",   // Nominative Singular
-    acc_sg: "u",   // Accusative Singular
+    acc_sg: "ų",   // Accusative Singular
     gen_sg: "e",   // Genitive Singular
     dat_sg: "i",   // Dative Singular
-    ins_sg: "eju", // Instrumental Singular
+    ins_sg: "ejų", // Instrumental Singular
     loc_sg: "i",   // Locative Singular
 
     nom_pl: "e",   // Nominative Plural
@@ -201,10 +203,10 @@ pub const ADJ_NEUTER_HARD_ENDINGS: CaseEndings = CaseEndings {
 };
 pub const ADJ_FEMININE_HARD_ENDINGS: CaseEndings = CaseEndings {
     nom_sg: "a",   // Nominative Singular
-    acc_sg: "u",   // Accusative Singular
+    acc_sg: "ų",   // Accusative Singular
     gen_sg: "oj",  // Genitive Singular
     dat_sg: "oj",  // Dative Singular
-    ins_sg: "oju", // Instrumental Singular
+    ins_sg: "ojų", // Instrumental Singular
     loc_sg: "oj",  // Locative Singular
 
     nom_pl: "e",   // Nominative Plural
@@ -261,10 +263,10 @@ pub const ADJ_NEUTER_SOFT_ENDINGS: CaseEndings = CaseEndings {
 };
 pub const ADJ_FEMININE_SOFT_ENDINGS: CaseEndings = CaseEndings {
     nom_sg: "a",   // Nominative Singular
-    acc_sg: "u",   // Accusative Singular
+    acc_sg: "ų",   // Accusative Singular
     gen_sg: "ej",  // Genitive Singular
     dat_sg: "ej",  // Dative Singular
-    ins_sg: "eju", // Instrumental Singular
+    ins_sg: "ejų", // Instrumental Singular
     loc_sg: "ej",  // Locative Singular
 
     nom_pl: "e",   // Nominative Plural

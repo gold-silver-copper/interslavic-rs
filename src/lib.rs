@@ -122,7 +122,9 @@ pub const HARD_CONSONANTS: &[char] = &[
     'p', 'b', 'f', 'v', 'm', 's', 'z', 't', 'd', 'r', 'n', 'l', 'k', 'g', 'h',
 ];
 
-pub const J_MERGE_CHARS: &[&str] = &["st", "zd", "sk", "zg", "s", "z", "t", "d", "k", "g", "h"];
+pub const J_MERGE_CHARS: &[&str] = &[
+    "st", "zd", "sk", "zg", "s", "z", "t", "d", "k", "g", "h", "č", "š", "ž", "ć", "đ", "j",
+];
 
 //VERB STUFF
 impl ISV {
@@ -130,7 +132,7 @@ impl ISV {
         let infinitive_stem = ISV::get_infinitive_stem(infinitive);
         let irregular = irregular_present_stem(infinitive);
 
-        if irregular != "" {
+        if !irregular.is_empty() {
             if irregular.ends_with("me") {
                 return (
                     ISVUTILS::replace_last_occurence(&irregular, "me", "m"),
@@ -218,12 +220,11 @@ impl ISV {
         word: &str,
         person: &Person,
         number: &Number,
-        gender: &Gender,
+        _gender: &Gender,
         tense: &Tense,
     ) -> Verb {
         let word = word.to_lowercase();
         let (present_stem, conjugation) = ISV::get_present_tense_stem(&word);
-        let infinitive_stem = ISV::get_infinitive_stem(&word);
 
         let endings = match conjugation {
             Conjugation::First => &FIRST_CONJUGATION,
@@ -233,8 +234,7 @@ impl ISV {
         match tense {
             Tense::Present => {
                 let ending = endings.ending(person, number);
-                let merged = ISVUTILS::iotation_merge(&present_stem, ending);
-                merged
+                ISVUTILS::iotation_merge(&present_stem, ending)
             }
 
             _ => panic!("TENSE NOT IMPLEMENTED"),
@@ -317,16 +317,11 @@ impl ISV {
             }
         };
         let ending = endings.ending(case, number);
-        let merged = format!("{}{}", adj_stem, ending);
-        return merged;
+        format!("{}{}", adj_stem, ending)
     }
 
     pub fn stem_of_adj_is_soft(word: &str) -> bool {
-        if word.ends_with("i") {
-            true
-        } else {
-            false
-        }
+        word.ends_with("i")
     }
     pub fn get_adj_stem(word: &str) -> String {
         let mut adj_stem = word.to_string();
@@ -341,48 +336,522 @@ impl ISV {
         let word = word.to_lowercase();
         let gender = ISV::guess_gender(&word);
         let word_is_animate = ISV::noun_is_animate(&word);
-        let word_stem_is_soft = ISV::stem_of_noun_is_soft(&word);
-        let word_stem = ISV::get_noun_stem(&word, number);
+        let declined = ISV::decline_noun_steen(&word, &gender, word_is_animate, case, number);
+        (declined, gender)
+    }
 
-        let endings = if ISV::is_ost_class(&word) {
-            &OST_ENDINGS
-        } else {
-            match gender {
-                Gender::Masculine => {
-                    if word_is_animate {
-                        if word_stem_is_soft {
-                            &ANIMATE_SOFT_ENDINGS
-                        } else {
-                            &ANIMATE_HARD_ENDINGS
-                        }
+    fn decline_noun_steen(
+        word: &str,
+        origin_gender: &Gender,
+        animate: bool,
+        case: &Case,
+        number: &Number,
+    ) -> String {
+        let raw_gender = ISV::prepare_noun_gender(origin_gender, animate);
+        let marked_noun = ISV::mark_final_soft_noun_consonants(word);
+        let gender = ISV::establish_noun_gender(&marked_noun, &raw_gender);
+        let root = ISV::establish_noun_root(&marked_noun, &gender);
+        let plural_root = ISV::establish_plural_noun_root(&root);
+        let plural_gender =
+            ISV::establish_plural_noun_gender(&root, &plural_root, &gender, &raw_gender);
+
+        match number {
+            Number::Singular => match case {
+                Case::Nom => ISV::noun_nominative_sg(&marked_noun, &root, &gender),
+                Case::Acc => {
+                    let nominative_sg = ISV::noun_nominative_sg(&marked_noun, &root, &gender);
+                    ISV::noun_accusative_sg(&nominative_sg, &root, &gender)
+                }
+                Case::Gen => ISV::noun_genitive_sg(&root, &gender),
+                Case::Loc => ISV::noun_locative_sg(&root, &gender),
+                Case::Dat => ISV::noun_dative_sg(&root, &gender),
+                Case::Ins => ISV::noun_instrumental_sg(&root, &gender),
+            },
+            Number::Plural => match case {
+                Case::Nom => ISV::noun_nominative_pl(&plural_root, &plural_gender),
+                Case::Acc => {
+                    let nom = ISV::noun_nominative_pl(&plural_root, &plural_gender);
+                    let gen = ISV::noun_genitive_pl(&plural_root, &plural_gender);
+                    if plural_gender == "m1" {
+                        gen
                     } else {
-                        if word_stem_is_soft {
-                            &INANIMATE_SOFT_ENDINGS
-                        } else {
-                            &INANIMATE_HARD_ENDINGS
-                        }
+                        nom
                     }
                 }
-                Gender::Feminine => {
-                    if word_stem_is_soft {
-                        &FEMININE_SOFT_ENDINGS
-                    } else {
-                        &FEMININE_HARD_ENDINGS
-                    }
-                }
-                Gender::Neuter => {
-                    if word_stem_is_soft {
-                        &NEUTER_SOFT_ENDINGS
-                    } else {
-                        &NEUTER_HARD_ENDINGS
-                    }
+                Case::Gen => ISV::noun_genitive_pl(&plural_root, &plural_gender),
+                Case::Loc => ISV::noun_locative_pl(&plural_root, &gender),
+                Case::Dat => ISV::noun_dative_pl(&plural_root, &gender),
+                Case::Ins => ISV::noun_instrumental_pl(&plural_root, &gender),
+            },
+        }
+    }
+
+    fn prepare_noun_gender(gender: &Gender, animate: bool) -> String {
+        match gender {
+            Gender::Feminine => "f".into(),
+            Gender::Neuter => "n".into(),
+            Gender::Masculine => {
+                if animate {
+                    "m1".into()
+                } else {
+                    "m2".into()
                 }
             }
+        }
+    }
+
+    fn mark_final_soft_noun_consonants(word: &str) -> String {
+        let mut normalized = word.to_string();
+        for (from, to) in [("ń", "nj"), ("ň", "nj"), ("ľ", "lj"), ("ĺ", "lj")] {
+            if normalized.ends_with(from) {
+                normalized = ISVUTILS::replace_last_occurence(&normalized, from, to);
+            }
+        }
+
+        let chars: Vec<char> = normalized.chars().collect();
+        let mark_from = chars.len().saturating_sub(2);
+        let mut result = String::new();
+        for (idx, c) in chars.iter().enumerate() {
+            result.push(*c);
+            if idx >= mark_from && "cšžčćńľŕťďśźđj".contains(*c) {
+                result.push('ь');
+            }
+        }
+        result
+    }
+
+    fn establish_noun_gender(noun: &str, raw_gender: &str) -> String {
+        let last_char = ISVUTILS::last_in_stringslice(noun);
+        let before_last_char = ISV::nth_char_from_end(noun, 2).unwrap_or(' ');
+        let last_two = ISV::last_n_chars(noun, 2);
+
+        if noun == "den" || noun == "dėn" || noun == "denjь" || noun == "dėnjь" {
+            return "m3".into();
+        }
+        if raw_gender.starts_with('m')
+            && (last_two == "en" || noun.ends_with("enjь"))
+            && (noun.starts_with("kamen")
+                || noun.starts_with("jelen")
+                || noun.starts_with("jęčmen")
+                || noun.starts_with("ječmen")
+                || noun.starts_with("koren")
+                || noun.starts_with("kremen")
+                || noun.starts_with("plåmen")
+                || noun.starts_with("plamen")
+                || noun.starts_with("pŕsten")
+                || noun.starts_with("prsten")
+                || noun.starts_with("strumen")
+                || noun.starts_with("greben")
+                || noun.starts_with("stępen")
+                || noun.starts_with("stepen")
+                || noun.starts_with("stųpen")
+                || noun.starts_with("stupen")
+                || noun.starts_with("šršen")
+                || noun.starts_with("šŕšen")
+                || noun.starts_with("sršen")
+                || noun.starts_with("sŕšen")
+                || noun.starts_with("šeršen"))
+        {
+            return "m3".into();
+        }
+        if raw_gender.starts_with('n')
+            && [
+                "čudo", "dělo", "divo", "drěvo", "igo", "kolo", "licьe", "nebo", "ojьe", "oko",
+                "slovo", "tělo", "uho",
+            ]
+            .contains(&noun)
+        {
+            return "n3".into();
+        }
+        if raw_gender == "f" && last_char == 'v' {
+            return "f3".into();
+        }
+        if noun == "mati" || noun == "dočьi" || noun == "doćьi" || noun == "doči" {
+            return "f3".into();
+        }
+        if last_char == 'a' || last_char == 'i' {
+            return "f1".into();
+        }
+        if last_char == 'ę' {
+            return "n2".into();
+        }
+        if before_last_char != 'ь' && last_char == 'e' {
+            return "n2".into();
+        }
+        if last_char == 'o' || last_char == 'e' {
+            return "n1".into();
+        }
+        if raw_gender == "m1" {
+            return "m1".into();
+        }
+        if raw_gender == "f" {
+            return "f2".into();
+        }
+        "m2".into()
+    }
+
+    fn establish_noun_root(noun: &str, gender: &str) -> String {
+        let has_vowel_ending = matches!(ISVUTILS::last_in_stringslice(noun), 'a' | 'e' | 'ę' | 'o');
+        let mut result = if noun == "lėv" || noun == "lev" {
+            "ljv".into()
+        } else if noun == "Lėv" || noun == "Lev" {
+            "Ljv".into()
+        } else if gender.starts_with('m')
+            && (noun.ends_with("ecь") || noun.ends_with("ėcь") || noun.ends_with("ècь"))
+            && ISV::masculine_ec_keeps_c(noun)
+        {
+            ISVUTILS::string_without_last_n(noun, 3) + "cь"
+        } else if gender == "m3" {
+            noun.trim_end_matches("jь").to_string()
+        } else if noun == "mati" || noun == "dočьi" || noun == "doćьi" || noun == "doči" {
+            ISVUTILS::string_without_last_n(noun, 1) + "er"
+        } else if gender == "f3" && noun.ends_with("ov") {
+            ISVUTILS::string_without_last_n(noun, 2) + "v"
+        } else if gender == "f3" {
+            noun.into()
+        } else if gender == "n2" && ISV::nth_char_from_end(noun, 2) == Some('m') {
+            ISVUTILS::string_without_last_n(noun, 1) + "en"
+        } else if gender == "n2" {
+            ISVUTILS::string_without_last_n(noun, 1) + "ęt"
+        } else if gender == "f1" && (noun == "pani" || noun.ends_with("yni")) {
+            ISVUTILS::string_without_last_n(noun, 1) + "jь"
+        } else if noun.ends_with('i') {
+            ISVUTILS::string_without_last_n(noun, 1) + "ь"
+        } else if has_vowel_ending {
+            ISVUTILS::string_without_last_n(noun, 1)
+        } else {
+            noun.into()
         };
 
-        let ending = endings.ending(case, number);
-        let merged = format!("{}{}", word_stem, ending);
-        return (merged, gender.clone());
+        if !has_vowel_ending {
+            if let Some(index) = ISV::last_fluent_vowel_index(noun) {
+                let result_len = result.chars().count();
+                if index > result_len.saturating_sub(3) {
+                    result = ISV::remove_char_at(&result, index);
+                }
+            }
+        }
+        result
+    }
+
+    fn masculine_ec_keeps_c(noun: &str) -> bool {
+        let chars: Vec<char> = noun.chars().collect();
+        if chars.len() < 5 {
+            return false;
+        }
+        let before = chars[chars.len() - 5];
+        let near = chars[chars.len() - 4];
+        "aeiouyęųåėěȯrŕ".contains(before) || "jdtc".contains(near)
+    }
+
+    fn establish_plural_noun_root(root: &str) -> String {
+        match root {
+            "dětęt" | "detet" | "dětet" | "detęt" => "dětь".into(),
+            "človek" | "člověk" => "ljudь".into(),
+            "ok" => "očь".into(),
+            "uh" => "ušь".into(),
+            _ if root.ends_with("anin") => ISVUTILS::string_without_last_n(root, 2),
+            _ => root.into(),
+        }
+    }
+
+    fn establish_plural_noun_gender(
+        root: &str,
+        plural_root: &str,
+        gender: &str,
+        raw_gender: &str,
+    ) -> String {
+        if root != plural_root && !plural_root.contains('n') {
+            return "f2".into();
+        }
+        if gender == "f1" && raw_gender == "m1" {
+            return "m1".into();
+        }
+        gender.into()
+    }
+
+    fn noun_nominative_sg(noun: &str, root: &str, gender: &str) -> String {
+        let result = if gender == "f2" {
+            root.into()
+        } else if gender == "f3" {
+            noun.into()
+        } else if gender == "m3" && root == "dn" {
+            "den / denj".into()
+        } else if gender == "m3" {
+            format!("{} / {}j", root, root)
+        } else {
+            noun.into()
+        };
+        ISV::noun_rules(&result)
+    }
+
+    fn noun_accusative_sg(noun: &str, root: &str, gender: &str) -> String {
+        let result = if gender == "m1" {
+            format!("{}a", root)
+        } else if gender == "f1" {
+            format!("{}ų", root)
+        } else {
+            noun.into()
+        };
+        ISV::noun_rules(&result)
+    }
+
+    fn noun_genitive_sg(root: &str, gender: &str) -> String {
+        let result = match gender {
+            "m1" | "m2" | "n1" => format!("{}a", root),
+            "f1" => format!("{}y", root),
+            "f2" => format!("{}i", root),
+            "f3" => format!("{}e / {}i", root, root),
+            "m3" => format!("{}e / {}ja", root, root),
+            "n2" => format!("{}e / {}a", root, root),
+            "n3" => format!("{}a / {}ese", root, ISV::palatalization_ending(root)),
+            _ => root.into(),
+        };
+        ISV::noun_rules(&result)
+    }
+
+    fn noun_dative_sg(root: &str, gender: &str) -> String {
+        let result = match gender {
+            "m1" | "m2" | "n1" => format!("{}u", root),
+            "f1" => format!("{}ě", root),
+            "f2" | "f3" => format!("{}i", root),
+            "m3" => format!("{}i / {}ju", root, root),
+            "n2" => format!("{}i / {}u", root, root),
+            "n3" => format!("{}u / {}esi", root, ISV::palatalization_ending(root)),
+            _ => root.into(),
+        };
+        ISV::noun_rules(&result)
+    }
+
+    fn noun_locative_sg(root: &str, gender: &str) -> String {
+        ISV::noun_dative_sg(root, gender)
+    }
+
+    fn noun_instrumental_sg(root: &str, gender: &str) -> String {
+        let result = match gender {
+            "m1" | "m2" | "n1" => format!("{}om", root),
+            "f1" => format!("{}ojų", root),
+            "f2" | "f3" => format!("{}jų", root),
+            "m3" => format!("{}em / {}jem", root, root),
+            "n2" => format!("{}em / {}om", root, root),
+            "n3" => format!("{}om / {}esem", root, ISV::palatalization_ending(root)),
+            _ => root.into(),
+        };
+        ISV::noun_rules(&result)
+    }
+
+    fn noun_nominative_pl(root: &str, gender: &str) -> String {
+        let result = if gender == "n3" {
+            format!("{}a / {}esa", root, ISV::palatalization_ending(root))
+        } else if root == "očь" || root == "ušь" {
+            format!("{}i / {}esa", root, root)
+        } else if gender.starts_with('n') {
+            format!("{}a", root)
+        } else if gender == "m1" {
+            format!("{}i", root)
+        } else if gender == "f1" || gender == "m2" {
+            format!("{}y", root)
+        } else if gender == "m3" {
+            format!("{}i / {}je", root, root)
+        } else {
+            format!("{}i", root)
+        };
+        ISV::noun_rules(&result)
+    }
+
+    fn noun_genitive_pl(root: &str, gender: &str) -> String {
+        let result = if gender == "f1" || root == "morjь" || root == "poljь" {
+            root.replacen('ь', "%", 1) + "%"
+        } else if root == "st" {
+            "sȯt".into()
+        } else if gender.starts_with('n') {
+            let mut result = root.replacen('ь', "%", 1) + "%";
+            if gender == "n3" {
+                result = format!("{} / {}es", result, ISV::palatalization_ending(root));
+            }
+            result
+        } else if gender == "m3" {
+            format!("{}ev / {}jev", root, root)
+        } else if gender.starts_with('m') {
+            format!("{}ov", root)
+        } else if root == "očь" || root == "ušь" {
+            format!("{}ij / {}es", root, root)
+        } else {
+            format!("{}ij", root)
+        };
+        ISV::noun_rules(&ISV::plural_gen_ending(&result))
+    }
+
+    fn noun_dative_pl(root: &str, gender: &str) -> String {
+        let result = if gender == "m3" {
+            format!("{}am / {}jam", root, root)
+        } else if gender == "n3" {
+            format!("{}am / {}esam", root, ISV::palatalization_ending(root))
+        } else {
+            format!("{}am", root)
+        };
+        ISV::noun_rules(&result)
+    }
+
+    fn noun_instrumental_pl(root: &str, gender: &str) -> String {
+        let result = if gender == "m3" {
+            format!("{}ami / {}jami", root, root)
+        } else if gender == "n3" {
+            format!("{}ami / {}esami", root, ISV::palatalization_ending(root))
+        } else {
+            format!("{}ami", root)
+        };
+        ISV::noun_rules(&result)
+    }
+
+    fn noun_locative_pl(root: &str, gender: &str) -> String {
+        let result = if gender == "m3" {
+            format!("{}ah / {}jah", root, root)
+        } else if gender == "n3" {
+            format!("{}ah / {}esah", root, ISV::palatalization_ending(root))
+        } else {
+            format!("{}ah", root)
+        };
+        ISV::noun_rules(&result)
+    }
+
+    fn noun_rules(word: &str) -> String {
+        word.replace("ьo", "ьe")
+            .replace("ьy", "ьe")
+            .replace("ьě", "i")
+            .replace('#', "")
+            .replace("tь", "ť")
+            .replace("dь", "ď")
+            .replace("sь", "ś")
+            .replace("zь", "ź")
+            .replace('ь', "")
+            .replace("ťi", "ti")
+            .replace("ďi", "di")
+            .replace("śi", "si")
+            .replace("źi", "zi")
+            .replace("ľi", "li")
+            .replace("ńi", "ni")
+            .replace("ŕi", "ri")
+            .replace("jy", "ji")
+            .replace("cy", "ci")
+            .replace("ljj", "ľj")
+            .replace("njj", "ńj")
+    }
+
+    fn plural_gen_ending(word: &str) -> String {
+        let mut word = word
+            .replace("jsk%", "jsk")
+            .replace("mš%", "meš")
+            .replace("zl%", "zȯl")
+            .replace("tl%", "tȯl")
+            .replace("mgl%", "mgȯl")
+            .replace("ńj%", "nij");
+
+        word = ISV::replace_j_percent(&word, "pbvfmlnr", "ej");
+        word = ISV::replace_j_percent(&word, "pbvfmlnrszńľŕťďśźščžđ", "ij");
+        word = ISV::replace_final_pair_percent(&word, "jśźďťľŕńčšžćđc", 'k', "e");
+        word = ISV::replace_final_pair_percent(&word, "pbfvmlnrtdszkgh", 'k', "ȯ");
+        word = ISV::replace_final_pair_percent(&word, "vmpzšžt", 'n', "e");
+        word = ISV::replace_first_second_percent(&word, 'k', "nl", "ȯ");
+        word = ISV::replace_first_second_percent(&word, 's', "nl", "e");
+
+        if word.starts_with("dn%") {
+            word = word.replacen("dn%", "dȯn", 1);
+        }
+        if word.contains("pismo%") {
+            word = word.replace("pismo%", "pisem");
+        }
+        if word.starts_with("ťm%") {
+            word = word.replacen("ťm%", "tem", 1);
+        }
+        if word.starts_with("sto%") {
+            word = word.replacen("sto%", "sȯt", 1);
+        }
+        word.replace('%', "")
+    }
+
+    fn replace_j_percent(word: &str, preceding: &str, replacement: &str) -> String {
+        let chars: Vec<char> = word.chars().collect();
+        for idx in 2..chars.len() {
+            if chars[idx - 1] == 'j' && chars[idx] == '%' && preceding.contains(chars[idx - 2]) {
+                let mut result: String = chars[..idx - 1].iter().collect();
+                result.push_str(replacement);
+                result.extend(chars[idx + 1..].iter());
+                return result;
+            }
+        }
+        word.into()
+    }
+
+    fn replace_final_pair_percent(
+        word: &str,
+        first_set: &str,
+        second: char,
+        insert: &str,
+    ) -> String {
+        let chars: Vec<char> = word.chars().collect();
+        for idx in 2..chars.len() {
+            if chars[idx] == '%' && chars[idx - 1] == second && first_set.contains(chars[idx - 2]) {
+                let mut result: String = chars[..idx - 1].iter().collect();
+                result.push_str(insert);
+                result.push(second);
+                result.extend(chars[idx + 1..].iter());
+                return result;
+            }
+        }
+        word.into()
+    }
+
+    fn replace_first_second_percent(
+        word: &str,
+        first: char,
+        second_set: &str,
+        insert: &str,
+    ) -> String {
+        let chars: Vec<char> = word.chars().collect();
+        for idx in 2..chars.len() {
+            if chars[idx] == '%' && second_set.contains(chars[idx - 1]) && chars[idx - 2] == first {
+                let mut result: String = chars[..idx - 1].iter().collect();
+                result.push_str(insert);
+                result.push(chars[idx - 1]);
+                result.extend(chars[idx + 1..].iter());
+                return result;
+            }
+        }
+        word.into()
+    }
+
+    fn palatalization_ending(root: &str) -> String {
+        if root.ends_with('g') {
+            ISVUTILS::string_without_last_n(root, 1) + "žь"
+        } else if root.ends_with('h') {
+            ISVUTILS::string_without_last_n(root, 1) + "šь"
+        } else if root.ends_with('k') {
+            ISVUTILS::string_without_last_n(root, 1) + "čь"
+        } else if root.ends_with("cь") {
+            ISVUTILS::string_without_last_n(root, 2) + "čь"
+        } else {
+            root.into()
+        }
+    }
+
+    fn nth_char_from_end(s: &str, n: usize) -> Option<char> {
+        s.chars().rev().nth(n - 1)
+    }
+
+    fn last_fluent_vowel_index(s: &str) -> Option<usize> {
+        s.chars()
+            .enumerate()
+            .filter(|(_, c)| *c == 'ė' || *c == 'ȯ')
+            .map(|(idx, _)| idx)
+            .last()
+    }
+
+    fn remove_char_at(s: &str, index: usize) -> String {
+        s.chars()
+            .enumerate()
+            .filter_map(|(idx, c)| if idx == index { None } else { Some(c) })
+            .collect()
     }
     pub fn noun_is_animate(word: &str) -> bool {
         ANIMATE_MASCULINE_NOUNS.contains(&word)
@@ -390,20 +859,21 @@ impl ISV {
 
     pub fn guess_gender(word: &str) -> Gender {
         if ANIMATE_MASCULINE_NOUNS.contains(&word) || INANIMATE_MASCULINE_NOUNS.contains(&word) {
-            return Gender::Masculine;
+            Gender::Masculine
         } else if FEMININE_NOUNS.contains(&word) {
-            return Gender::Feminine;
+            Gender::Feminine
         } else if NEUTER_NOUNS.contains(&word) {
-            return Gender::Neuter;
-        }
-        let last_one = ISV::last_n_chars(word, 1);
-
-        if ISV::is_ost_class(word) || (last_one == "a") || (last_one == "i") {
-            return Gender::Feminine;
-        } else if (last_one == "o") || (last_one == "e") {
-            return Gender::Neuter;
+            Gender::Neuter
         } else {
-            return Gender::Masculine;
+            let last_one = ISV::last_n_chars(word, 1);
+
+            if ISV::is_ost_class(word) || (last_one == "a") || (last_one == "i") {
+                Gender::Feminine
+            } else if (last_one == "o") || (last_one == "e") {
+                Gender::Neuter
+            } else {
+                Gender::Masculine
+            }
         }
     }
 
@@ -412,7 +882,8 @@ impl ISV {
         word[split_pos..].into()
     }
     pub fn is_ost_class(word: &str) -> bool {
-        word.ends_with("ost́")
+        word.ends_with("ost")
+            || word.ends_with("ost́")
             || word.ends_with("ěć")
             || word.ends_with("ěč")
             || word.ends_with("eć")
@@ -428,9 +899,9 @@ impl ISV {
         }
 
         if ISVUTILS::is_vowel(&ISVUTILS::last_in_stringslice(word)) {
-            return ISVUTILS::string_without_last_n(word, 1);
+            ISVUTILS::string_without_last_n(word, 1)
         } else {
-            return String::from(word);
+            String::from(word)
         }
     }
     pub fn stem_of_noun_is_soft(word: &str) -> bool {
@@ -463,6 +934,7 @@ impl ISVUTILS {
                         "k" => ISVUTILS::replace_last_occurence(root, entry, "č"),
                         "g" => ISVUTILS::replace_last_occurence(root, entry, "ž"),
                         "h" => ISVUTILS::replace_last_occurence(root, entry, "š"),
+                        "č" | "š" | "ž" | "ć" | "đ" | "j" => root.to_string(),
                         _ => root.to_string(),
                     };
                     let new_suffix = suffix.get(1..).unwrap();
