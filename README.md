@@ -41,6 +41,15 @@ fn main() {
     println!("{:#?}", inanimate.unwrap().0);
     //output: člen
 
+    // The structured API returns complete paradigms and requires explicit
+    // gender_override for masculine/feminine dictionary entries.
+    let feminine_luč = inflector.decline_noun_by_id_with_gender_override(
+        "339",
+        NounGender::Feminine,
+    ).unwrap();
+    println!("{:#?}", feminine_luč.genitive_singular.unwrap().alternatives);
+    //output: ["luči"]
+
     let adj = inflector.decline_adj(
         "samy",
         &Case::Gen,

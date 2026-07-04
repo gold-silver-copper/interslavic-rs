@@ -62,19 +62,28 @@ pub(crate) fn lookup_noun_by_id_for_number(
     word: &str,
     wants_plural: bool,
 ) -> Option<&'static DictionaryEntry> {
-    let lower = word.to_lowercase();
     choose_for_number(
-        dictionary()
-            .entries
-            .iter()
+        lookup_nouns_by_id(id)
+            .into_iter()
             .filter(|entry| {
-                entry.id == id
-                    && entry.pos == DictionaryPartOfSpeech::Noun
-                    && (entry.lemma == word || entry.lemma.to_lowercase() == lower)
+                let lower = word.to_lowercase();
+                entry.lemma == word || entry.lemma.to_lowercase() == lower
             })
             .collect(),
         wants_plural,
     )
+}
+
+pub(crate) fn lookup_nouns_by_id(id: &str) -> Vec<&'static DictionaryEntry> {
+    dictionary()
+        .entries
+        .iter()
+        .filter(|entry| entry.id == id && entry.pos == DictionaryPartOfSpeech::Noun)
+        .collect()
+}
+
+pub(crate) fn lookup_nouns_by_lemma(word: &str) -> Vec<&'static DictionaryEntry> {
+    lookup_all(word, |entry| entry.pos == DictionaryPartOfSpeech::Noun)
 }
 
 fn choose_for_number(
