@@ -1,7 +1,5 @@
 mod case_endings;
 use case_endings::*;
-mod dictionary;
-use dictionary::*;
 mod verb_endings;
 use verb_endings::*;
 
@@ -13,7 +11,7 @@ mod known_nouns;
 use known_nouns::*;
 
 #[derive(Debug, Clone, Default)]
-pub struct ISV {}
+pub struct ISVCore {}
 
 pub struct ISVUTILS {}
 
@@ -176,8 +174,34 @@ pub struct NounDeclensionRequest<'a> {
     pub number_restriction: NumberRestriction,
     pub indeclinable: bool,
     pub addition: Option<&'a str>,
-    pub dictionary_id: Option<&'a str>,
     pub gender_override: Option<NounGender>,
+}
+
+impl NounParadigm {
+    /// Get one case/number slot from a full paradigm.
+    pub fn get(&self, case: Case, number: Number) -> Option<&InflectionAlternatives> {
+        match (case, number) {
+            (Case::Nom, Number::Singular) => self.nominative_singular.as_ref(),
+            (Case::Acc, Number::Singular) => self.accusative_singular.as_ref(),
+            (Case::Gen, Number::Singular) => self.genitive_singular.as_ref(),
+            (Case::Loc, Number::Singular) => self.locative_singular.as_ref(),
+            (Case::Dat, Number::Singular) => self.dative_singular.as_ref(),
+            (Case::Ins, Number::Singular) => self.instrumental_singular.as_ref(),
+            (Case::Nom, Number::Plural) => self.nominative_plural.as_ref(),
+            (Case::Acc, Number::Plural) => self.accusative_plural.as_ref(),
+            (Case::Gen, Number::Plural) => self.genitive_plural.as_ref(),
+            (Case::Loc, Number::Plural) => self.locative_plural.as_ref(),
+            (Case::Dat, Number::Plural) => self.dative_plural.as_ref(),
+            (Case::Ins, Number::Plural) => self.instrumental_plural.as_ref(),
+        }
+    }
+}
+
+impl InflectionAlternatives {
+    /// Join alternatives with the same slash spelling used by the reference.
+    pub fn text(&self) -> String {
+        self.alternatives.join(" / ")
+    }
 }
 
 pub const VOWELS: &[char] = &[
@@ -194,9 +218,9 @@ pub const J_MERGE_CHARS: &[&str] = &[
 ];
 
 //VERB STUFF
-impl ISV {
+impl ISVCore {
     pub fn get_present_tense_stem(infinitive: &str) -> (String, Conjugation) {
-        let infinitive_stem = ISV::get_infinitive_stem(infinitive);
+        let infinitive_stem = ISVCore::get_infinitive_stem(infinitive);
         let irregular = irregular_present_stem(infinitive);
 
         if !irregular.is_empty() {
@@ -291,7 +315,7 @@ impl ISV {
         tense: &Tense,
     ) -> Verb {
         let word = word.trim().to_string();
-        let (present_stem, conjugation) = ISV::get_present_tense_stem(&word);
+        let (present_stem, conjugation) = ISVCore::get_present_tense_stem(&word);
 
         let endings = match conjugation {
             Conjugation::First => &FIRST_CONJUGATION,
@@ -318,7 +342,7 @@ impl ISV {
                 },
             }
         } else {
-            let infinitive_stem = ISV::get_infinitive_stem(word);
+            let infinitive_stem = ISVCore::get_infinitive_stem(word);
             match number {
                 Number::Plural => {
                     format!("{}{}", infinitive_stem, "li")
@@ -340,7 +364,7 @@ impl ISV {
 }
 
 // ADJECTIVE STUFF
-impl ISV {
+impl ISVCore {
     pub fn decline_adj(
         word: &str,
         case: &Case,
@@ -374,8 +398,8 @@ impl ISV {
         {
             return "seksi".into();
         }
-        let stem_is_soft = ISV::stem_of_adj_is_soft(&word);
-        let adj_stem = ISV::get_adj_stem(&word);
+        let stem_is_soft = ISVCore::stem_of_adj_is_soft(&word);
+        let adj_stem = ISVCore::get_adj_stem(&word);
         let has_long_form_ending =
             word.ends_with('y') || word.ends_with('i') || word.ends_with('j');
 
@@ -419,7 +443,7 @@ impl ISV {
             }
         };
         let ending = endings.ending(case, number);
-        ISV::append_postfix_to_alternatives(&format!("{}{}", adj_stem, ending), &postfix)
+        ISVCore::append_postfix_to_alternatives(&format!("{}{}", adj_stem, ending), &postfix)
     }
 
     fn append_postfix_to_alternatives(form: &str, postfix: &str) -> String {
@@ -442,7 +466,7 @@ impl ISV {
             adj_stem.pop();
             adj_stem
         } else {
-            ISV::infer_fluent_vowel(word)
+            ISVCore::infer_fluent_vowel(word)
                 .replace("(e)", "")
                 .replace("(o)", "")
         }
@@ -450,18 +474,19 @@ impl ISV {
 }
 
 //NOUN STUFF
-impl ISV {
+impl ISVCore {
     pub fn decline_noun_explicit(
         request: NounDeclensionRequest<'_>,
     ) -> Result<NounParadigm, InflectionError> {
-        let effective_gender = ISV::resolve_noun_gender(request.gender, request.gender_override)?;
+        let effective_gender =
+            ISVCore::resolve_noun_gender(request.gender, request.gender_override)?;
         if matches!(effective_gender, NounGender::Masculine) && request.animacy == Animacy::Unknown
         {
             return Err(InflectionError::MissingAnimacy);
         }
-        let gender = ISV::api_gender_to_gender(effective_gender);
+        let gender = ISVCore::api_gender_to_gender(effective_gender);
         let animate = request.animacy == Animacy::Animate;
-        Ok(ISV::noun_paradigm_from_parts(
+        Ok(ISVCore::noun_paradigm_from_parts(
             request.lemma,
             request.addition.unwrap_or(""),
             &gender,
@@ -473,90 +498,20 @@ impl ISV {
         ))
     }
 
-    pub fn decline_noun_by_id(id: &str) -> Result<NounParadigm, InflectionError> {
-        let entries = lookup_nouns_by_id(id);
-        let entry = entries
-            .first()
-            .ok_or(InflectionError::DictionaryEntryNotFound)?;
-        if entry.gender == Some(DictionaryGender::MasculineOrFeminine) {
-            return Err(InflectionError::MissingGenderOverride);
-        }
-        ISV::noun_paradigm_from_entry(entry, None)
-    }
-
-    pub fn decline_noun_by_id_with_gender_override(
-        id: &str,
-        gender_override: NounGender,
-    ) -> Result<NounParadigm, InflectionError> {
-        let entries = lookup_nouns_by_id(id);
-        let entry = entries
-            .first()
-            .ok_or(InflectionError::DictionaryEntryNotFound)?;
-        ISV::noun_paradigm_from_entry(entry, Some(gender_override))
-    }
-
-    pub fn decline_noun_all(lemma: &str) -> Result<Vec<NounParadigm>, InflectionError> {
-        let entries = lookup_nouns_by_lemma(lemma);
-        if entries.is_empty() {
-            return Err(InflectionError::DictionaryEntryNotFound);
-        }
-        let mut paradigms = Vec::new();
-        for entry in entries {
-            if entry.gender == Some(DictionaryGender::MasculineOrFeminine) {
-                paradigms.push(ISV::noun_paradigm_from_entry(
-                    entry,
-                    Some(NounGender::Masculine),
-                )?);
-                paradigms.push(ISV::noun_paradigm_from_entry(
-                    entry,
-                    Some(NounGender::Feminine),
-                )?);
-            } else {
-                paradigms.push(ISV::noun_paradigm_from_entry(entry, None)?);
-            }
-        }
-        Ok(paradigms)
-    }
-
     pub fn decline_noun_simple(
         lemma: &str,
         gender: NounGender,
         animacy: Animacy,
     ) -> Result<NounParadigm, InflectionError> {
-        ISV::decline_noun_explicit(NounDeclensionRequest {
+        ISVCore::decline_noun_explicit(NounDeclensionRequest {
             lemma,
             gender,
             animacy,
             number_restriction: NumberRestriction::Countable,
             indeclinable: false,
             addition: None,
-            dictionary_id: None,
             gender_override: None,
         })
-    }
-
-    fn noun_paradigm_from_entry(
-        entry: &DictionaryEntry,
-        gender_override: Option<NounGender>,
-    ) -> Result<NounParadigm, InflectionError> {
-        let dictionary_gender = ISV::dictionary_gender_to_api(
-            entry
-                .gender
-                .as_ref()
-                .unwrap_or(&DictionaryGender::Masculine),
-        );
-        let effective_gender = ISV::resolve_noun_gender(dictionary_gender, gender_override)?;
-        let gender = ISV::api_gender_to_gender(effective_gender);
-        Ok(ISV::noun_paradigm_from_parts(
-            &entry.lemma,
-            &entry.addition,
-            &gender,
-            entry.animate,
-            entry.plural_only,
-            entry.singular_only,
-            entry.indeclinable,
-            effective_gender,
-        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -571,17 +526,19 @@ impl ISV {
         api_gender: NounGender,
     ) -> NounParadigm {
         let form = |case: Case, number: Number| {
-            Some(ISV::alternatives_from_string(&ISV::decline_noun_steen(
-                lemma,
-                addition,
-                gender,
-                animate,
-                plural_only,
-                singular_only,
-                indeclinable,
-                &case,
-                &number,
-            )))
+            Some(ISVCore::alternatives_from_string(
+                &ISVCore::decline_noun_steen(
+                    lemma,
+                    addition,
+                    gender,
+                    animate,
+                    plural_only,
+                    singular_only,
+                    indeclinable,
+                    &case,
+                    &number,
+                ),
+            ))
         };
         NounParadigm {
             lemma: lemma.into(),
@@ -629,15 +586,6 @@ impl ISV {
         }
     }
 
-    fn dictionary_gender_to_api(gender: &DictionaryGender) -> NounGender {
-        match gender {
-            DictionaryGender::Masculine => NounGender::Masculine,
-            DictionaryGender::Feminine => NounGender::Feminine,
-            DictionaryGender::Neuter => NounGender::Neuter,
-            DictionaryGender::MasculineOrFeminine => NounGender::MasculineOrFeminine,
-        }
-    }
-
     fn api_gender_to_gender(gender: NounGender) -> Gender {
         match gender {
             NounGender::Masculine | NounGender::MasculineOrFeminine => Gender::Masculine,
@@ -647,18 +595,10 @@ impl ISV {
     }
 
     pub fn decline_noun(word: &str, case: &Case, number: &Number) -> Noun {
-        ISV::decline_noun_with_dictionary(word, case, number)
-    }
-
-    pub fn decline_noun_with_dictionary(word: &str, case: &Case, number: &Number) -> Noun {
         let word = word.trim();
-        if let Some(entry) = lookup_noun_for_number(word, number == &Number::Plural) {
-            return ISV::decline_noun_from_entry(word, entry, case, number);
-        }
-
-        let gender = ISV::guess_gender(word);
-        let word_is_animate = ISV::noun_is_animate(word);
-        let declined = ISV::decline_noun_steen(
+        let gender = ISVCore::guess_gender(word);
+        let word_is_animate = ISVCore::noun_is_animate(word);
+        let declined = ISVCore::decline_noun_steen(
             word,
             "",
             &gender,
@@ -666,47 +606,6 @@ impl ISV {
             false,
             false,
             false,
-            case,
-            number,
-        );
-        (declined, gender)
-    }
-
-    pub fn decline_noun_with_dictionary_id(
-        id: &str,
-        word: &str,
-        case: &Case,
-        number: &Number,
-    ) -> Option<Noun> {
-        lookup_noun_by_id_for_number(id, word.trim(), number == &Number::Plural)
-            .map(|entry| ISV::decline_noun_from_entry(word.trim(), entry, case, number))
-    }
-
-    fn decline_noun_from_entry(
-        word: &str,
-        entry: &DictionaryEntry,
-        case: &Case,
-        number: &Number,
-    ) -> Noun {
-        let gender = match entry
-            .gender
-            .as_ref()
-            .unwrap_or(&DictionaryGender::Masculine)
-        {
-            DictionaryGender::Masculine | DictionaryGender::MasculineOrFeminine => {
-                Gender::Masculine
-            }
-            DictionaryGender::Feminine => Gender::Feminine,
-            DictionaryGender::Neuter => Gender::Neuter,
-        };
-        let declined = ISV::decline_noun_steen(
-            word,
-            &entry.addition,
-            &gender,
-            entry.animate,
-            entry.plural_only,
-            entry.singular_only,
-            entry.indeclinable,
             case,
             number,
         );
@@ -725,62 +624,67 @@ impl ISV {
         case: &Case,
         number: &Number,
     ) -> String {
-        let noun = ISV::remove_bracketed_text(word.trim(), '[', ']');
+        let noun = ISVCore::remove_bracketed_text(word.trim(), '[', ']');
         if indeclinable {
             return noun;
         }
         if plural_only {
-            return ISV::decline_plural_only_noun(&noun, add, origin_gender, case, number)
+            return ISVCore::decline_plural_only_noun(&noun, add, origin_gender, case, number)
                 .unwrap_or(noun);
         }
         if singular_only && number == &Number::Plural {
             return noun;
         }
-        if let Some(form) =
-            ISV::decline_substantivized_adjective(&noun, add, origin_gender, animate, case, number)
-        {
+        if let Some(form) = ISVCore::decline_substantivized_adjective(
+            &noun,
+            add,
+            origin_gender,
+            animate,
+            case,
+            number,
+        ) {
             return form;
         }
 
-        let noun = ISV::mark_or_infer_fluent_vowel(&noun, add);
+        let noun = ISVCore::mark_or_infer_fluent_vowel(&noun, add);
         let marked_noun =
-            ISV::mark_final_soft_noun_consonants(&noun.replace("(e)", "ė").replace("(o)", "ȯ"));
+            ISVCore::mark_final_soft_noun_consonants(&noun.replace("(e)", "ė").replace("(o)", "ȯ"));
         let noun_without_fluent =
-            ISV::mark_final_soft_noun_consonants(&noun.replace("(e)", "").replace("(o)", ""));
-        let raw_gender = ISV::prepare_noun_gender(origin_gender, animate);
-        let gender = ISV::establish_noun_gender(&marked_noun, &raw_gender);
-        let root = ISV::establish_noun_root(&noun_without_fluent, &gender);
-        let plural_root = ISV::establish_plural_noun_root(&root);
+            ISVCore::mark_final_soft_noun_consonants(&noun.replace("(e)", "").replace("(o)", ""));
+        let raw_gender = ISVCore::prepare_noun_gender(origin_gender, animate);
+        let gender = ISVCore::establish_noun_gender(&marked_noun, &raw_gender);
+        let root = ISVCore::establish_noun_root(&noun_without_fluent, &gender);
+        let plural_root = ISVCore::establish_plural_noun_root(&root);
         let plural_gender =
-            ISV::establish_plural_noun_gender(&root, &plural_root, &gender, &raw_gender);
+            ISVCore::establish_plural_noun_gender(&root, &plural_root, &gender, &raw_gender);
 
         match number {
             Number::Singular => match case {
-                Case::Nom => ISV::noun_nominative_sg(&marked_noun, &root, &gender),
+                Case::Nom => ISVCore::noun_nominative_sg(&marked_noun, &root, &gender),
                 Case::Acc => {
-                    let nominative_sg = ISV::noun_nominative_sg(&marked_noun, &root, &gender);
-                    ISV::noun_accusative_sg(&nominative_sg, &root, &gender)
+                    let nominative_sg = ISVCore::noun_nominative_sg(&marked_noun, &root, &gender);
+                    ISVCore::noun_accusative_sg(&nominative_sg, &root, &gender)
                 }
-                Case::Gen => ISV::noun_genitive_sg(&root, &gender),
-                Case::Loc => ISV::noun_locative_sg(&root, &gender),
-                Case::Dat => ISV::noun_dative_sg(&root, &gender),
-                Case::Ins => ISV::noun_instrumental_sg(&root, &gender),
+                Case::Gen => ISVCore::noun_genitive_sg(&root, &gender),
+                Case::Loc => ISVCore::noun_locative_sg(&root, &gender),
+                Case::Dat => ISVCore::noun_dative_sg(&root, &gender),
+                Case::Ins => ISVCore::noun_instrumental_sg(&root, &gender),
             },
             Number::Plural => match case {
-                Case::Nom => ISV::noun_nominative_pl(&plural_root, &plural_gender),
+                Case::Nom => ISVCore::noun_nominative_pl(&plural_root, &plural_gender),
                 Case::Acc => {
-                    let nom = ISV::noun_nominative_pl(&plural_root, &plural_gender);
-                    let gen = ISV::noun_genitive_pl(&plural_root, &plural_gender);
+                    let nom = ISVCore::noun_nominative_pl(&plural_root, &plural_gender);
+                    let gen = ISVCore::noun_genitive_pl(&plural_root, &plural_gender);
                     if plural_gender == "m1" {
                         gen
                     } else {
                         nom
                     }
                 }
-                Case::Gen => ISV::noun_genitive_pl(&plural_root, &plural_gender),
-                Case::Loc => ISV::noun_locative_pl(&plural_root, &gender),
-                Case::Dat => ISV::noun_dative_pl(&plural_root, &gender),
-                Case::Ins => ISV::noun_instrumental_pl(&plural_root, &gender),
+                Case::Gen => ISVCore::noun_genitive_pl(&plural_root, &plural_gender),
+                Case::Loc => ISVCore::noun_locative_pl(&plural_root, &gender),
+                Case::Dat => ISVCore::noun_dative_pl(&plural_root, &gender),
+                Case::Ins => ISVCore::noun_instrumental_pl(&plural_root, &gender),
             },
         }
     }
@@ -803,9 +707,9 @@ impl ISV {
     fn mark_or_infer_fluent_vowel(word: &str, add: &str) -> String {
         let add = add.trim().trim_matches(['(', ')']);
         if !add.is_empty() && word != add {
-            ISV::mark_fluent_vowel(word, add)
+            ISVCore::mark_fluent_vowel(word, add)
         } else {
-            ISV::infer_fluent_vowel(word)
+            ISVCore::infer_fluent_vowel(word)
         }
     }
 
@@ -821,7 +725,7 @@ impl ISV {
             && idx < add_chars.len()
             && word_chars[idx + 1] == add_chars[idx]
         {
-            ISV::replace_fluent_vowel(word, idx)
+            ISVCore::replace_fluent_vowel(word, idx)
         } else {
             word.to_string()
         }
@@ -835,15 +739,15 @@ impl ISV {
 
         for idx in (0..chars.len()).rev() {
             let c = chars[idx];
-            if !ISV::is_dictionary_letter(c) {
+            if !ISVCore::is_dictionary_letter(c) {
                 end = idx;
                 replaced = false;
             }
             if !replaced
                 && matches!(c, 'è' | 'ė' | 'ȯ' | 'ò')
-                && ISV::is_last_fluent_syllable(&chars, idx, end)
+                && ISVCore::is_last_fluent_syllable(&chars, idx, end)
             {
-                result = ISV::replace_fluent_vowel(&result, idx);
+                result = ISVCore::replace_fluent_vowel(&result, idx);
                 replaced = true;
             }
         }
@@ -940,7 +844,7 @@ impl ISV {
             }),
             Gender::Feminine if word.ends_with(['y', 'e']) => Some(match case {
                 Case::Nom | Case::Acc => word.to_string(),
-                Case::Gen => ISV::noun_rules(&ISV::plural_gen_ending(
+                Case::Gen => ISVCore::noun_rules(&ISVCore::plural_gen_ending(
                     &(word_without_last.clone() + "%"),
                     true,
                 )),
@@ -950,7 +854,7 @@ impl ISV {
             }),
             Gender::Neuter if word.ends_with('a') => Some(match case {
                 Case::Nom | Case::Acc => word.to_string(),
-                Case::Gen => ISV::noun_rules(&ISV::plural_gen_ending(
+                Case::Gen => ISVCore::noun_rules(&ISVCore::plural_gen_ending(
                     &(word_without_last.clone() + "%"),
                     true,
                 )),
@@ -996,7 +900,9 @@ impl ISV {
             Gender::Feminine => stem + if suffix == "-oj" { "y" } else { "i" },
         };
 
-        Some(ISV::decline_adj(&adjective, case, number, gender, animate))
+        Some(ISVCore::decline_adj(
+            &adjective, case, number, gender, animate,
+        ))
     }
 
     fn prepare_noun_gender(gender: &Gender, animate: bool) -> String {
@@ -1035,8 +941,8 @@ impl ISV {
 
     fn establish_noun_gender(noun: &str, raw_gender: &str) -> String {
         let last_char = ISVUTILS::last_in_stringslice(noun);
-        let before_last_char = ISV::nth_char_from_end(noun, 2).unwrap_or(' ');
-        let last_two = ISV::last_n_chars(noun, 2);
+        let before_last_char = ISVCore::nth_char_from_end(noun, 2).unwrap_or(' ');
+        let last_two = ISVCore::last_n_chars(noun, 2);
 
         if noun == "den" || noun == "dėn" || noun == "denjь" || noun == "dėnjь" {
             return "m3".into();
@@ -1111,7 +1017,7 @@ impl ISV {
             "Ljv".into()
         } else if gender.starts_with('m')
             && (noun.ends_with("ecь") || noun.ends_with("ėcь") || noun.ends_with("ècь"))
-            && ISV::masculine_ec_keeps_c(noun)
+            && ISVCore::masculine_ec_keeps_c(noun)
         {
             ISVUTILS::string_without_last_n(noun, 3) + "cь"
         } else if gender == "m3" {
@@ -1122,7 +1028,7 @@ impl ISV {
             ISVUTILS::string_without_last_n(noun, 2) + "v"
         } else if gender == "f3" {
             noun.into()
-        } else if gender == "n2" && ISV::nth_char_from_end(noun, 2) == Some('m') {
+        } else if gender == "n2" && ISVCore::nth_char_from_end(noun, 2) == Some('m') {
             ISVUTILS::string_without_last_n(noun, 1) + "en"
         } else if gender == "n2" {
             ISVUTILS::string_without_last_n(noun, 1) + "ęt"
@@ -1137,10 +1043,10 @@ impl ISV {
         };
 
         if !has_vowel_ending {
-            if let Some(index) = ISV::last_fluent_vowel_index(noun) {
+            if let Some(index) = ISVCore::last_fluent_vowel_index(noun) {
                 let result_len = result.chars().count();
                 if index > result_len.saturating_sub(3) {
-                    result = ISV::remove_char_at(&result, index);
+                    result = ISVCore::remove_char_at(&result, index);
                 }
             }
         }
@@ -1197,7 +1103,7 @@ impl ISV {
         } else {
             noun.into()
         };
-        ISV::noun_rules(&result)
+        ISVCore::noun_rules(&result)
     }
 
     fn noun_accusative_sg(noun: &str, root: &str, gender: &str) -> String {
@@ -1208,7 +1114,7 @@ impl ISV {
         } else {
             noun.into()
         };
-        ISV::noun_rules(&result)
+        ISVCore::noun_rules(&result)
     }
 
     fn noun_genitive_sg(root: &str, gender: &str) -> String {
@@ -1219,10 +1125,10 @@ impl ISV {
             "f3" => format!("{}e / {}i", root, root),
             "m3" => format!("{}e / {}ja", root, root),
             "n2" => format!("{}e / {}a", root, root),
-            "n3" => format!("{}a / {}ese", root, ISV::palatalization_ending(root)),
+            "n3" => format!("{}a / {}ese", root, ISVCore::palatalization_ending(root)),
             _ => root.into(),
         };
-        ISV::noun_rules(&result)
+        ISVCore::noun_rules(&result)
     }
 
     fn noun_dative_sg(root: &str, gender: &str) -> String {
@@ -1232,30 +1138,30 @@ impl ISV {
             "f2" | "f3" => format!("{}i", root),
             "m3" => format!("{}i / {}ju", root, root),
             "n2" => format!("{}i / {}u", root, root),
-            "n3" => format!("{}u / {}esi", root, ISV::palatalization_ending(root)),
+            "n3" => format!("{}u / {}esi", root, ISVCore::palatalization_ending(root)),
             _ => root.into(),
         };
-        ISV::noun_rules(&result)
+        ISVCore::noun_rules(&result)
     }
 
     fn noun_locative_sg(root: &str, gender: &str) -> String {
-        ISV::noun_dative_sg(root, gender)
+        ISVCore::noun_dative_sg(root, gender)
     }
 
     fn noun_instrumental_sg(root: &str, gender: &str) -> String {
         let result = match gender {
             "m1" | "m2" | "n1" => format!("{}om", root),
             "f1" => format!("{}ojų", root),
-            "f3" if ISV::is_feminine_v_stem_with_restored_o(root) => {
+            "f3" if ISVCore::is_feminine_v_stem_with_restored_o(root) => {
                 format!("{}ȯvjų", ISVUTILS::string_without_last_n(root, 1))
             }
             "f2" | "f3" => format!("{}jų", root),
             "m3" => format!("{}em / {}jem", root, root),
             "n2" => format!("{}em / {}om", root, root),
-            "n3" => format!("{}om / {}esem", root, ISV::palatalization_ending(root)),
+            "n3" => format!("{}om / {}esem", root, ISVCore::palatalization_ending(root)),
             _ => root.into(),
         };
-        ISV::noun_rules(&result)
+        ISVCore::noun_rules(&result)
     }
 
     fn is_feminine_v_stem_with_restored_o(root: &str) -> bool {
@@ -1274,7 +1180,7 @@ impl ISV {
 
     fn noun_nominative_pl(root: &str, gender: &str) -> String {
         let result = if gender == "n3" {
-            format!("{}a / {}esa", root, ISV::palatalization_ending(root))
+            format!("{}a / {}esa", root, ISVCore::palatalization_ending(root))
         } else if root == "očь" || root == "ušь" {
             format!("{}i / {}esa", root, root)
         } else if gender.starts_with('n') {
@@ -1288,7 +1194,7 @@ impl ISV {
         } else {
             format!("{}i", root)
         };
-        ISV::noun_rules(&result)
+        ISVCore::noun_rules(&result)
     }
 
     fn noun_genitive_pl(root: &str, gender: &str) -> String {
@@ -1300,7 +1206,7 @@ impl ISV {
         } else if gender.starts_with('n') {
             let mut result = root.replacen('ь', "%", 1) + "%";
             if gender == "n3" {
-                result = format!("{} / {}es", result, ISV::palatalization_ending(root));
+                result = format!("{} / {}es", result, ISVCore::palatalization_ending(root));
             }
             (result, false)
         } else if gender == "m3" {
@@ -1312,40 +1218,44 @@ impl ISV {
         } else {
             (format!("{}ij", root), true)
         };
-        ISV::noun_rules(&ISV::plural_gen_ending(&result, use_ej_for_j_percent))
+        ISVCore::noun_rules(&ISVCore::plural_gen_ending(&result, use_ej_for_j_percent))
     }
 
     fn noun_dative_pl(root: &str, gender: &str) -> String {
         let result = if gender == "m3" {
             format!("{}am / {}jam", root, root)
         } else if gender == "n3" {
-            format!("{}am / {}esam", root, ISV::palatalization_ending(root))
+            format!("{}am / {}esam", root, ISVCore::palatalization_ending(root))
         } else {
             format!("{}am", root)
         };
-        ISV::noun_rules(&result)
+        ISVCore::noun_rules(&result)
     }
 
     fn noun_instrumental_pl(root: &str, gender: &str) -> String {
         let result = if gender == "m3" {
             format!("{}ami / {}jami", root, root)
         } else if gender == "n3" {
-            format!("{}ami / {}esami", root, ISV::palatalization_ending(root))
+            format!(
+                "{}ami / {}esami",
+                root,
+                ISVCore::palatalization_ending(root)
+            )
         } else {
             format!("{}ami", root)
         };
-        ISV::noun_rules(&result)
+        ISVCore::noun_rules(&result)
     }
 
     fn noun_locative_pl(root: &str, gender: &str) -> String {
         let result = if gender == "m3" {
             format!("{}ah / {}jah", root, root)
         } else if gender == "n3" {
-            format!("{}ah / {}esah", root, ISV::palatalization_ending(root))
+            format!("{}ah / {}esah", root, ISVCore::palatalization_ending(root))
         } else {
             format!("{}ah", root)
         };
-        ISV::noun_rules(&result)
+        ISVCore::noun_rules(&result)
     }
 
     fn noun_rules(word: &str) -> String {
@@ -1381,14 +1291,14 @@ impl ISV {
             .replace("ńj%", "nij");
 
         if use_ej_for_j_percent {
-            word = ISV::replace_j_percent(&word, "pbvfmlnr", "ej");
+            word = ISVCore::replace_j_percent(&word, "pbvfmlnr", "ej");
         }
-        word = ISV::replace_j_percent(&word, "pbvfmlnrszńľŕťďśźščžđ", "ij");
-        word = ISV::replace_final_pair_percent(&word, "jśźďťľŕńčšžćđc", 'k', "e");
-        word = ISV::replace_final_pair_percent(&word, "pbfvmlnrtdszkgh", 'k', "ȯ");
-        word = ISV::replace_final_pair_percent(&word, "vmpzšžt", 'n', "e");
-        word = ISV::replace_first_second_percent(&word, 'k', "nl", "ȯ");
-        word = ISV::replace_first_second_percent(&word, 's', "nl", "e");
+        word = ISVCore::replace_j_percent(&word, "pbvfmlnrszńľŕťďśźščžđ", "ij");
+        word = ISVCore::replace_final_pair_percent(&word, "jśźďťľŕńčšžćđc", 'k', "e");
+        word = ISVCore::replace_final_pair_percent(&word, "pbfvmlnrtdszkgh", 'k', "ȯ");
+        word = ISVCore::replace_final_pair_percent(&word, "vmpzšžt", 'n', "e");
+        word = ISVCore::replace_first_second_percent(&word, 'k', "nl", "ȯ");
+        word = ISVCore::replace_first_second_percent(&word, 's', "nl", "e");
 
         if word.starts_with("dn%") {
             word = word.replacen("dn%", "dȯn", 1);
@@ -1500,9 +1410,9 @@ impl ISV {
         } else if NEUTER_NOUNS.contains(&word) {
             Gender::Neuter
         } else {
-            let last_one = ISV::last_n_chars(word, 1);
+            let last_one = ISVCore::last_n_chars(word, 1);
 
-            if ISV::is_ost_class(word) || (last_one == "a") || (last_one == "i") {
+            if ISVCore::is_ost_class(word) || (last_one == "a") || (last_one == "i") {
                 Gender::Feminine
             } else if (last_one == "o") || (last_one == "e") {
                 Gender::Neuter
@@ -1540,7 +1450,7 @@ impl ISV {
         }
     }
     pub fn stem_of_noun_is_soft(word: &str) -> bool {
-        ISVUTILS::ends_with_soft_consonant(&ISV::get_noun_stem(word, &Number::Singular))
+        ISVUTILS::ends_with_soft_consonant(&ISVCore::get_noun_stem(word, &Number::Singular))
     }
 }
 

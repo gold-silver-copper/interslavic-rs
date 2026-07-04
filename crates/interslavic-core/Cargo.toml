@@ -1,0 +1,10 @@
+[package]
+name = "interslavic-core"
+version = "0.2.1"
+edition.workspace = true
+description = "Dependency-free Interslavic morphology rules"
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]

@@ -47,33 +47,6 @@ pub(crate) fn lookup_noun(word: &str) -> Option<&'static DictionaryEntry> {
     lookup(word, |entry| entry.pos == DictionaryPartOfSpeech::Noun)
 }
 
-pub(crate) fn lookup_noun_for_number(
-    word: &str,
-    wants_plural: bool,
-) -> Option<&'static DictionaryEntry> {
-    choose_for_number(
-        lookup_all(word, |entry| entry.pos == DictionaryPartOfSpeech::Noun),
-        wants_plural,
-    )
-}
-
-pub(crate) fn lookup_noun_by_id_for_number(
-    id: &str,
-    word: &str,
-    wants_plural: bool,
-) -> Option<&'static DictionaryEntry> {
-    choose_for_number(
-        lookup_nouns_by_id(id)
-            .into_iter()
-            .filter(|entry| {
-                let lower = word.to_lowercase();
-                entry.lemma == word || entry.lemma.to_lowercase() == lower
-            })
-            .collect(),
-        wants_plural,
-    )
-}
-
 pub(crate) fn lookup_nouns_by_id(id: &str) -> Vec<&'static DictionaryEntry> {
     dictionary()
         .entries
@@ -84,23 +57,6 @@ pub(crate) fn lookup_nouns_by_id(id: &str) -> Vec<&'static DictionaryEntry> {
 
 pub(crate) fn lookup_nouns_by_lemma(word: &str) -> Vec<&'static DictionaryEntry> {
     lookup_all(word, |entry| entry.pos == DictionaryPartOfSpeech::Noun)
-}
-
-fn choose_for_number(
-    candidates: Vec<&'static DictionaryEntry>,
-    wants_plural: bool,
-) -> Option<&'static DictionaryEntry> {
-    candidates
-        .iter()
-        .copied()
-        .find(|entry| {
-            if wants_plural {
-                !entry.singular_only
-            } else {
-                !entry.plural_only
-            }
-        })
-        .or_else(|| candidates.first().copied())
 }
 
 #[allow(dead_code)]

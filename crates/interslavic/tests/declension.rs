@@ -1,7 +1,7 @@
 use interslavic::*;
 
 fn noun(word: &str, case: Case, number: Number) -> String {
-    ISV::decline_noun(word, &case, &number).0
+    ISV::noun_form(word, case, number).unwrap().text()
 }
 
 #[test]
@@ -41,61 +41,49 @@ fn noun_declension_handles_irregular_and_soft_classes() {
 #[test]
 fn adjective_declension_uses_sonic16x_nasal_endings() {
     assert_eq!(
-        ISV::decline_adj(
+        ISV::adj(
             "babin",
-            &Case::Nom,
-            &Number::Singular,
-            &Gender::Masculine,
+            Case::Nom,
+            Number::Singular,
+            Gender::Masculine,
             false
         ),
         "babin"
     );
     assert_eq!(
-        ISV::decline_adj(
+        ISV::adj(
             "babin",
-            &Case::Gen,
-            &Number::Singular,
-            &Gender::Masculine,
+            Case::Gen,
+            Number::Singular,
+            Gender::Masculine,
             true
         ),
         "babinogo"
     );
     assert_eq!(
-        ISV::decline_adj(
+        ISV::adj(
             "dȯlžėn",
-            &Case::Gen,
-            &Number::Singular,
-            &Gender::Masculine,
+            Case::Gen,
+            Number::Singular,
+            Gender::Masculine,
             true
         ),
         "dȯlžnogo"
     );
     assert_eq!(
-        ISV::decline_adj(
-            "samy",
-            &Case::Acc,
-            &Number::Singular,
-            &Gender::Feminine,
-            false
-        ),
+        ISV::adj("samy", Case::Acc, Number::Singular, Gender::Feminine, false),
         "samų"
     );
     assert_eq!(
-        ISV::decline_adj(
-            "samy",
-            &Case::Ins,
-            &Number::Singular,
-            &Gender::Feminine,
-            false
-        ),
+        ISV::adj("samy", Case::Ins, Number::Singular, Gender::Feminine, false),
         "samojų"
     );
     assert_eq!(
-        ISV::decline_adj(
+        ISV::adj(
             "sinji",
-            &Case::Ins,
-            &Number::Singular,
-            &Gender::Feminine,
+            Case::Ins,
+            Number::Singular,
+            Gender::Feminine,
             false
         ),
         "sinjejų"

@@ -1,7 +1,7 @@
 use interslavic::*;
 
 fn noun(word: &str, case: Case, number: Number) -> String {
-    ISV::decline_noun_with_dictionary(word, &case, &number).0
+    ISV::noun_form(word, case, number).unwrap().text()
 }
 
 #[test]
@@ -45,15 +45,19 @@ fn dictionary_metadata_handles_indeclinable_entries() {
 #[test]
 fn dictionary_id_api_disambiguates_homonyms() {
     assert_eq!(
-        ISV::decline_noun_with_dictionary_id("640", "člen", &Case::Acc, &Number::Singular)
+        ISV::noun_id("640")
             .unwrap()
-            .0,
+            .get(Case::Acc, Number::Singular)
+            .unwrap()
+            .text(),
         "člena"
     );
     assert_eq!(
-        ISV::decline_noun_with_dictionary_id("25028", "člen", &Case::Acc, &Number::Singular)
+        ISV::noun_id("25028")
             .unwrap()
-            .0,
+            .get(Case::Acc, Number::Singular)
+            .unwrap()
+            .text(),
         "člen"
     );
 }

@@ -1,0 +1,13 @@
+[package]
+name = "interslavic"
+version = "0.2.1"
+edition.workspace = true
+description = "Interslavic inflector with embedded dictionary metadata"
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+interslavic-core = { workspace = true }

@@ -5,83 +5,57 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/bevyengine/bevy/blob/master/LICENSE)
 [![Downloads](https://img.shields.io/crates/d/interslavic.svg)](https://crates.io/crates/interslavic)
 
+Interslavic inflection in two crates:
 
-This crate provides a decliner/conjugator/inflector for Interslavic.
+- `interslavic-core`: dependency-free morphology rules.
+- `interslavic`: dictionary-backed wrapper with embedded metadata generated from the official dictionary at https://interslavic-dictionary.com/.
 
-It embeds noun metadata generated from the official dictionary at https://interslavic-dictionary.com/ (source sheet: https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/edit?gid=1987833874#gid=1987833874).
+Dictionary source sheet: https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/edit?gid=1987833874#gid=1987833874
 
-
-Sample usage:
+## Example
 
 ```rust
 use interslavic::*;
-fn main() {
-    let mut inflector = ISV::default();
-    //if you do not initialize the dictionary, animate nouns will not be inflected correctly, nor will words with irregular stems
-    inflector.initialize_dictionary("isv_words.csv");
 
-    let noun = inflector.decline_noun("mųž", &Case::Gen, &Number::Singular);
-    //the output is a tuple of a string and gender
-    println!("{:#?}", noun.0);
-    //output: mųža
+fn main() -> Result<(), InflectionError> {
+    // One form, dictionary-backed.
+    println!("{}", ISV::noun_form("adept", Case::Acc, Number::Singular)?.text());
+    // adepta
 
-    // Dictionary-backed declension preserves metadata such as animacy, gender,
-    // indeclinability, singular/plural-only flags, and stem hints.
-    let animate = inflector.decline_noun_with_dictionary("adept", &Case::Acc, &Number::Singular);
-    println!("{:#?}", animate.0);
-    //output: adepta
+    // Full paradigm by dictionary id.
+    let člen = ISV::noun_id("25028")?;
+    println!("{}", člen.get(Case::Acc, Number::Singular).unwrap().text());
+    // člen
 
-    // Homonyms can be disambiguated by dictionary id.
-    let inanimate = inflector.decline_noun_with_dictionary_id(
-        "25028",
-        "člen",
-        &Case::Acc,
-        &Number::Singular,
-    );
-    println!("{:#?}", inanimate.unwrap().0);
-    //output: člen
+    // m./f. nouns require explicit gender.
+    let luč = ISV::noun_id_as("339", NounGender::Feminine)?;
+    println!("{}", luč.get(Case::Gen, Number::Singular).unwrap().text());
+    // luči
 
-    // The structured API returns complete paradigms and requires explicit
-    // gender_override for masculine/feminine dictionary entries.
-    let feminine_luč = inflector.decline_noun_by_id_with_gender_override(
-        "339",
-        NounGender::Feminine,
-    ).unwrap();
-    println!("{:#?}", feminine_luč.genitive_singular.unwrap().alternatives);
-    //output: ["luči"]
+    // All dictionary paradigms for a lemma, including homonyms and m./f. variants.
+    for paradigm in ISV::noun("luč")? {
+        println!("{:?}: {}", paradigm.gender, paradigm.get(Case::Gen, Number::Singular).unwrap().text());
+    }
 
-    let adj = inflector.decline_adj(
-        "samy",
-        &Case::Gen,
-        &Number::Singular,
-        &Gender::Masculine,
-        true,
-    );
-       //the output is just a string
-    println!("{:#?}", adj);
-    //output: samogo
+    // Pure explicit morphology, no dictionary lookup.
+    let mųž = ISV::noun_as(NounDeclensionRequest {
+        lemma: "mųž",
+        gender: NounGender::Masculine,
+        animacy: Animacy::Animate,
+        number_restriction: NumberRestriction::Countable,
+        indeclinable: false,
+        addition: None,
+        gender_override: None,
+    })?;
+    println!("{}", mųž.get(Case::Gen, Number::Singular).unwrap().text());
+    // mųža
 
+    // Adjectives and verbs.
+    println!("{}", ISV::adj("osnovany na", Case::Gen, Number::Singular, Gender::Masculine, true));
+    // osnovanogo na
+    println!("{}", ISV::verb("učiti", Person::First, Number::Singular, Gender::Feminine, Tense::Present));
+    // učų
 
-    let verbik = "učiti";
-
-
-    let verb = inflector.conjugate_verb(
-            verbik,
-            &Person::First,
-            &Number::Singular,
-            &Gender::Feminine,
-            &Tense::Present,
-    );
-    println!("{:#?}", verb);
-    //output: učų
-
-
-
-    let lik = inflector.l_participle("buditi", &Gender::Feminine, &Number::Singular);
-    println!("{:#?}", lik);
-    //output: budila
-
-
+    Ok(())
 }
-
 ```

@@ -1,8 +1,18 @@
-[package]
-name = "interslavic"
-version = "0.2.1"
+[workspace]
+members = [
+    "crates/interslavic",
+    "crates/interslavic-core",
+]
+default-members = [
+    "crates/interslavic",
+    "crates/interslavic-core",
+]
+resolver = "2"
+
+[workspace.package]
 edition = "2021"
-description = "interslavic utilities in rust "
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/gold-silver-copper/interslavic-rs"
-[dependencies]
+
+[workspace.dependencies]
+interslavic-core = { path = "crates/interslavic-core", version = "0.2.1" }
