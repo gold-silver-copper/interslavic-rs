@@ -1,5 +1,7 @@
 mod case_endings;
 use case_endings::*;
+mod dictionary;
+use dictionary::*;
 mod verb_endings;
 use verb_endings::*;
 
@@ -223,7 +225,7 @@ impl ISV {
         _gender: &Gender,
         tense: &Tense,
     ) -> Verb {
-        let word = word.to_lowercase();
+        let word = word.trim().to_string();
         let (present_stem, conjugation) = ISV::get_present_tense_stem(&word);
 
         let endings = match conjugation {
@@ -281,9 +283,19 @@ impl ISV {
         gender: &Gender,
         animate: bool,
     ) -> Adjective {
-        let word = word.to_lowercase();
+        let word = word.trim().to_string();
         let stem_is_soft = ISV::stem_of_adj_is_soft(&word);
         let adj_stem = ISV::get_adj_stem(&word);
+        let has_long_form_ending =
+            word.ends_with('y') || word.ends_with('i') || word.ends_with('j');
+
+        if !has_long_form_ending
+            && gender == &Gender::Masculine
+            && number == &Number::Singular
+            && (case == &Case::Nom || (!animate && case == &Case::Acc))
+        {
+            return word;
+        }
 
         let endings = match gender {
             Gender::Masculine => {
@@ -324,33 +336,124 @@ impl ISV {
         word.ends_with("i")
     }
     pub fn get_adj_stem(word: &str) -> String {
-        let mut adj_stem = word.to_string();
-        adj_stem.pop();
-        adj_stem
+        if word.ends_with('y') || word.ends_with('i') || word.ends_with('j') {
+            let mut adj_stem = word.to_string();
+            adj_stem.pop();
+            adj_stem
+        } else {
+            ISV::infer_fluent_vowel(word)
+                .replace("(e)", "")
+                .replace("(o)", "")
+        }
     }
 }
 
 //NOUN STUFF
 impl ISV {
     pub fn decline_noun(word: &str, case: &Case, number: &Number) -> Noun {
-        let word = word.to_lowercase();
-        let gender = ISV::guess_gender(&word);
-        let word_is_animate = ISV::noun_is_animate(&word);
-        let declined = ISV::decline_noun_steen(&word, &gender, word_is_animate, case, number);
+        ISV::decline_noun_with_dictionary(word, case, number)
+    }
+
+    pub fn decline_noun_with_dictionary(word: &str, case: &Case, number: &Number) -> Noun {
+        let word = word.trim();
+        if let Some(entry) = lookup_noun_for_number(word, number == &Number::Plural) {
+            return ISV::decline_noun_from_entry(word, entry, case, number);
+        }
+
+        let gender = ISV::guess_gender(word);
+        let word_is_animate = ISV::noun_is_animate(word);
+        let declined = ISV::decline_noun_steen(
+            word,
+            "",
+            &gender,
+            word_is_animate,
+            false,
+            false,
+            false,
+            case,
+            number,
+        );
         (declined, gender)
     }
 
+    pub fn decline_noun_with_dictionary_id(
+        id: &str,
+        word: &str,
+        case: &Case,
+        number: &Number,
+    ) -> Option<Noun> {
+        lookup_noun_by_id_for_number(id, word.trim(), number == &Number::Plural)
+            .map(|entry| ISV::decline_noun_from_entry(word.trim(), entry, case, number))
+    }
+
+    fn decline_noun_from_entry(
+        word: &str,
+        entry: &DictionaryEntry,
+        case: &Case,
+        number: &Number,
+    ) -> Noun {
+        let gender = match entry
+            .gender
+            .as_ref()
+            .unwrap_or(&DictionaryGender::Masculine)
+        {
+            DictionaryGender::Masculine | DictionaryGender::MasculineOrFeminine => {
+                Gender::Masculine
+            }
+            DictionaryGender::Feminine => Gender::Feminine,
+            DictionaryGender::Neuter => Gender::Neuter,
+        };
+        let declined = ISV::decline_noun_steen(
+            word,
+            &entry.addition,
+            &gender,
+            entry.animate,
+            entry.plural_only,
+            entry.singular_only,
+            entry.indeclinable,
+            case,
+            number,
+        );
+        (declined, gender)
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn decline_noun_steen(
         word: &str,
+        add: &str,
         origin_gender: &Gender,
         animate: bool,
+        plural_only: bool,
+        singular_only: bool,
+        indeclinable: bool,
         case: &Case,
         number: &Number,
     ) -> String {
+        let noun = ISV::remove_bracketed_text(word.trim(), '[', ']');
+        if indeclinable {
+            return noun;
+        }
+        if plural_only {
+            return ISV::decline_plural_only_noun(&noun, add, origin_gender, case, number)
+                .unwrap_or(noun);
+        }
+        if singular_only && number == &Number::Plural {
+            return noun;
+        }
+        if let Some(form) =
+            ISV::decline_substantivized_adjective(&noun, add, origin_gender, animate, case, number)
+        {
+            return form;
+        }
+
+        let noun = ISV::mark_or_infer_fluent_vowel(&noun, add);
+        let marked_noun =
+            ISV::mark_final_soft_noun_consonants(&noun.replace("(e)", "ė").replace("(o)", "ȯ"));
+        let noun_without_fluent =
+            ISV::mark_final_soft_noun_consonants(&noun.replace("(e)", "").replace("(o)", ""));
         let raw_gender = ISV::prepare_noun_gender(origin_gender, animate);
-        let marked_noun = ISV::mark_final_soft_noun_consonants(word);
         let gender = ISV::establish_noun_gender(&marked_noun, &raw_gender);
-        let root = ISV::establish_noun_root(&marked_noun, &gender);
+        let root = ISV::establish_noun_root(&noun_without_fluent, &gender);
         let plural_root = ISV::establish_plural_noun_root(&root);
         let plural_gender =
             ISV::establish_plural_noun_gender(&root, &plural_root, &gender, &raw_gender);
@@ -384,6 +487,218 @@ impl ISV {
                 Case::Ins => ISV::noun_instrumental_pl(&plural_root, &gender),
             },
         }
+    }
+
+    fn remove_bracketed_text(input: &str, open: char, close: char) -> String {
+        let mut result = String::new();
+        let mut depth = 0usize;
+        for c in input.chars() {
+            if c == open {
+                depth += 1;
+            } else if c == close && depth > 0 {
+                depth -= 1;
+            } else if depth == 0 {
+                result.push(c);
+            }
+        }
+        result.trim().to_string()
+    }
+
+    fn mark_or_infer_fluent_vowel(word: &str, add: &str) -> String {
+        let add = add.trim().trim_matches(['(', ')']);
+        if !add.is_empty() && word != add {
+            ISV::mark_fluent_vowel(word, add)
+        } else {
+            ISV::infer_fluent_vowel(word)
+        }
+    }
+
+    fn mark_fluent_vowel(word: &str, add: &str) -> String {
+        let word_chars: Vec<char> = word.chars().collect();
+        let add_chars: Vec<char> = add.chars().collect();
+        let limit = word_chars.len().saturating_sub(1).min(add_chars.len());
+        let mut idx = 0usize;
+        while idx < limit && word_chars[idx] == add_chars[idx] {
+            idx += 1;
+        }
+        if idx + 1 < word_chars.len()
+            && idx < add_chars.len()
+            && word_chars[idx + 1] == add_chars[idx]
+        {
+            ISV::replace_fluent_vowel(word, idx)
+        } else {
+            word.to_string()
+        }
+    }
+
+    fn infer_fluent_vowel(word: &str) -> String {
+        let chars: Vec<char> = word.chars().collect();
+        let mut result = word.to_string();
+        let mut replaced = false;
+        let mut end = chars.len();
+
+        for idx in (0..chars.len()).rev() {
+            let c = chars[idx];
+            if !ISV::is_dictionary_letter(c) {
+                end = idx;
+                replaced = false;
+            }
+            if !replaced
+                && matches!(c, 'è' | 'ė' | 'ȯ' | 'ò')
+                && ISV::is_last_fluent_syllable(&chars, idx, end)
+            {
+                result = ISV::replace_fluent_vowel(&result, idx);
+                replaced = true;
+            }
+        }
+        result
+    }
+
+    fn replace_fluent_vowel(word: &str, index: usize) -> String {
+        let mut result = String::new();
+        for (idx, c) in word.chars().enumerate() {
+            if idx == index {
+                let plain = match c {
+                    'ė' | 'è' => 'e',
+                    'ȯ' | 'ò' => 'o',
+                    _ => c,
+                };
+                result.push('(');
+                result.push(plain);
+                result.push(')');
+            } else {
+                result.push(c);
+            }
+        }
+        result
+    }
+
+    fn is_last_fluent_syllable(chars: &[char], idx: usize, end: usize) -> bool {
+        if idx + 2 == end {
+            chars.get(idx + 1).is_some_and(ISVUTILS::is_consonant)
+        } else if idx + 3 == end {
+            chars.get(idx + 1) == Some(&'n') && chars.get(idx + 2) == Some(&'j')
+        } else {
+            false
+        }
+    }
+
+    fn is_dictionary_letter(c: char) -> bool {
+        c.is_alphabetic()
+            || matches!(
+                c,
+                'å' | 'ę'
+                    | 'ė'
+                    | 'ȯ'
+                    | 'ų'
+                    | 'ě'
+                    | 'ć'
+                    | 'č'
+                    | 'ď'
+                    | 'đ'
+                    | 'ĺ'
+                    | 'ľ'
+                    | 'ń'
+                    | 'ŕ'
+                    | 'ś'
+                    | 'š'
+                    | 'ť'
+                    | 'ź'
+                    | 'ž'
+            )
+    }
+
+    fn decline_plural_only_noun(
+        word: &str,
+        add: &str,
+        gender: &Gender,
+        case: &Case,
+        number: &Number,
+    ) -> Option<String> {
+        if number == &Number::Singular {
+            return None;
+        }
+
+        let word_without_last = ISVUTILS::string_without_last_n(word, 1);
+        let add = add.trim().trim_matches(['(', ')']);
+        if add.ends_with("yh") || add.ends_with("ih") {
+            let i_or_y = if add.ends_with("yh") { "y" } else { "i" };
+            return Some(match case {
+                Case::Nom | Case::Acc => word.to_string(),
+                Case::Gen | Case::Loc => format!("{}{}h", word_without_last, i_or_y),
+                Case::Dat => format!("{}{}m", word_without_last, i_or_y),
+                Case::Ins => format!("{}{}mi", word_without_last, i_or_y),
+            });
+        }
+        if !add.is_empty() {
+            return None;
+        }
+
+        match gender {
+            Gender::Masculine if word.ends_with(['i', 'y', 'e']) => Some(match case {
+                Case::Nom | Case::Acc => word.to_string(),
+                Case::Gen => format!("{}ov", word_without_last),
+                Case::Loc => format!("{}ah", word_without_last),
+                Case::Dat => format!("{}am", word_without_last),
+                Case::Ins => format!("{}ami", word_without_last),
+            }),
+            Gender::Feminine if word.ends_with(['y', 'e']) => Some(match case {
+                Case::Nom | Case::Acc => word.to_string(),
+                Case::Gen => {
+                    ISV::noun_rules(&ISV::plural_gen_ending(&(word_without_last.clone() + "%")))
+                }
+                Case::Loc => format!("{}ah", word_without_last),
+                Case::Dat => format!("{}am", word_without_last),
+                Case::Ins => format!("{}ami", word_without_last),
+            }),
+            Gender::Neuter if word.ends_with('a') => Some(match case {
+                Case::Nom | Case::Acc => word.to_string(),
+                Case::Gen => {
+                    ISV::noun_rules(&ISV::plural_gen_ending(&(word_without_last.clone() + "%")))
+                }
+                Case::Loc => format!("{}ah", word_without_last),
+                Case::Dat => format!("{}am", word_without_last),
+                Case::Ins => format!("{}ami", word_without_last),
+            }),
+            Gender::Feminine if word.ends_with('i') => Some(match case {
+                Case::Nom | Case::Acc => word.to_string(),
+                Case::Gen => format!("{}ij", word_without_last),
+                Case::Loc => format!("{}ah", word_without_last),
+                Case::Dat => format!("{}am", word_without_last),
+                Case::Ins => format!("{}ami", word_without_last),
+            }),
+            _ => None,
+        }
+    }
+
+    fn decline_substantivized_adjective(
+        word: &str,
+        add: &str,
+        gender: &Gender,
+        animate: bool,
+        case: &Case,
+        number: &Number,
+    ) -> Option<String> {
+        let add = add.trim().trim_matches(['(', ')']);
+        let stem = ISVUTILS::string_without_last_n(word, 1);
+        let suffix = if ["-ogo", "-ego", "-oj", "-ej"].contains(&add) {
+            Some(add.to_string())
+        } else if !add.is_empty() && add.starts_with(&stem) {
+            Some(add.replacen(&stem, "-", 1))
+        } else {
+            None
+        }?;
+
+        if !["-ogo", "-ego", "-oj", "-ej"].contains(&suffix.as_str()) {
+            return None;
+        }
+
+        let adjective = match gender {
+            Gender::Masculine | Gender::Neuter => stem + if suffix == "-ogo" { "y" } else { "i" },
+            Gender::Feminine => stem + if suffix == "-oj" { "y" } else { "i" },
+        };
+
+        Some(ISV::decline_adj(&adjective, case, number, gender, animate))
     }
 
     fn prepare_noun_gender(gender: &Gender, animate: bool) -> String {

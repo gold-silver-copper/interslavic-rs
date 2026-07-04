@@ -42,6 +42,36 @@ fn noun_declension_handles_irregular_and_soft_classes() {
 fn adjective_declension_uses_sonic16x_nasal_endings() {
     assert_eq!(
         ISV::decline_adj(
+            "babin",
+            &Case::Nom,
+            &Number::Singular,
+            &Gender::Masculine,
+            false
+        ),
+        "babin"
+    );
+    assert_eq!(
+        ISV::decline_adj(
+            "babin",
+            &Case::Gen,
+            &Number::Singular,
+            &Gender::Masculine,
+            true
+        ),
+        "babinogo"
+    );
+    assert_eq!(
+        ISV::decline_adj(
+            "dȯlžėn",
+            &Case::Gen,
+            &Number::Singular,
+            &Gender::Masculine,
+            true
+        ),
+        "dȯlžnogo"
+    );
+    assert_eq!(
+        ISV::decline_adj(
             "samy",
             &Case::Acc,
             &Number::Singular,

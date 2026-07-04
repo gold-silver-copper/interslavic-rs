@@ -8,7 +8,7 @@
 
 This crate provides a decliner/conjugator/inflector for Interslavic.
 
-It uses data from the official dictionary at  https://interslavic-dictionary.com/
+It embeds noun metadata generated from the official dictionary at https://interslavic-dictionary.com/ (source sheet: https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/edit?gid=1987833874#gid=1987833874).
 
 
 Sample usage:
@@ -24,6 +24,22 @@ fn main() {
     //the output is a tuple of a string and gender
     println!("{:#?}", noun.0);
     //output: mųža
+
+    // Dictionary-backed declension preserves metadata such as animacy, gender,
+    // indeclinability, singular/plural-only flags, and stem hints.
+    let animate = inflector.decline_noun_with_dictionary("adept", &Case::Acc, &Number::Singular);
+    println!("{:#?}", animate.0);
+    //output: adepta
+
+    // Homonyms can be disambiguated by dictionary id.
+    let inanimate = inflector.decline_noun_with_dictionary_id(
+        "25028",
+        "člen",
+        &Case::Acc,
+        &Number::Singular,
+    );
+    println!("{:#?}", inanimate.unwrap().0);
+    //output: člen
 
     let adj = inflector.decline_adj(
         "samy",
