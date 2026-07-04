@@ -93,8 +93,8 @@ impl ISV {
 
     /// One adjective form. Compound adjective phrases are handled by the core
     /// rules (`osnovany na` -> `osnovanogo na`).
-    pub fn adj(word: &str, case: Case, number: Number, gender: Gender, animate: bool) -> String {
-        ISVCore::decline_adj(word, &case, &number, &gender, animate)
+    pub fn adj(word: &str, case: Case, number: Number, gender: Gender, animacy: Animacy) -> String {
+        ISVCore::decline_adj(word, &case, &number, &gender, animacy)
     }
 
     /// One present-tense verb form.

@@ -51,7 +51,7 @@ fn main() -> Result<(), InflectionError> {
     // mųža
 
     // Adjectives and verbs.
-    println!("{}", ISV::adj("osnovany na", Case::Gen, Number::Singular, Gender::Masculine, true));
+    println!("{}", ISV::adj("osnovany na", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate));
     // osnovanogo na
     println!("{}", ISV::verb("učiti", Person::First, Number::Singular, Gender::Feminine, Tense::Present));
     // učų

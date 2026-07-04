@@ -46,7 +46,7 @@ fn adjective_declension_uses_sonic16x_nasal_endings() {
             Case::Nom,
             Number::Singular,
             Gender::Masculine,
-            false
+            Animacy::Inanimate
         ),
         "babin"
     );
@@ -56,7 +56,7 @@ fn adjective_declension_uses_sonic16x_nasal_endings() {
             Case::Gen,
             Number::Singular,
             Gender::Masculine,
-            true
+            Animacy::Animate
         ),
         "babinogo"
     );
@@ -66,16 +66,28 @@ fn adjective_declension_uses_sonic16x_nasal_endings() {
             Case::Gen,
             Number::Singular,
             Gender::Masculine,
-            true
+            Animacy::Animate
         ),
         "dȯlžnogo"
     );
     assert_eq!(
-        ISV::adj("samy", Case::Acc, Number::Singular, Gender::Feminine, false),
+        ISV::adj(
+            "samy",
+            Case::Acc,
+            Number::Singular,
+            Gender::Feminine,
+            Animacy::Inanimate
+        ),
         "samų"
     );
     assert_eq!(
-        ISV::adj("samy", Case::Ins, Number::Singular, Gender::Feminine, false),
+        ISV::adj(
+            "samy",
+            Case::Ins,
+            Number::Singular,
+            Gender::Feminine,
+            Animacy::Inanimate
+        ),
         "samojų"
     );
     assert_eq!(
@@ -84,7 +96,7 @@ fn adjective_declension_uses_sonic16x_nasal_endings() {
             Case::Ins,
             Number::Singular,
             Gender::Feminine,
-            false
+            Animacy::Inanimate
         ),
         "sinjejų"
     );

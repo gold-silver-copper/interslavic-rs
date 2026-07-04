@@ -8,7 +8,7 @@ fn compound_adjective_phrases_decline_head_and_append_postfix() {
             Case::Gen,
             Number::Singular,
             Gender::Masculine,
-            true,
+            Animacy::Animate,
         ),
         "osnovanogo na"
     );
@@ -18,7 +18,7 @@ fn compound_adjective_phrases_decline_head_and_append_postfix() {
             Case::Nom,
             Number::Plural,
             Gender::Masculine,
-            true,
+            Animacy::Animate,
         ),
         "pȯlni naděje"
     );
@@ -138,7 +138,7 @@ fn seksi_matches_reference_softening() {
             Case::Nom,
             Number::Singular,
             Gender::Masculine,
-            false
+            Animacy::Inanimate
         ),
         "sekśi"
     );
@@ -148,12 +148,18 @@ fn seksi_matches_reference_softening() {
             Case::Acc,
             Number::Singular,
             Gender::Masculine,
-            false
+            Animacy::Inanimate
         ),
         "seksi"
     );
     assert_eq!(
-        ISV::adj("seksi", Case::Gen, Number::Plural, Gender::Feminine, false),
+        ISV::adj(
+            "seksi",
+            Case::Gen,
+            Number::Plural,
+            Gender::Feminine,
+            Animacy::Inanimate
+        ),
         "sekśih"
     );
 }

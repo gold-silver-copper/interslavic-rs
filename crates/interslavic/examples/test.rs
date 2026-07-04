@@ -29,7 +29,7 @@ fn main() -> Result<(), InflectionError> {
             Case::Gen,
             Number::Singular,
             Gender::Masculine,
-            true
+            Animacy::Animate
         )
     );
 

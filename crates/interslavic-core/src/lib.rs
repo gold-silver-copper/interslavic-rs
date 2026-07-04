@@ -370,7 +370,7 @@ impl ISVCore {
         case: &Case,
         number: &Number,
         gender: &Gender,
-        animate: bool,
+        animacy: Animacy,
     ) -> Adjective {
         let original_word = word.trim().to_string();
         let mut word = original_word.clone();
@@ -392,7 +392,7 @@ impl ISVCore {
         }
         if original_word == "seksi"
             && gender == &Gender::Masculine
-            && !animate
+            && animacy != Animacy::Animate
             && case == &Case::Acc
             && number == &Number::Singular
         {
@@ -406,14 +406,14 @@ impl ISVCore {
         if !has_long_form_ending
             && gender == &Gender::Masculine
             && number == &Number::Singular
-            && (case == &Case::Nom || (!animate && case == &Case::Acc))
+            && (case == &Case::Nom || (animacy != Animacy::Animate && case == &Case::Acc))
         {
             return word;
         }
 
         let endings = match gender {
             Gender::Masculine => {
-                if animate {
+                if animacy == Animacy::Animate {
                     if stem_is_soft {
                         &ADJ_ANIMATE_SOFT_ENDINGS
                     } else {
@@ -901,7 +901,15 @@ impl ISVCore {
         };
 
         Some(ISVCore::decline_adj(
-            &adjective, case, number, gender, animate,
+            &adjective,
+            case,
+            number,
+            gender,
+            if animate {
+                Animacy::Animate
+            } else {
+                Animacy::Inanimate
+            },
         ))
     }
 
