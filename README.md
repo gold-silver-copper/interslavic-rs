@@ -5,58 +5,86 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/bevyengine/bevy/blob/master/LICENSE)
 [![Downloads](https://img.shields.io/crates/d/interslavic.svg)](https://crates.io/crates/interslavic)
 
+Interslavic inflection in four crates:
 
-This crate provides a decliner/conjugator/inflector for Interslavic.
+- `interslavic-core`: dependency-free morphology rules.
+- `interslavic`: small public API with generated dictionary metadata.
+- `interslavic-extractor`: offline metadata generator.
+- `xtask`: workspace commands for refreshing/checking generated data.
 
-It uses data from the official dictionary at  https://interslavic-dictionary.com/
+Dictionary source sheet: https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/edit?gid=1987833874#gid=1987833874
 
-
-Sample usage:
+## Example
 
 ```rust
 use interslavic::*;
+
 fn main() {
-    let mut inflector = ISV::default();
-    //if you do not initialize the dictionary, animate nouns will not be inflected correctly, nor will words with irregular stems
-    inflector.initialize_dictionary("isv_words.csv");
+    // One dictionary-backed noun form.
+    assert_eq!(ISV::noun("adept", Case::Acc, Number::Singular), "adepta");
 
-    let noun = inflector.decline_noun("mųž", &Case::Gen, &Number::Singular);
-    //the output is a tuple of a string and gender
-    println!("{:#?}", noun.0);
-    //output: mųža
+    // Alternatives are returned as one slash-separated string.
+    assert_eq!(ISV::noun("oko", Case::Nom, Number::Plural), "oči / očesa");
 
-    let adj = inflector.decline_adj(
-        "samy",
-        &Case::Gen,
-        &Number::Singular,
-        &Gender::Masculine,
-        true,
+    // Ambiguous or context-sensitive nouns can be overridden directly.
+    assert_eq!(
+        ISV::noun_with(
+            "luč",
+            Case::Gen,
+            Number::Singular,
+            NounGender::Feminine,
+            Animacy::Inanimate,
+        ),
+        "luči"
     );
-       //the output is just a string
-    println!("{:#?}", adj);
-    //output: samogo
-
-
-    let verbik = "učiti";
-
-
-    let verb = inflector.conjugate_verb(
-            verbik,
-            &Person::First,
-            &Number::Singular,
-            &Gender::Feminine,
-            &Tense::Present,
+    assert_eq!(
+        ISV::noun_with(
+            "mųž",
+            Case::Acc,
+            Number::Singular,
+            NounGender::Masculine,
+            Animacy::Animate,
+        ),
+        "mųža"
     );
-    println!("{:#?}", verb);
-    //output: učų
 
-
-
-    let lik = inflector.l_participle("buditi", &Gender::Feminine, &Number::Singular);
-    println!("{:#?}", lik);
-    //output: budila
-
-
+    // Adjectives and verbs are also single-form APIs. Adjective phrases with
+    // particles/complements should be modeled by the caller, not declined as a unit.
+    assert_eq!(
+        ISV::adj(
+            "dobry",
+            Case::Gen,
+            Number::Singular,
+            Gender::Masculine,
+            Animacy::Animate,
+        ),
+        "dobrogo"
+    );
+    assert_eq!(
+        ISV::verb(
+            "učiti",
+            Person::First,
+            Number::Singular,
+            Gender::Feminine,
+            Tense::Present,
+        ),
+        "učų"
+    );
 }
-
 ```
+
+## Data generation
+
+The runtime crate does not parse dictionary TSV data. Generated Rust metadata is
+committed under `crates/interslavic/generated` and included at compile time.
+
+Refresh and check it with:
+
+```bash
+cargo xtask refresh-data
+cargo xtask check-registry
+```
+
+## License
+
+Dual licensed under MIT and Apache-2.0.
