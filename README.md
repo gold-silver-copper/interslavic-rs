@@ -85,6 +85,16 @@ cargo xtask refresh-data
 cargo xtask check-registry
 ```
 
+## sonic16x comparison
+
+`tools/compare-latest-sonic.js` fetches the latest upstream `sonic16x/interslavic` `master` branch, generates reference forms with `@interslavic/utils`, compares the Rust output, and writes reports under `target/infl-comparison`.
+
+```bash
+node tools/compare-latest-sonic.js
+```
+
+Phrase strings from dictionary rows are reported separately because this crate's core APIs accept typed lemmas/metadata rather than arbitrary phrases.
+
 ## License
 
 Dual licensed under MIT and Apache-2.0.

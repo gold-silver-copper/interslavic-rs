@@ -38,7 +38,9 @@ impl ISV {
         animacy: Animacy,
     ) -> String {
         let entries = lookup_nouns_by_lemma(lemma);
-        if let Some(entry) = entries.first() {
+        if let Some(entry) =
+            Self::select_noun_entry(lemma, entries, case, number, Some(gender), Some(animacy))
+        {
             return Self::noun_from_entry(entry, case, number, Some(gender), Some(animacy));
         }
 
@@ -61,7 +63,60 @@ impl ISV {
         gender: Gender,
         tense: Tense,
     ) -> String {
+        let entries = lookup_verbs_by_lemma(word);
+        if let Some(entry) = entries.last() {
+            return ISVCore::conjugate_verb_with_present_hint(
+                entry.lemma,
+                entry.addition,
+                &person,
+                &number,
+                &tense,
+            );
+        }
+
         ISVCore::conjugate_verb(word, &person, &number, &gender, &tense)
+    }
+
+    fn select_noun_entry<'a>(
+        lemma: &str,
+        entries: &'a [DictionaryEntry],
+        case: Case,
+        number: Number,
+        gender: Option<NounGender>,
+        animacy: Option<Animacy>,
+    ) -> Option<&'a DictionaryEntry> {
+        entries.iter().max_by_key(|entry| {
+            let mut score = 0;
+            if entry.lemma == lemma {
+                score += 16;
+            }
+            if gender.is_some_and(|wanted| dictionary_gender_to_api(entry.gender) == wanted) {
+                score += 8;
+            }
+            if animacy.is_some_and(|wanted| {
+                let entry_animacy = if entry.animate {
+                    Animacy::Animate
+                } else {
+                    Animacy::Inanimate
+                };
+                entry_animacy == wanted
+            }) {
+                score += 4;
+            }
+            if number == Number::Singular && !entry.plural_only {
+                score += 2;
+            }
+            if number == Number::Plural && !entry.singular_only {
+                score += 2;
+            }
+            if case == Case::Nom {
+                score += 1;
+            }
+            if !entry.indeclinable {
+                score += 1;
+            }
+            score
+        })
     }
 
     fn noun_from_entry(
