@@ -48,16 +48,17 @@ fn main() {
         "mųža"
     );
 
-    // Adjectives and verbs are also single-form APIs.
+    // Adjectives and verbs are also single-form APIs. Adjective phrases with
+    // particles/complements should be modeled by the caller, not declined as a unit.
     assert_eq!(
         ISV::adj(
-            "osnovany na",
+            "dobry",
             Case::Gen,
             Number::Singular,
             Gender::Masculine,
             Animacy::Animate,
         ),
-        "osnovanogo na"
+        "dobrogo"
     );
     assert_eq!(
         ISV::verb(

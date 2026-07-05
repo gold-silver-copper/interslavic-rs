@@ -1,7 +1,7 @@
 use interslavic::*;
 
 #[test]
-fn compound_adjective_phrases_decline_head_and_append_postfix() {
+fn adjective_phrases_are_not_declined_as_a_unit() {
     assert_eq!(
         ISV::adj(
             "osnovany na",
@@ -10,7 +10,7 @@ fn compound_adjective_phrases_decline_head_and_append_postfix() {
             Gender::Masculine,
             Animacy::Animate,
         ),
-        "osnovanogo na"
+        "osnovany na"
     );
     assert_eq!(
         ISV::adj(
@@ -20,7 +20,7 @@ fn compound_adjective_phrases_decline_head_and_append_postfix() {
             Gender::Masculine,
             Animacy::Animate,
         ),
-        "pȯlni naděje"
+        "pȯlny naděje"
     );
 }
 

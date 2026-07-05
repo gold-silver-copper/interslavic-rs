@@ -47,8 +47,8 @@ impl ISV {
         )
     }
 
-    /// One adjective form. Compound adjective phrases are handled by the core
-    /// rules (`osnovany na` -> `osnovanogo na`).
+    /// One adjective form. Adjective phrases are not declined as a unit; callers
+    /// should model particles/complements separately and pass only the adjective.
     pub fn adj(word: &str, case: Case, number: Number, gender: Gender, animacy: Animacy) -> String {
         ISVCore::decline_adj(word, &case, &number, &gender, animacy)
     }

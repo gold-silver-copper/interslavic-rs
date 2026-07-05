@@ -291,20 +291,11 @@ impl ISVCore {
         animacy: Animacy,
     ) -> String {
         let original_word = word.trim().to_string();
-        let mut word = original_word.clone();
-        let mut postfix = String::new();
-        if word.contains(' ') {
-            let words: Vec<&str> = word.split_whitespace().collect();
-            if let Some(index) = words
-                .iter()
-                .position(|part| part.ends_with('y') || part.ends_with('i') || part.ends_with('j'))
-            {
-                if index < words.len() - 1 {
-                    postfix = format!(" {}", words[index + 1..].join(" "));
-                    word = words[..=index].join(" ");
-                }
-            }
+        if original_word.split_whitespace().nth(1).is_some() {
+            return original_word;
         }
+
+        let mut word = original_word.clone();
         if word == "seksi" {
             word = "sekśi".into();
         }
@@ -361,18 +352,7 @@ impl ISVCore {
             }
         };
         let ending = endings.ending(case, number);
-        ISVCore::append_postfix_to_alternatives(&format!("{}{}", adj_stem, ending), &postfix)
-    }
-
-    fn append_postfix_to_alternatives(form: &str, postfix: &str) -> String {
-        if postfix.is_empty() {
-            form.into()
-        } else {
-            form.split('/')
-                .map(|part| format!("{}{}", part.trim(), postfix))
-                .collect::<Vec<_>>()
-                .join(" / ")
-        }
+        format!("{}{}", adj_stem, ending)
     }
 
     pub fn stem_of_adj_is_soft(word: &str) -> bool {

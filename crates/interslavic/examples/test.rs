@@ -35,9 +35,9 @@ fn main() {
     );
 
     println!(
-        "osnovany na gen sg: {}",
+        "dobry gen sg: {}",
         ISV::adj(
-            "osnovany na",
+            "dobry",
             Case::Gen,
             Number::Singular,
             Gender::Masculine,
