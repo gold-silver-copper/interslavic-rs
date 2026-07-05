@@ -19,5 +19,5 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/gold-silver-copper/interslavic-rs"
 
 [workspace.dependencies]
-interslavic-core = { path = "crates/interslavic-core", version = "0.2.1" }
+interslavic-core = { path = "crates/interslavic-core", version = "0.3.0" }
 phf = { version = "0.12", default-features = false, features = ["macros"] }
