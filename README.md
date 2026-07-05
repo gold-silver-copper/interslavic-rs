@@ -98,15 +98,24 @@ cargo xtask refresh-data
 cargo xtask check-registry
 ```
 
-## sonic16x comparison
+## sonic16x parity and accuracy
 
-`tools/compare-latest-sonic.js` fetches the latest upstream `sonic16x/interslavic` `master` branch, generates reference forms with `@interslavic/utils`, compares the Rust output, and writes reports under `target/infl-comparison`.
+This crate is tested against [`sonic16x/interslavic`](https://github.com/sonic16x/interslavic), the JavaScript implementation used by the Interslavic dictionary. The comparison script fetches the latest upstream `master` branch, generates reference forms with `@interslavic/utils`, compares the Rust output, and writes reports under `target/infl-comparison`.
 
 ```bash
 node tools/compare-latest-sonic.js
 ```
 
-Phrase strings from dictionary rows are reported separately because this crate's core APIs accept typed lemmas/metadata rather than arbitrary phrases.
+Latest measured compatible accuracy against sonic16x commit `0fab0c5b4463118d46b1cdcd506926d8848052c9` / `@interslavic/utils@3.4.0`:
+
+| Scope | Paradigms | Forms | Compatible accuracy | Mismatches |
+|---|---:|---:|---:|---:|
+| nouns | 8,851 | 99,060 | 99.9919% | 8 |
+| adjectives | 3,261 | 156,528 | 100.0000% | 0 |
+| verb present | 4,345 | 26,070 | 100.0000% | 0 |
+| total core comparable | 16,457 | 281,658 | 99.9972% | 8 |
+
+“Compatible” means the Rust form matched one of sonic16x's accepted alternatives when sonic returns comma/slash/parenthetical variants. Phrase strings from dictionary rows are reported separately because this crate's core APIs accept typed lemmas/metadata rather than arbitrary phrases; the latest run skipped 1,488 phrase rows and 8 Sonic-null/reference rows.
 
 ## License
 
