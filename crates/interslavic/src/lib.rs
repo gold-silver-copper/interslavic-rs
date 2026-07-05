@@ -63,8 +63,9 @@ impl ISV {
         gender: Gender,
         tense: Tense,
     ) -> String {
-        let entries = lookup_verbs_by_lemma(word);
-        if let Some(entry) = entries.last() {
+        let trimmed = word.trim();
+        let entries = lookup_verbs_by_lemma(trimmed);
+        if let Some(entry) = entries.first() {
             return ISVCore::conjugate_verb_with_present_hint(
                 entry.lemma,
                 entry.addition,
@@ -74,7 +75,27 @@ impl ISV {
             );
         }
 
-        ISVCore::conjugate_verb(word, &person, &number, &gender, &tense)
+        ISVCore::conjugate_verb(trimmed, &person, &number, &gender, &tense)
+    }
+
+    /// One present-tense verb form with an explicit dictionary present-stem hint.
+    ///
+    /// This is intended for typed dictionary rows that have multiple entries for
+    /// the same lemma. It does not parse arbitrary phrase strings.
+    pub fn verb_with_present_hint(
+        word: &str,
+        present_hint: &str,
+        person: Person,
+        number: Number,
+        tense: Tense,
+    ) -> String {
+        ISVCore::conjugate_verb_with_present_hint(
+            word.trim(),
+            present_hint,
+            &person,
+            &number,
+            &tense,
+        )
     }
 
     fn select_noun_entry<'a>(

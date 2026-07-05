@@ -85,3 +85,41 @@ fn raw_phrase_strings_are_not_conjugated_as_core_lemmas() {
         "bazovati na"
     );
 }
+
+#[test]
+fn verb_lookup_trims_input_before_dictionary_lookup() {
+    assert_eq!(
+        ISV::verb(
+            " pisati ",
+            Person::First,
+            Number::Singular,
+            Gender::Feminine,
+            Tense::Present,
+        ),
+        "pišų"
+    );
+}
+
+#[test]
+fn explicit_present_hint_selects_duplicate_dictionary_verb_rows() {
+    assert_eq!(
+        ISV::verb_with_present_hint(
+            "bolěti",
+            "(boli)",
+            Person::First,
+            Number::Singular,
+            Tense::Present,
+        ),
+        "boljų"
+    );
+    assert_eq!(
+        ISV::verb_with_present_hint(
+            "bolěti",
+            "(bolěje)",
+            Person::First,
+            Number::Singular,
+            Tense::Present,
+        ),
+        "bolějų"
+    );
+}

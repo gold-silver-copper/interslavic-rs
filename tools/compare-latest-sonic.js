@@ -13,7 +13,12 @@ const BASIC_URL = 'https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026Hljueu
 const CASES = ['nom', 'acc', 'gen', 'loc', 'dat', 'ins'];
 const NUMBERS = ['sg', 'pl'];
 const PERSONS = [['1', 'sg'], ['2', 'sg'], ['3', 'sg'], ['1', 'pl'], ['2', 'pl'], ['3', 'pl']];
-
+const MIN_COMPATIBLE_RATES = {
+  total: 0.99,
+  noun: 0.9999,
+  adjective: 0.999,
+  verb: 0.95,
+};
 
 function updateSonicCheckout() {
   execFileSync('git', ['fetch', 'origin'], { cwd: SONIC_REPO, stdio: 'inherit' });
@@ -171,7 +176,7 @@ function buildSonicReferences(rows) {
           if (!forms) { skipped.push({ id: row.id, word, kind: 'verb', details, reason: 'sonic returned null' }); continue; }
           {
             const refKey = `${row.id}|verb|${word}`;
-            refs.push({ refKey, input: `${refKey}\tverb\t${word}`, id: row.id, kind: 'verb', word, details, addition: row.addition || '', meta: { reflexive: !!pos.reflexive, perfective: !!pos.perfective, imperfective: !!pos.imperfective }, forms, allSonicVerbForms: result });
+            refs.push({ refKey, input: `${refKey}\tverb\t${word}\t${row.addition || ''}`, id: row.id, kind: 'verb', word, details, addition: row.addition || '', meta: { reflexive: !!pos.reflexive, perfective: !!pos.perfective, imperfective: !!pos.imperfective }, forms, allSonicVerbForms: result });
           }
         }
       } catch (e) {
@@ -208,8 +213,8 @@ fn noun_form(word: &str, case: Case, number: Number, gender: NounGender, animate
 fn adj_form(word: &str, case: Case, number: Number, gender: Gender, animate: bool) -> String {
     panic::catch_unwind(|| ISV::adj(word, case, number, gender, anim(animate))).unwrap_or_else(|_| "<PANIC>".to_string())
 }
-fn verb_form(word: &str, person: Person, number: Number) -> String {
-    panic::catch_unwind(|| ISV::verb(word, person, number, Gender::Masculine, Tense::Present)).unwrap_or_else(|_| "<PANIC>".to_string())
+fn verb_form(word: &str, present_hint: &str, person: Person, number: Number) -> String {
+    panic::catch_unwind(|| ISV::verb_with_present_hint(word, present_hint, person, number, Tense::Present)).unwrap_or_else(|_| "<PANIC>".to_string())
 }
 fn main() {
     let cases: [(&str, Case); 6] = [("nom", Case::Nom), ("acc", Case::Acc), ("gen", Case::Gen), ("loc", Case::Loc), ("dat", Case::Dat), ("ins", Case::Ins)];
@@ -238,8 +243,9 @@ fn main() {
                 }
             }
         } else if kind == "verb" {
+            let present_hint = parts.get(3).copied().unwrap_or("");
             for (key, person, number) in [("present_1_sg", Person::First, Number::Singular), ("present_2_sg", Person::Second, Number::Singular), ("present_3_sg", Person::Third, Number::Singular), ("present_1_pl", Person::First, Number::Plural), ("present_2_pl", Person::Second, Number::Plural), ("present_3_pl", Person::Third, Number::Plural)] {
-                emit(ref_key, key, verb_form(word, person, number));
+                emit(ref_key, key, verb_form(word, present_hint, person, number));
             }
         }
     }
@@ -305,6 +311,20 @@ function compare(refs, actual) {
   return { summary, mismatches };
 }
 
+function thresholdFailures(summary) {
+  const failures = [];
+  if (summary.compatibleRate < MIN_COMPATIBLE_RATES.total) {
+    failures.push(`total compatible rate ${summary.compatibleRate} < ${MIN_COMPATIBLE_RATES.total}`);
+  }
+  for (const kind of ['noun', 'adjective', 'verb']) {
+    const item = summary.byKind[kind];
+    if (item && item.compatibleRate < MIN_COMPATIBLE_RATES[kind]) {
+      failures.push(`${kind} compatible rate ${item.compatibleRate} < ${MIN_COMPATIBLE_RATES[kind]}`);
+    }
+  }
+  return failures;
+}
+
 function writeMarkdownReport(report) {
   const s = report.summary;
   const kindRows = Object.entries(s.byKind).map(([kind, item]) =>
@@ -336,8 +356,13 @@ function writeMarkdownReport(report) {
     csv.push([m.id, m.kind, m.word, m.details, m.addition, m.form, m.expected, m.actual].map((v) => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(','));
   }
   fs.writeFileSync(path.join(OUT_DIR, 'mismatch-sample.csv'), csv.join('\n'));
-  const report = { generatedAt: new Date().toISOString(), dictionaryUrl: BASIC_URL, dictionaryRows: rows.length, sonic: { repo: 'https://github.com/sonic16x/interslavic', branch: sonicBranch, commit: sonicCommit, utilsPackage: '@interslavic/utils', utilsVersion: sonicUtilsVersion }, rust: { repoPath: ROOT, commit: rustCommit, dirtyStatus: rustStatus }, skippedReferenceParadigms: skipped.length, skippedPhraseRows: skippedPhrases.length, summary, artifactFiles: ['sonic16x-basic.tsv', 'sonic-reference-forms.json', 'rust-forms.json', 'mismatches.json', 'mismatch-sample.csv', 'skipped-sonic-reference.json', 'skipped-phrases.json'] };
+  const failures = thresholdFailures(summary);
+  const report = { generatedAt: new Date().toISOString(), dictionaryUrl: BASIC_URL, dictionaryRows: rows.length, sonic: { repo: 'https://github.com/sonic16x/interslavic', branch: sonicBranch, commit: sonicCommit, utilsPackage: '@interslavic/utils', utilsVersion: sonicUtilsVersion }, rust: { repoPath: ROOT, commit: rustCommit, dirtyStatus: rustStatus }, skippedReferenceParadigms: skipped.length, skippedPhraseRows: skippedPhrases.length, summary, thresholdFailures: failures, artifactFiles: ['sonic16x-basic.tsv', 'sonic-reference-forms.json', 'rust-forms.json', 'mismatches.json', 'mismatch-sample.csv', 'skipped-sonic-reference.json', 'skipped-phrases.json'] };
   fs.writeFileSync(path.join(OUT_DIR, 'summary.json'), JSON.stringify(report, null, 2));
   writeMarkdownReport(report);
   console.log(JSON.stringify(report, null, 2));
+  if (failures.length) {
+    console.error(`Comparison thresholds failed:\n- ${failures.join('\n- ')}`);
+    process.exit(1);
+  }
 })().catch((err) => { console.error(err); process.exit(1); });

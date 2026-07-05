@@ -70,6 +70,19 @@ fn main() {
         ),
         "učų"
     );
+
+    // Dictionary integrations that need a specific present-stem hint can use the
+    // explicit typed helper instead of passing a phrase string.
+    assert_eq!(
+        ISV::verb_with_present_hint(
+            "bolěti",
+            "(boli)",
+            Person::First,
+            Number::Singular,
+            Tense::Present,
+        ),
+        "boljų"
+    );
 }
 ```
 
