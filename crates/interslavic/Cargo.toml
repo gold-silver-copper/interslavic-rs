@@ -11,3 +11,4 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 interslavic-core = { workspace = true }
+phf = { workspace = true }

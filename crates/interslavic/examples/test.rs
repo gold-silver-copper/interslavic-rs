@@ -1,25 +1,37 @@
 use interslavic::*;
 
-fn main() -> Result<(), InflectionError> {
+fn main() {
     println!(
         "mųž gen sg: {}",
-        ISV::noun_form("mųž", Case::Gen, Number::Singular)?.text()
+        ISV::noun("mųž", Case::Gen, Number::Singular)
     );
     println!(
         "Abhaz nom pl: {}",
-        ISV::noun_form("Abhaz", Case::Nom, Number::Plural)?.text()
+        ISV::noun("Abhaz", Case::Nom, Number::Plural)
     );
-
-    let člen_anim = ISV::noun_id("640")?;
     println!(
-        "člen animate acc sg: {}",
-        člen_anim.get(Case::Acc, Number::Singular).unwrap().text()
+        "člen default acc sg: {}",
+        ISV::noun("člen", Case::Acc, Number::Singular)
     );
-
-    let luč_f = ISV::noun_id_as("339", NounGender::Feminine)?;
+    println!(
+        "člen inanimate acc sg: {}",
+        ISV::noun_with(
+            "člen",
+            Case::Acc,
+            Number::Singular,
+            NounGender::Masculine,
+            Animacy::Inanimate,
+        )
+    );
     println!(
         "luč feminine gen sg: {}",
-        luč_f.get(Case::Gen, Number::Singular).unwrap().text()
+        ISV::noun_with(
+            "luč",
+            Case::Gen,
+            Number::Singular,
+            NounGender::Feminine,
+            Animacy::Inanimate,
+        )
     );
 
     println!(
@@ -43,6 +55,4 @@ fn main() -> Result<(), InflectionError> {
             Tense::Present,
         )
     );
-
-    Ok(())
 }

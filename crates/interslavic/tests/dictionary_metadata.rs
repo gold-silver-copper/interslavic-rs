@@ -1,7 +1,7 @@
 use interslavic::*;
 
 fn noun(word: &str, case: Case, number: Number) -> String {
-    ISV::noun_form(word, case, number).unwrap().text()
+    ISV::noun(word, case, number)
 }
 
 #[test]
@@ -43,21 +43,22 @@ fn dictionary_metadata_handles_indeclinable_entries() {
 }
 
 #[test]
-fn dictionary_id_api_disambiguates_homonyms() {
+fn generated_lookup_strips_bracketed_dictionary_annotations() {
+    assert_eq!(noun("hektar", Case::Gen, Number::Singular), "hektara");
+    assert_eq!(noun("uško", Case::Gen, Number::Plural), "ušek");
+}
+
+#[test]
+fn ambiguous_lemmas_default_to_first_dictionary_row_and_allow_overrides() {
+    assert_eq!(noun("člen", Case::Acc, Number::Singular), "člena");
     assert_eq!(
-        ISV::noun_id("640")
-            .unwrap()
-            .get(Case::Acc, Number::Singular)
-            .unwrap()
-            .text(),
-        "člena"
-    );
-    assert_eq!(
-        ISV::noun_id("25028")
-            .unwrap()
-            .get(Case::Acc, Number::Singular)
-            .unwrap()
-            .text(),
+        ISV::noun_with(
+            "člen",
+            Case::Acc,
+            Number::Singular,
+            NounGender::Masculine,
+            Animacy::Inanimate,
+        ),
         "člen"
     );
 }

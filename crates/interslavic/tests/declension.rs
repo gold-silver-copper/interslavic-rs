@@ -1,7 +1,7 @@
 use interslavic::*;
 
 fn noun(word: &str, case: Case, number: Number) -> String {
-    ISV::noun_form(word, case, number).unwrap().text()
+    ISV::noun(word, case, number)
 }
 
 #[test]

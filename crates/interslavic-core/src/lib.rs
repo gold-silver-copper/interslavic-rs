@@ -31,12 +31,12 @@ impl Default for ComplexNoun {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Number {
     Singular,
     Plural,
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Case {
     Nom,
     Acc,
@@ -46,25 +46,25 @@ pub enum Case {
     Ins,
     //vocative will be handle seperately
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Gender {
     Masculine,
     Feminine,
     Neuter,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Person {
     First,
     Second,
     Third,
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Conjugation {
     First,
     Second,
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Tense {
     Present,
     Imperfect,
@@ -109,99 +109,17 @@ impl VerbEndings {
     }
 }
 
-pub type Noun = (String, Gender);
-pub type Adjective = String;
-pub type Verb = String;
-
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum NounGender {
     Masculine,
     Feminine,
     Neuter,
-    MasculineOrFeminine,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Animacy {
     Animate,
     Inanimate,
-    Unknown,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum NumberRestriction {
-    Countable,
-    SingularOnly,
-    PluralOnly,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum InflectionError {
-    MissingGenderOverride,
-    InvalidGenderOverride,
-    MissingAnimacy,
-    DictionaryEntryNotFound,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct InflectionAlternatives {
-    pub alternatives: Vec<String>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct NounParadigm {
-    pub lemma: String,
-    pub gender: NounGender,
-    pub nominative_singular: Option<InflectionAlternatives>,
-    pub accusative_singular: Option<InflectionAlternatives>,
-    pub genitive_singular: Option<InflectionAlternatives>,
-    pub locative_singular: Option<InflectionAlternatives>,
-    pub dative_singular: Option<InflectionAlternatives>,
-    pub instrumental_singular: Option<InflectionAlternatives>,
-    pub nominative_plural: Option<InflectionAlternatives>,
-    pub accusative_plural: Option<InflectionAlternatives>,
-    pub genitive_plural: Option<InflectionAlternatives>,
-    pub locative_plural: Option<InflectionAlternatives>,
-    pub dative_plural: Option<InflectionAlternatives>,
-    pub instrumental_plural: Option<InflectionAlternatives>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct NounDeclensionRequest<'a> {
-    pub lemma: &'a str,
-    pub gender: NounGender,
-    pub animacy: Animacy,
-    pub number_restriction: NumberRestriction,
-    pub indeclinable: bool,
-    pub addition: Option<&'a str>,
-    pub gender_override: Option<NounGender>,
-}
-
-impl NounParadigm {
-    /// Get one case/number slot from a full paradigm.
-    pub fn get(&self, case: Case, number: Number) -> Option<&InflectionAlternatives> {
-        match (case, number) {
-            (Case::Nom, Number::Singular) => self.nominative_singular.as_ref(),
-            (Case::Acc, Number::Singular) => self.accusative_singular.as_ref(),
-            (Case::Gen, Number::Singular) => self.genitive_singular.as_ref(),
-            (Case::Loc, Number::Singular) => self.locative_singular.as_ref(),
-            (Case::Dat, Number::Singular) => self.dative_singular.as_ref(),
-            (Case::Ins, Number::Singular) => self.instrumental_singular.as_ref(),
-            (Case::Nom, Number::Plural) => self.nominative_plural.as_ref(),
-            (Case::Acc, Number::Plural) => self.accusative_plural.as_ref(),
-            (Case::Gen, Number::Plural) => self.genitive_plural.as_ref(),
-            (Case::Loc, Number::Plural) => self.locative_plural.as_ref(),
-            (Case::Dat, Number::Plural) => self.dative_plural.as_ref(),
-            (Case::Ins, Number::Plural) => self.instrumental_plural.as_ref(),
-        }
-    }
-}
-
-impl InflectionAlternatives {
-    /// Join alternatives with the same slash spelling used by the reference.
-    pub fn text(&self) -> String {
-        self.alternatives.join(" / ")
-    }
 }
 
 pub const VOWELS: &[char] = &[
@@ -313,7 +231,7 @@ impl ISVCore {
         number: &Number,
         _gender: &Gender,
         tense: &Tense,
-    ) -> Verb {
+    ) -> String {
         let word = word.trim().to_string();
         let (present_stem, conjugation) = ISVCore::get_present_tense_stem(&word);
 
@@ -331,7 +249,7 @@ impl ISVCore {
             _ => panic!("TENSE NOT IMPLEMENTED"),
         }
     }
-    pub fn l_participle(word: &str, gender: &Gender, number: &Number) -> Verb {
+    pub fn l_participle(word: &str, gender: &Gender, number: &Number) -> String {
         if word == "idti" {
             match number {
                 Number::Singular => String::from("šli"),
@@ -371,7 +289,7 @@ impl ISVCore {
         number: &Number,
         gender: &Gender,
         animacy: Animacy,
-    ) -> Adjective {
+    ) -> String {
         let original_word = word.trim().to_string();
         let mut word = original_word.clone();
         let mut postfix = String::new();
@@ -475,130 +393,57 @@ impl ISVCore {
 
 //NOUN STUFF
 impl ISVCore {
+    #[allow(clippy::too_many_arguments)]
     pub fn decline_noun_explicit(
-        request: NounDeclensionRequest<'_>,
-    ) -> Result<NounParadigm, InflectionError> {
-        let effective_gender =
-            ISVCore::resolve_noun_gender(request.gender, request.gender_override)?;
-        if matches!(effective_gender, NounGender::Masculine) && request.animacy == Animacy::Unknown
-        {
-            return Err(InflectionError::MissingAnimacy);
-        }
-        let gender = ISVCore::api_gender_to_gender(effective_gender);
-        let animate = request.animacy == Animacy::Animate;
-        Ok(ISVCore::noun_paradigm_from_parts(
-            request.lemma,
-            request.addition.unwrap_or(""),
+        lemma: &str,
+        case: &Case,
+        number: &Number,
+        gender: NounGender,
+        animacy: Animacy,
+        plural_only: bool,
+        singular_only: bool,
+        indeclinable: bool,
+        addition: Option<&str>,
+    ) -> String {
+        let gender = ISVCore::api_gender_to_gender(gender);
+        ISVCore::decline_noun_steen(
+            lemma,
+            addition.unwrap_or(""),
             &gender,
-            animate,
-            request.number_restriction == NumberRestriction::PluralOnly,
-            request.number_restriction == NumberRestriction::SingularOnly,
-            request.indeclinable,
-            effective_gender,
-        ))
+            animacy == Animacy::Animate,
+            plural_only,
+            singular_only,
+            indeclinable,
+            case,
+            number,
+        )
     }
 
     pub fn decline_noun_simple(
         lemma: &str,
+        case: &Case,
+        number: &Number,
         gender: NounGender,
         animacy: Animacy,
-    ) -> Result<NounParadigm, InflectionError> {
-        ISVCore::decline_noun_explicit(NounDeclensionRequest {
-            lemma,
-            gender,
-            animacy,
-            number_restriction: NumberRestriction::Countable,
-            indeclinable: false,
-            addition: None,
-            gender_override: None,
-        })
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn noun_paradigm_from_parts(
-        lemma: &str,
-        addition: &str,
-        gender: &Gender,
-        animate: bool,
-        plural_only: bool,
-        singular_only: bool,
-        indeclinable: bool,
-        api_gender: NounGender,
-    ) -> NounParadigm {
-        let form = |case: Case, number: Number| {
-            Some(ISVCore::alternatives_from_string(
-                &ISVCore::decline_noun_steen(
-                    lemma,
-                    addition,
-                    gender,
-                    animate,
-                    plural_only,
-                    singular_only,
-                    indeclinable,
-                    &case,
-                    &number,
-                ),
-            ))
-        };
-        NounParadigm {
-            lemma: lemma.into(),
-            gender: api_gender,
-            nominative_singular: (!plural_only).then(|| form(Case::Nom, Number::Singular).unwrap()),
-            accusative_singular: (!plural_only).then(|| form(Case::Acc, Number::Singular).unwrap()),
-            genitive_singular: (!plural_only).then(|| form(Case::Gen, Number::Singular).unwrap()),
-            locative_singular: (!plural_only).then(|| form(Case::Loc, Number::Singular).unwrap()),
-            dative_singular: (!plural_only).then(|| form(Case::Dat, Number::Singular).unwrap()),
-            instrumental_singular: (!plural_only)
-                .then(|| form(Case::Ins, Number::Singular).unwrap()),
-            nominative_plural: (!singular_only).then(|| form(Case::Nom, Number::Plural).unwrap()),
-            accusative_plural: (!singular_only).then(|| form(Case::Acc, Number::Plural).unwrap()),
-            genitive_plural: (!singular_only).then(|| form(Case::Gen, Number::Plural).unwrap()),
-            locative_plural: (!singular_only).then(|| form(Case::Loc, Number::Plural).unwrap()),
-            dative_plural: (!singular_only).then(|| form(Case::Dat, Number::Plural).unwrap()),
-            instrumental_plural: (!singular_only).then(|| form(Case::Ins, Number::Plural).unwrap()),
-        }
-    }
-
-    fn alternatives_from_string(value: &str) -> InflectionAlternatives {
-        InflectionAlternatives {
-            alternatives: value
-                .split('/')
-                .map(str::trim)
-                .map(str::to_string)
-                .collect(),
-        }
-    }
-
-    fn resolve_noun_gender(
-        gender: NounGender,
-        gender_override: Option<NounGender>,
-    ) -> Result<NounGender, InflectionError> {
-        if gender == NounGender::MasculineOrFeminine {
-            match gender_override {
-                Some(NounGender::Masculine | NounGender::Feminine) => Ok(gender_override.unwrap()),
-                Some(_) => Err(InflectionError::InvalidGenderOverride),
-                None => Err(InflectionError::MissingGenderOverride),
-            }
-        } else if gender_override.is_some() {
-            Err(InflectionError::InvalidGenderOverride)
-        } else {
-            Ok(gender)
-        }
+    ) -> String {
+        ISVCore::decline_noun_explicit(
+            lemma, case, number, gender, animacy, false, false, false, None,
+        )
     }
 
     fn api_gender_to_gender(gender: NounGender) -> Gender {
         match gender {
-            NounGender::Masculine | NounGender::MasculineOrFeminine => Gender::Masculine,
+            NounGender::Masculine => Gender::Masculine,
             NounGender::Feminine => Gender::Feminine,
             NounGender::Neuter => Gender::Neuter,
         }
     }
 
-    pub fn decline_noun(word: &str, case: &Case, number: &Number) -> Noun {
+    pub fn decline_noun(word: &str, case: &Case, number: &Number) -> String {
         let word = word.trim();
         let gender = ISVCore::guess_gender(word);
         let word_is_animate = ISVCore::noun_is_animate(word);
-        let declined = ISVCore::decline_noun_steen(
+        ISVCore::decline_noun_steen(
             word,
             "",
             &gender,
@@ -608,8 +453,7 @@ impl ISVCore {
             false,
             case,
             number,
-        );
-        (declined, gender)
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
