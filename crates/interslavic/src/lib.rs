@@ -94,6 +94,7 @@ impl ISV {
         present_hint: &str,
         person: Person,
         number: Number,
+        gender: Gender,
         tense: Tense,
     ) -> String {
         ISVCore::conjugate_verb_with_present_hint(
@@ -101,6 +102,7 @@ impl ISV {
             present_hint,
             &person,
             &number,
+            &gender,
             &tense,
         )
     }

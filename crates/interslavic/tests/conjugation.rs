@@ -108,6 +108,7 @@ fn explicit_present_hint_selects_duplicate_dictionary_verb_rows() {
             "(boli)",
             Person::First,
             Number::Singular,
+            Gender::Masculine,
             Tense::Present,
         ),
         "boljų"
@@ -118,10 +119,29 @@ fn explicit_present_hint_selects_duplicate_dictionary_verb_rows() {
             "(bolěje)",
             Person::First,
             Number::Singular,
+            Gender::Masculine,
             Tense::Present,
         ),
         "bolějų"
     );
+    assert_eq!(
+        ISV::verb_with_present_hint(
+            "pisati",
+            "(piše)",
+            Person::Third,
+            Number::Singular,
+            Gender::Feminine,
+            Tense::Perfect,
+        ),
+        "(je) pisala"
+    );
+}
+
+#[test]
+fn intransitive_dictionary_verbs_do_not_get_passive_participles() {
+    let forms = ISV::verb_forms("cvěsti");
+    assert_eq!(forms.prpp, None);
+    assert_eq!(forms.pfpp, None);
 }
 
 #[test]

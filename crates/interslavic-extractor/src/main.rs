@@ -319,7 +319,7 @@ fn parse_part_of_speech(details: &str) -> ParsedPartOfSpeech {
         plural_only: has("pl"),
         singular_only: has("sg"),
         indeclinable: has("indecl"),
-        transitive: normalized.contains("tr"),
+        transitive: has("tr"),
         imperfective: normalized.contains("ipf"),
     }
 }

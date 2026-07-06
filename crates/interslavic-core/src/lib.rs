@@ -155,10 +155,10 @@ impl ISVCore {
         word: &str,
         person: &Person,
         number: &Number,
-        _gender: &Gender,
+        gender: &Gender,
         tense: &Tense,
     ) -> String {
-        ISVCore::conjugate_verb_with_present_hint(word, "", person, number, tense)
+        ISVCore::conjugate_verb_with_options(word, "", person, number, gender, tense, true, true)
     }
 
     pub fn conjugate_verb_with_present_hint(
@@ -166,32 +166,19 @@ impl ISVCore {
         present_hint: &str,
         person: &Person,
         number: &Number,
+        gender: &Gender,
         tense: &Tense,
     ) -> String {
-        let paradigm = ISVCore::verb_paradigm_with_options(word, present_hint, true, true);
-        match tense {
-            Tense::Present => ISVCore::finite_slot(&paradigm.present, person, number),
-            Tense::Imperfect => ISVCore::finite_slot(&paradigm.imperfect, person, number),
-            Tense::Future => ISVCore::finite_slot(&paradigm.future, person, number),
-            Tense::Perfect => ISVCore::gendered_compound_slot(
-                &paradigm.perfect,
-                person,
-                number,
-                &Gender::Masculine,
-            ),
-            Tense::PluPerfect => ISVCore::gendered_compound_slot(
-                &paradigm.pluperfect,
-                person,
-                number,
-                &Gender::Masculine,
-            ),
-            Tense::Conditional => ISVCore::gendered_compound_slot(
-                &paradigm.conditional,
-                person,
-                number,
-                &Gender::Masculine,
-            ),
-        }
+        ISVCore::conjugate_verb_with_options(
+            word,
+            present_hint,
+            person,
+            number,
+            gender,
+            tense,
+            true,
+            true,
+        )
     }
 
     pub fn conjugate_verb_with_options(

@@ -87,6 +87,7 @@ fn main() {
             "(boli)",
             Person::First,
             Number::Singular,
+            Gender::Masculine,
             Tense::Present,
         ),
         "boljų"
