@@ -5,7 +5,9 @@
 //! focused on single-form inflection.
 
 use interslavic_core::ISVCore;
-pub use interslavic_core::{Animacy, Case, Gender, NounGender, Number, Person, Tense};
+pub use interslavic_core::{
+    Animacy, Case, Gender, NounGender, Number, Person, Tense, VerbParadigm,
+};
 
 mod dictionary;
 use dictionary::*;
@@ -38,7 +40,9 @@ impl ISV {
         animacy: Animacy,
     ) -> String {
         let entries = lookup_nouns_by_lemma(lemma);
-        if let Some(entry) = entries.first() {
+        if let Some(entry) =
+            Self::select_noun_entry(lemma, entries, case, number, Some(gender), Some(animacy))
+        {
             return Self::noun_from_entry(entry, case, number, Some(gender), Some(animacy));
         }
 
@@ -53,7 +57,9 @@ impl ISV {
         ISVCore::decline_adj(word, &case, &number, &gender, animacy)
     }
 
-    /// One present-tense verb form.
+    /// One finite verb form. Present, imperfect, future, perfect, pluperfect,
+    /// and conditional are supported; imperative and participial/gerund forms
+    /// are available through `verb_forms`.
     pub fn verb(
         word: &str,
         person: Person,
@@ -61,7 +67,111 @@ impl ISV {
         gender: Gender,
         tense: Tense,
     ) -> String {
-        ISVCore::conjugate_verb(word, &person, &number, &gender, &tense)
+        let trimmed = word.trim();
+        let entries = lookup_verbs_by_lemma(trimmed);
+        if let Some(entry) = entries.first() {
+            return ISVCore::conjugate_verb_with_options(
+                entry.lemma,
+                entry.addition,
+                &person,
+                &number,
+                &gender,
+                &tense,
+                entry.transitive,
+                entry.imperfective,
+            );
+        }
+
+        ISVCore::conjugate_verb(trimmed, &person, &number, &gender, &tense)
+    }
+
+    /// One finite verb form with an explicit dictionary present-stem hint.
+    ///
+    /// This is intended for typed dictionary rows that have multiple entries for
+    /// the same lemma. It does not parse arbitrary phrase strings.
+    pub fn verb_with_present_hint(
+        word: &str,
+        present_hint: &str,
+        person: Person,
+        number: Number,
+        gender: Gender,
+        tense: Tense,
+    ) -> String {
+        ISVCore::conjugate_verb_with_present_hint(
+            word.trim(),
+            present_hint,
+            &person,
+            &number,
+            &gender,
+            &tense,
+        )
+    }
+
+    /// Full verb paradigm with dictionary metadata when available.
+    pub fn verb_forms(word: &str) -> VerbParadigm {
+        let trimmed = word.trim();
+        let entries = lookup_verbs_by_lemma(trimmed);
+        if let Some(entry) = entries.first() {
+            return ISVCore::verb_paradigm_with_options(
+                entry.lemma,
+                entry.addition,
+                entry.transitive,
+                entry.imperfective,
+            );
+        }
+        ISVCore::verb_paradigm_with_options(trimmed, "", true, true)
+    }
+
+    /// Full verb paradigm with explicit dictionary metadata.
+    pub fn verb_forms_with_metadata(
+        word: &str,
+        present_hint: &str,
+        transitive: bool,
+        imperfective: bool,
+    ) -> VerbParadigm {
+        ISVCore::verb_paradigm_with_options(word.trim(), present_hint, transitive, imperfective)
+    }
+
+    fn select_noun_entry<'a>(
+        lemma: &str,
+        entries: &'a [DictionaryEntry],
+        case: Case,
+        number: Number,
+        gender: Option<NounGender>,
+        animacy: Option<Animacy>,
+    ) -> Option<&'a DictionaryEntry> {
+        entries.iter().max_by_key(|entry| {
+            let mut score = 0;
+            if entry.lemma == lemma {
+                score += 16;
+            }
+            if gender.is_some_and(|wanted| dictionary_gender_to_api(entry.gender) == wanted) {
+                score += 8;
+            }
+            if animacy.is_some_and(|wanted| {
+                let entry_animacy = if entry.animate {
+                    Animacy::Animate
+                } else {
+                    Animacy::Inanimate
+                };
+                entry_animacy == wanted
+            }) {
+                score += 4;
+            }
+            if number == Number::Singular && !entry.plural_only {
+                score += 2;
+            }
+            if number == Number::Plural && !entry.singular_only {
+                score += 2;
+            }
+            if case == Case::Nom {
+                score += 1;
+            }
+            if !entry.indeclinable {
+                score += 1;
+            }
+            score
+        })
     }
 
     fn noun_from_entry(

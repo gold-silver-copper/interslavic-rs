@@ -62,3 +62,27 @@ fn ambiguous_lemmas_default_to_first_dictionary_row_and_allow_overrides() {
         "člen"
     );
 }
+
+#[test]
+fn noun_with_prefers_number_compatible_duplicate_metadata() {
+    assert_eq!(
+        ISV::noun_with(
+            "anestezija",
+            Case::Nom,
+            Number::Plural,
+            NounGender::Feminine,
+            Animacy::Inanimate,
+        ),
+        "anestezije"
+    );
+    assert_eq!(
+        ISV::noun_with(
+            "bor",
+            Case::Gen,
+            Number::Plural,
+            NounGender::Masculine,
+            Animacy::Inanimate,
+        ),
+        "borov"
+    );
+}

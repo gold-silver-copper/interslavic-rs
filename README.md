@@ -70,6 +70,28 @@ fn main() {
         ),
         "učų"
     );
+
+    // Full verb paradigms include simple, compound, imperative, participial,
+    // and gerund forms.
+    let pisati = ISV::verb_forms("pisati");
+    assert_eq!(pisati.future[0], "bųdų pisatì");
+    assert_eq!(pisati.perfect[0], "jesm pisal(a)");
+    assert_eq!(pisati.imperative, vec!["piši", "pišimo", "pišite"]);
+    assert_eq!(pisati.gerund, "pisańje");
+
+    // Dictionary integrations that need a specific present-stem hint can use the
+    // explicit typed helper instead of passing a phrase string.
+    assert_eq!(
+        ISV::verb_with_present_hint(
+            "bolěti",
+            "(boli)",
+            Person::First,
+            Number::Singular,
+            Gender::Masculine,
+            Tense::Present,
+        ),
+        "boljų"
+    );
 }
 ```
 
@@ -84,6 +106,25 @@ Refresh and check it with:
 cargo xtask refresh-data
 cargo xtask check-registry
 ```
+
+## sonic16x parity and accuracy
+
+This crate is tested against [`sonic16x/interslavic`](https://github.com/sonic16x/interslavic), the JavaScript implementation used by the Interslavic dictionary. The comparison script fetches the latest upstream `master` branch, generates reference forms with `@interslavic/utils`, compares the Rust output, and writes reports under `target/infl-comparison`.
+
+```bash
+node tools/compare-latest-sonic.js
+```
+
+Latest measured compatible accuracy against sonic16x commit `0fab0c5b4463118d46b1cdcd506926d8848052c9` / `@interslavic/utils@3.4.0`:
+
+| Scope | Paradigms | Forms | Compatible accuracy | Mismatches |
+|---|---:|---:|---:|---:|
+| nouns | 8,851 | 99,060 | 99.9919% | 8 |
+| adjectives | 3,261 | 156,528 | 100.0000% | 0 |
+| verbs: present, imperfect, perfect, pluperfect, future, conditional, imperative, participles, gerund | 4,345 | 216,339 | 100.0000% | 0 |
+| total core comparable | 16,457 | 471,927 | 99.9983% | 8 |
+
+“Compatible” means the Rust form matched one of sonic16x's accepted alternatives when sonic returns comma/slash/parenthetical variants. Phrase strings from dictionary rows are reported separately because this crate's core APIs accept typed lemmas/metadata rather than arbitrary phrases; the latest run skipped 1,488 phrase rows and 8 Sonic-null/reference rows.
 
 ## License
 

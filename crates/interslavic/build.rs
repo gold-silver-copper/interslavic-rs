@@ -3,11 +3,13 @@ use std::path::PathBuf;
 
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
-    let generated = manifest_dir.join("generated/noun_metadata_phf.rs");
-    println!("cargo:rerun-if-changed={}", generated.display());
-    assert!(
-        generated.exists(),
-        "missing generated data file: {}. Run `cargo xtask refresh-data`.",
-        generated.display()
-    );
+    for file in ["noun_metadata_phf.rs", "verb_metadata_phf.rs"] {
+        let generated = manifest_dir.join("generated").join(file);
+        println!("cargo:rerun-if-changed={}", generated.display());
+        assert!(
+            generated.exists(),
+            "missing generated data file: {}. Run `cargo xtask refresh-data`.",
+            generated.display()
+        );
+    }
 }

@@ -36,6 +36,8 @@ fn noun_declension_handles_irregular_and_soft_classes() {
     assert_eq!(noun("slovo", Case::Gen, Number::Plural), "slov / sloves");
     assert_eq!(noun("okno", Case::Gen, Number::Plural), "okȯn");
     assert_eq!(noun("matka", Case::Gen, Number::Plural), "matȯk");
+    assert_eq!(noun("slåvėj", Case::Gen, Number::Singular), "slåvėja");
+    assert_eq!(noun("žȯlv", Case::Ins, Number::Singular), "žȯlvjų");
 }
 
 #[test]

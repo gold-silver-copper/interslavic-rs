@@ -14,7 +14,7 @@ enum Gender {
 }
 
 #[derive(Debug, Clone)]
-struct Entry {
+struct NounEntry {
     lemma: String,
     addition: String,
     gender: Gender,
@@ -24,14 +24,25 @@ struct Entry {
     indeclinable: bool,
 }
 
+#[derive(Debug, Clone)]
+struct VerbEntry {
+    lemma: String,
+    addition: String,
+    transitive: bool,
+    imperfective: bool,
+}
+
 #[derive(Debug)]
 struct ParsedPartOfSpeech {
     is_noun: bool,
+    is_verb: bool,
     gender: Option<Gender>,
     animate: bool,
     plural_only: bool,
     singular_only: bool,
     indeclinable: bool,
+    transitive: bool,
+    imperfective: bool,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -54,25 +65,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let generated = generate(&input)?;
-    let output_path = output_dir.join("noun_metadata_phf.rs");
+    let noun_output_path = output_dir.join("noun_metadata_phf.rs");
+    let verb_output_path = output_dir.join("verb_metadata_phf.rs");
 
     if check_only {
-        let committed = fs::read_to_string(&output_path)?;
-        if committed != generated {
-            return Err(format!(
-                "generated noun metadata is stale: run `cargo xtask refresh-data` and commit {}",
-                output_path.display()
-            )
-            .into());
-        }
-        println!("check-registry: OK — generated noun metadata is deterministic and current.");
+        check_generated_file(&noun_output_path, &generated.nouns)?;
+        check_generated_file(&verb_output_path, &generated.verbs)?;
+        println!(
+            "check-registry: OK — generated dictionary metadata is deterministic and current."
+        );
         return Ok(());
     }
 
     fs::create_dir_all(&output_dir)?;
-    let mut file = File::create(&output_path)?;
-    file.write_all(generated.as_bytes())?;
-    println!("wrote {}", output_path.display());
+    write_generated_file(&noun_output_path, &generated.nouns)?;
+    write_generated_file(&verb_output_path, &generated.verbs)?;
     Ok(())
 }
 
@@ -88,9 +95,34 @@ fn print_usage() {
     eprintln!("Usage: interslavic-extractor [--input PATH] [--output-dir DIR] [--check-only]");
 }
 
-fn generate(input: &Path) -> Result<String, Box<dyn Error>> {
+fn check_generated_file(path: &Path, generated: &str) -> Result<(), Box<dyn Error>> {
+    let committed = fs::read_to_string(path)?;
+    if committed != generated {
+        return Err(format!(
+            "generated metadata is stale: run `cargo xtask refresh-data` and commit {}",
+            path.display()
+        )
+        .into());
+    }
+    Ok(())
+}
+
+fn write_generated_file(path: &Path, generated: &str) -> Result<(), Box<dyn Error>> {
+    let mut file = File::create(path)?;
+    file.write_all(generated.as_bytes())?;
+    println!("wrote {}", path.display());
+    Ok(())
+}
+
+struct GeneratedFiles {
+    nouns: String,
+    verbs: String,
+}
+
+fn generate(input: &Path) -> Result<GeneratedFiles, Box<dyn Error>> {
     let text = fs::read_to_string(input)?;
-    let mut map: BTreeMap<String, Vec<Entry>> = BTreeMap::new();
+    let mut noun_map: BTreeMap<String, Vec<NounEntry>> = BTreeMap::new();
+    let mut verb_map: BTreeMap<String, Vec<VerbEntry>> = BTreeMap::new();
 
     for line in text.lines().skip(1) {
         let columns: Vec<&str> = line.split('\t').collect();
@@ -101,46 +133,68 @@ fn generate(input: &Path) -> Result<String, Box<dyn Error>> {
         let isv = columns[1];
         let addition = columns[2].to_string();
         let metadata = parse_part_of_speech(columns[3]);
-        if !metadata.is_noun {
-            continue;
-        }
-        let Some(gender) = metadata.gender else {
-            continue;
-        };
-
-        for lemma in isv
-            .split(',')
-            .map(normalize_lemma)
-            .filter(|lemma| !lemma.is_empty())
-        {
-            let entry = Entry {
-                lemma: lemma.clone(),
-                addition: addition.clone(),
-                gender: gender.clone(),
-                animate: metadata.animate,
-                plural_only: metadata.plural_only,
-                singular_only: metadata.singular_only,
-                indeclinable: metadata.indeclinable,
+        if metadata.is_noun {
+            let Some(gender) = metadata.gender.clone() else {
+                continue;
             };
-            insert_entry(&mut map, lemma.clone(), entry.clone());
-            let lower = lemma.to_lowercase();
-            if lower != lemma {
-                insert_entry(&mut map, lower, entry);
+            for lemma in isv
+                .split(',')
+                .map(normalize_lemma)
+                .filter(|lemma| !lemma.is_empty())
+            {
+                let entry = NounEntry {
+                    lemma: lemma.clone(),
+                    addition: addition.clone(),
+                    gender: gender.clone(),
+                    animate: metadata.animate,
+                    plural_only: metadata.plural_only,
+                    singular_only: metadata.singular_only,
+                    indeclinable: metadata.indeclinable,
+                };
+                insert_noun_entry(&mut noun_map, lemma.clone(), entry.clone());
+                let lower = lemma.to_lowercase();
+                if lower != lemma {
+                    insert_noun_entry(&mut noun_map, lower, entry);
+                }
+            }
+        } else if metadata.is_verb {
+            for lemma in isv
+                .split(',')
+                .map(normalize_lemma)
+                .filter(|lemma| is_core_verb_lemma(lemma))
+            {
+                let entry = VerbEntry {
+                    lemma: lemma.clone(),
+                    addition: addition.clone(),
+                    transitive: metadata.transitive,
+                    imperfective: metadata.imperfective,
+                };
+                insert_verb_entry(&mut verb_map, lemma.clone(), entry.clone());
+                let lower = lemma.to_lowercase();
+                if lower != lemma {
+                    insert_verb_entry(&mut verb_map, lower, entry);
+                }
             }
         }
     }
 
-    Ok(write_phf(&map))
+    Ok(GeneratedFiles {
+        nouns: write_noun_phf(&noun_map),
+        verbs: write_verb_phf(&verb_map),
+    })
 }
 
-fn insert_entry(map: &mut BTreeMap<String, Vec<Entry>>, key: String, entry: Entry) {
+fn insert_noun_entry(map: &mut BTreeMap<String, Vec<NounEntry>>, key: String, entry: NounEntry) {
     let entries = map.entry(key).or_default();
-    if !entries.iter().any(|existing| same_entry(existing, &entry)) {
+    if !entries
+        .iter()
+        .any(|existing| same_noun_entry(existing, &entry))
+    {
         entries.push(entry);
     }
 }
 
-fn same_entry(a: &Entry, b: &Entry) -> bool {
+fn same_noun_entry(a: &NounEntry, b: &NounEntry) -> bool {
     a.lemma == b.lemma
         && a.addition == b.addition
         && a.gender == b.gender
@@ -150,7 +204,53 @@ fn same_entry(a: &Entry, b: &Entry) -> bool {
         && a.indeclinable == b.indeclinable
 }
 
-fn write_phf(map: &BTreeMap<String, Vec<Entry>>) -> String {
+fn insert_verb_entry(map: &mut BTreeMap<String, Vec<VerbEntry>>, key: String, entry: VerbEntry) {
+    let entries = map.entry(key).or_default();
+    if !entries.iter().any(|existing| {
+        existing.lemma == entry.lemma
+            && existing.addition == entry.addition
+            && existing.transitive == entry.transitive
+            && existing.imperfective == entry.imperfective
+    }) {
+        entries.push(entry);
+    }
+}
+
+fn write_verb_phf(map: &BTreeMap<String, Vec<VerbEntry>>) -> String {
+    let mut out = String::new();
+    out.push_str("use phf::phf_map;\n");
+    out.push_str("use super::VerbDictionaryEntry;\n\n");
+    out.push_str("pub(crate) static VERB_METADATA: phf::Map<&'static str, &'static [VerbDictionaryEntry]> = phf_map! {\n");
+    for (key, entries) in map {
+        out.push_str(&format!("    {:?} => &[\n", key));
+        for entry in entries {
+            out.push_str("        VerbDictionaryEntry { ");
+            out.push_str(&format!("lemma: {:?}, ", entry.lemma));
+            out.push_str(&format!("addition: {:?}, ", entry.addition));
+            out.push_str(&format!("transitive: {}, ", entry.transitive));
+            out.push_str(&format!("imperfective: {} ", entry.imperfective));
+            out.push_str("},\n");
+        }
+        out.push_str("    ],\n");
+    }
+    out.push_str("};\n\n");
+    out.push_str(
+        "pub(crate) fn get_verbs(word: &str) -> Option<&'static [VerbDictionaryEntry]> {\n",
+    );
+    out.push_str("    VERB_METADATA.get(word).copied()\n");
+    out.push_str("}\n");
+    out
+}
+
+fn is_core_verb_lemma(lemma: &str) -> bool {
+    !lemma.is_empty()
+        && !lemma.chars().any(char::is_whitespace)
+        && !lemma.contains('(')
+        && !lemma.contains(')')
+        && !lemma.contains('/')
+}
+
+fn write_noun_phf(map: &BTreeMap<String, Vec<NounEntry>>) -> String {
     let mut out = String::new();
     out.push_str("use phf::phf_map;\n");
     out.push_str("use super::{DictionaryEntry, DictionaryGender};\n\n");
@@ -213,11 +313,14 @@ fn parse_part_of_speech(details: &str) -> ParsedPartOfSpeech {
 
     ParsedPartOfSpeech {
         is_noun,
+        is_verb: has("v"),
         gender,
         animate: has("anim"),
         plural_only: has("pl"),
         singular_only: has("sg"),
         indeclinable: has("indecl"),
+        transitive: has("tr"),
+        imperfective: normalized.contains("ipf"),
     }
 }
 
