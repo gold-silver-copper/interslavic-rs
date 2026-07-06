@@ -129,10 +129,34 @@ function adjectiveForms(result) {
   return forms;
 }
 
-function verbPresentForms(result) {
+function cleanOptional(value) {
+  return value == null ? null : norm(value);
+}
+
+function splitImperative(value) {
+  return String(value || '').split(',').map((item) => norm(item)).filter(Boolean);
+}
+
+function verbForms(result) {
   if (!result || !Array.isArray(result.present)) return null;
-  const forms = {};
+  const forms = { infinitive: norm(result.infinitive) };
   PERSONS.forEach(([p, n], i) => { forms[`present_${p}_${n}`] = norm(result.present[i]); });
+  PERSONS.forEach(([p, n], i) => { forms[`imperfect_${p}_${n}`] = norm(result.imperfect?.[i]); });
+  PERSONS.forEach(([p, n], i) => { forms[`future_${p}_${n}`] = norm(result.future?.[i]); });
+  ['1_sg', '2_sg', '3_sg_m', '3_sg_f', '3_sg_n', '1_pl', '2_pl', '3_pl'].forEach((key, i) => {
+    forms[`perfect_${key}`] = norm(result.perfect?.[i]);
+    forms[`pluperfect_${key}`] = norm(result.pluperfect?.[i]);
+    forms[`conditional_${key}`] = norm(result.conditional?.[i]);
+  });
+  const imperative = splitImperative(result.imperative);
+  forms.imperative_2_sg = imperative[0] || null;
+  forms.imperative_1_pl = imperative[1] || null;
+  forms.imperative_2_pl = imperative[2] || null;
+  forms.prap = cleanOptional(result.prap);
+  forms.prpp = cleanOptional(result.prpp);
+  forms.pfap = cleanOptional(result.pfap);
+  forms.pfpp = cleanOptional(result.pfpp);
+  forms.gerund = cleanOptional(result.gerund);
   return forms;
 }
 
@@ -172,11 +196,11 @@ function buildSonicReferences(rows) {
           }
         } else if (pos.name === 'verb') {
           const result = conjugationVerb(word, row.addition || '', details);
-          const forms = verbPresentForms(result);
+          const forms = verbForms(result);
           if (!forms) { skipped.push({ id: row.id, word, kind: 'verb', details, reason: 'sonic returned null' }); continue; }
           {
             const refKey = `${row.id}|verb|${word}`;
-            refs.push({ refKey, input: `${refKey}\tverb\t${word}\t${row.addition || ''}`, id: row.id, kind: 'verb', word, details, addition: row.addition || '', meta: { reflexive: !!pos.reflexive, perfective: !!pos.perfective, imperfective: !!pos.imperfective }, forms, allSonicVerbForms: result });
+            refs.push({ refKey, input: `${refKey}\tverb\t${word}\t${row.addition || ''}\t${!!pos.transitive}\t${!!pos.imperfective}`, id: row.id, kind: 'verb', word, details, addition: row.addition || '', meta: { reflexive: !!pos.reflexive, transitive: !!pos.transitive, perfective: !!pos.perfective, imperfective: !!pos.imperfective }, forms, allSonicVerbForms: result });
           }
         }
       } catch (e) {
@@ -213,8 +237,27 @@ fn noun_form(word: &str, case: Case, number: Number, gender: NounGender, animate
 fn adj_form(word: &str, case: Case, number: Number, gender: Gender, animate: bool) -> String {
     panic::catch_unwind(|| ISV::adj(word, case, number, gender, anim(animate))).unwrap_or_else(|_| "<PANIC>".to_string())
 }
-fn verb_form(word: &str, present_hint: &str, person: Person, number: Number) -> String {
-    panic::catch_unwind(|| ISV::verb_with_present_hint(word, present_hint, person, number, Tense::Present)).unwrap_or_else(|_| "<PANIC>".to_string())
+fn verb_forms(word: &str, present_hint: &str, transitive: bool, imperfective: bool) -> Vec<(String, String)> {
+    panic::catch_unwind(|| {
+        let p = ISV::verb_forms_with_metadata(word, present_hint, transitive, imperfective);
+        let mut out = Vec::new();
+        out.push(("infinitive".to_string(), p.infinitive));
+        for (i, key) in ["present_1_sg", "present_2_sg", "present_3_sg", "present_1_pl", "present_2_pl", "present_3_pl"].iter().enumerate() { out.push((key.to_string(), p.present[i].clone())); }
+        for (i, key) in ["imperfect_1_sg", "imperfect_2_sg", "imperfect_3_sg", "imperfect_1_pl", "imperfect_2_pl", "imperfect_3_pl"].iter().enumerate() { out.push((key.to_string(), p.imperfect[i].clone())); }
+        for (i, key) in ["future_1_sg", "future_2_sg", "future_3_sg", "future_1_pl", "future_2_pl", "future_3_pl"].iter().enumerate() { out.push((key.to_string(), p.future[i].clone())); }
+        for (i, key) in ["1_sg", "2_sg", "3_sg_m", "3_sg_f", "3_sg_n", "1_pl", "2_pl", "3_pl"].iter().enumerate() {
+            out.push((format!("perfect_{}", key), p.perfect[i].clone()));
+            out.push((format!("pluperfect_{}", key), p.pluperfect[i].clone()));
+            out.push((format!("conditional_{}", key), p.conditional[i].clone()));
+        }
+        for (i, key) in ["imperative_2_sg", "imperative_1_pl", "imperative_2_pl"].iter().enumerate() { out.push((key.to_string(), p.imperative[i].clone())); }
+        if let Some(v) = p.prap { out.push(("prap".to_string(), v)); }
+        if let Some(v) = p.prpp { out.push(("prpp".to_string(), v)); }
+        out.push(("pfap".to_string(), p.pfap));
+        if let Some(v) = p.pfpp { out.push(("pfpp".to_string(), v)); }
+        out.push(("gerund".to_string(), p.gerund));
+        out
+    }).unwrap_or_else(|_| vec![("<PANIC>".to_string(), "<PANIC>".to_string())])
 }
 fn main() {
     let cases: [(&str, Case); 6] = [("nom", Case::Nom), ("acc", Case::Acc), ("gen", Case::Gen), ("loc", Case::Loc), ("dat", Case::Dat), ("ins", Case::Ins)];
@@ -244,8 +287,10 @@ fn main() {
             }
         } else if kind == "verb" {
             let present_hint = parts.get(3).copied().unwrap_or("");
-            for (key, person, number) in [("present_1_sg", Person::First, Number::Singular), ("present_2_sg", Person::Second, Number::Singular), ("present_3_sg", Person::Third, Number::Singular), ("present_1_pl", Person::First, Number::Plural), ("present_2_pl", Person::Second, Number::Plural), ("present_3_pl", Person::Third, Number::Plural)] {
-                emit(ref_key, key, verb_form(word, present_hint, person, number));
+            let transitive = parts.get(4).copied().map(parse_bool).unwrap_or(true);
+            let imperfective = parts.get(5).copied().map(parse_bool).unwrap_or(true);
+            for (key, value) in verb_forms(word, present_hint, transitive, imperfective) {
+                emit(ref_key, &key, value);
             }
         }
     }

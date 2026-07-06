@@ -28,6 +28,8 @@ struct NounEntry {
 struct VerbEntry {
     lemma: String,
     addition: String,
+    transitive: bool,
+    imperfective: bool,
 }
 
 #[derive(Debug)]
@@ -39,6 +41,8 @@ struct ParsedPartOfSpeech {
     plural_only: bool,
     singular_only: bool,
     indeclinable: bool,
+    transitive: bool,
+    imperfective: bool,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -162,6 +166,8 @@ fn generate(input: &Path) -> Result<GeneratedFiles, Box<dyn Error>> {
                 let entry = VerbEntry {
                     lemma: lemma.clone(),
                     addition: addition.clone(),
+                    transitive: metadata.transitive,
+                    imperfective: metadata.imperfective,
                 };
                 insert_verb_entry(&mut verb_map, lemma.clone(), entry.clone());
                 let lower = lemma.to_lowercase();
@@ -200,10 +206,12 @@ fn same_noun_entry(a: &NounEntry, b: &NounEntry) -> bool {
 
 fn insert_verb_entry(map: &mut BTreeMap<String, Vec<VerbEntry>>, key: String, entry: VerbEntry) {
     let entries = map.entry(key).or_default();
-    if !entries
-        .iter()
-        .any(|existing| existing.lemma == entry.lemma && existing.addition == entry.addition)
-    {
+    if !entries.iter().any(|existing| {
+        existing.lemma == entry.lemma
+            && existing.addition == entry.addition
+            && existing.transitive == entry.transitive
+            && existing.imperfective == entry.imperfective
+    }) {
         entries.push(entry);
     }
 }
@@ -218,7 +226,9 @@ fn write_verb_phf(map: &BTreeMap<String, Vec<VerbEntry>>) -> String {
         for entry in entries {
             out.push_str("        VerbDictionaryEntry { ");
             out.push_str(&format!("lemma: {:?}, ", entry.lemma));
-            out.push_str(&format!("addition: {:?} ", entry.addition));
+            out.push_str(&format!("addition: {:?}, ", entry.addition));
+            out.push_str(&format!("transitive: {}, ", entry.transitive));
+            out.push_str(&format!("imperfective: {} ", entry.imperfective));
             out.push_str("},\n");
         }
         out.push_str("    ],\n");
@@ -309,6 +319,8 @@ fn parse_part_of_speech(details: &str) -> ParsedPartOfSpeech {
         plural_only: has("pl"),
         singular_only: has("sg"),
         indeclinable: has("indecl"),
+        transitive: normalized.contains("tr"),
+        imperfective: normalized.contains("ipf"),
     }
 }
 

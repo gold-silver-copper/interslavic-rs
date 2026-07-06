@@ -68,6 +68,23 @@ pub enum Tense {
     Conditional,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VerbParadigm {
+    pub infinitive: String,
+    pub present: Vec<String>,
+    pub imperfect: Vec<String>,
+    pub perfect: Vec<String>,
+    pub pluperfect: Vec<String>,
+    pub future: Vec<String>,
+    pub conditional: Vec<String>,
+    pub imperative: Vec<String>,
+    pub prap: Option<String>,
+    pub prpp: Option<String>,
+    pub pfap: String,
+    pub pfpp: Option<String>,
+    pub gerund: String,
+}
+
 impl CaseEndings {
     pub fn ending(&self, case: &Case, number: &Number) -> &str {
         match number {
@@ -151,13 +168,69 @@ impl ISVCore {
         number: &Number,
         tense: &Tense,
     ) -> String {
-        if tense != &Tense::Present {
-            panic!("TENSE NOT IMPLEMENTED")
+        let paradigm = ISVCore::verb_paradigm_with_options(word, present_hint, true, true);
+        match tense {
+            Tense::Present => ISVCore::finite_slot(&paradigm.present, person, number),
+            Tense::Imperfect => ISVCore::finite_slot(&paradigm.imperfect, person, number),
+            Tense::Future => ISVCore::finite_slot(&paradigm.future, person, number),
+            Tense::Perfect => ISVCore::gendered_compound_slot(
+                &paradigm.perfect,
+                person,
+                number,
+                &Gender::Masculine,
+            ),
+            Tense::PluPerfect => ISVCore::gendered_compound_slot(
+                &paradigm.pluperfect,
+                person,
+                number,
+                &Gender::Masculine,
+            ),
+            Tense::Conditional => ISVCore::gendered_compound_slot(
+                &paradigm.conditional,
+                person,
+                number,
+                &Gender::Masculine,
+            ),
         }
+    }
 
+    pub fn conjugate_verb_with_options(
+        word: &str,
+        present_hint: &str,
+        person: &Person,
+        number: &Number,
+        gender: &Gender,
+        tense: &Tense,
+        transitive: bool,
+        imperfective: bool,
+    ) -> String {
+        let paradigm =
+            ISVCore::verb_paradigm_with_options(word, present_hint, transitive, imperfective);
+        match tense {
+            Tense::Present => ISVCore::finite_slot(&paradigm.present, person, number),
+            Tense::Imperfect => ISVCore::finite_slot(&paradigm.imperfect, person, number),
+            Tense::Future => ISVCore::finite_slot(&paradigm.future, person, number),
+            Tense::Perfect => {
+                ISVCore::gendered_compound_slot(&paradigm.perfect, person, number, gender)
+            }
+            Tense::PluPerfect => {
+                ISVCore::gendered_compound_slot(&paradigm.pluperfect, person, number, gender)
+            }
+            Tense::Conditional => {
+                ISVCore::gendered_compound_slot(&paradigm.conditional, person, number, gender)
+            }
+        }
+    }
+
+    pub fn verb_paradigm_with_options(
+        word: &str,
+        present_hint: &str,
+        transitive: bool,
+        imperfective: bool,
+    ) -> VerbParadigm {
         let word = word.trim();
         if word.split_whitespace().nth(1).is_some() {
-            return word.to_string();
+            return ISVCore::empty_phrase_verb_paradigm(word);
         }
 
         let normalized = match word {
@@ -165,16 +238,96 @@ impl ISVCore {
             other => other,
         };
         let pref = ISVCore::sonic_prefix(normalized);
-        let Some(infinitive_stem) = ISVCore::sonic_infinitive_stem(&pref, normalized) else {
+        let clean_hint = ISVCore::clean_present_hint(present_hint);
+        let Some(infinitive_stem) =
+            ISVCore::sonic_infinitive_stem_with_hint(&pref, normalized, &clean_hint)
+        else {
             panic!("IMPROPER PRESENT TENSE STEM: {}", word);
         };
-        let present_stem = ISVCore::sonic_present_tense_stem_from_parts(
-            &pref,
-            &ISVCore::clean_present_hint(present_hint),
-            &infinitive_stem,
-        );
+        let present_stem =
+            ISVCore::sonic_present_tense_stem_from_parts(&pref, &clean_hint, &infinitive_stem);
         let secondary_stem = ISVCore::secondary_present_tense_stem(&present_stem);
-        ISVCore::sonic_present_form(&pref, &present_stem, &secondary_stem, person, number)
+        let lpa = ISVCore::sonic_l_participle(&pref, &infinitive_stem);
+        let infinitive = ISVCore::build_sonic_infinitive(&pref, &infinitive_stem);
+        let present = ISVCore::build_present_vec(&pref, &present_stem, &secondary_stem);
+        let imperfect = ISVCore::build_imperfect_vec(&pref, &infinitive_stem);
+        let perfect = ISVCore::build_perfect_vec(&lpa);
+        let pluperfect = ISVCore::build_pluperfect_vec(&lpa);
+        let future = ISVCore::build_future_vec(&infinitive, &present_stem);
+        let conditional = ISVCore::build_conditional_vec(&lpa);
+        let imperative = ISVCore::build_imperative_vec(&pref, &secondary_stem);
+        let prap = imperfective.then(|| ISVCore::build_prap(&pref, &present_stem));
+        let prpp = (imperfective && transitive)
+            .then(|| ISVCore::build_prpp(&pref, &present_stem, &secondary_stem));
+        let pfap = ISVCore::build_pfap(&lpa);
+        let computed_pfpp = ISVCore::build_pfpp(&pref, &infinitive_stem, &secondary_stem);
+        let pfpp = transitive.then(|| computed_pfpp.clone());
+        let gerund = ISVCore::build_gerund(&computed_pfpp);
+
+        VerbParadigm {
+            infinitive,
+            present,
+            imperfect,
+            perfect,
+            pluperfect,
+            future,
+            conditional,
+            imperative,
+            prap,
+            prpp,
+            pfap,
+            pfpp,
+            gerund,
+        }
+    }
+
+    fn empty_phrase_verb_paradigm(word: &str) -> VerbParadigm {
+        VerbParadigm {
+            infinitive: word.to_string(),
+            present: vec![word.to_string(); 6],
+            imperfect: vec![word.to_string(); 6],
+            perfect: vec![word.to_string(); 8],
+            pluperfect: vec![word.to_string(); 8],
+            future: vec![word.to_string(); 6],
+            conditional: vec![word.to_string(); 8],
+            imperative: vec![word.to_string(); 3],
+            prap: None,
+            prpp: None,
+            pfap: word.to_string(),
+            pfpp: None,
+            gerund: word.to_string(),
+        }
+    }
+
+    fn finite_slot(forms: &[String], person: &Person, number: &Number) -> String {
+        let slot = match (person, number) {
+            (Person::First, Number::Singular) => 0,
+            (Person::Second, Number::Singular) => 1,
+            (Person::Third, Number::Singular) => 2,
+            (Person::First, Number::Plural) => 3,
+            (Person::Second, Number::Plural) => 4,
+            (Person::Third, Number::Plural) => 5,
+        };
+        forms.get(slot).cloned().unwrap_or_default()
+    }
+
+    fn gendered_compound_slot(
+        forms: &[String],
+        person: &Person,
+        number: &Number,
+        gender: &Gender,
+    ) -> String {
+        let slot = match (person, number, gender) {
+            (Person::First, Number::Singular, _) => 0,
+            (Person::Second, Number::Singular, _) => 1,
+            (Person::Third, Number::Singular, Gender::Masculine) => 2,
+            (Person::Third, Number::Singular, Gender::Feminine) => 3,
+            (Person::Third, Number::Singular, Gender::Neuter) => 4,
+            (Person::First, Number::Plural, _) => 5,
+            (Person::Second, Number::Plural, _) => 6,
+            (Person::Third, Number::Plural, _) => 7,
+        };
+        forms.get(slot).cloned().unwrap_or_default()
     }
 
     fn sonic_prefix(infinitive: &str) -> String {
@@ -204,6 +357,14 @@ impl ISVCore {
     }
 
     fn sonic_infinitive_stem(prefix: &str, infinitive: &str) -> Option<String> {
+        ISVCore::sonic_infinitive_stem_with_hint(prefix, infinitive, "")
+    }
+
+    fn sonic_infinitive_stem_with_hint(
+        prefix: &str,
+        infinitive: &str,
+        present_hint: &str,
+    ) -> Option<String> {
         let trunc = infinitive.strip_prefix(prefix).unwrap_or(infinitive);
         if trunc.is_empty() {
             return None;
@@ -219,6 +380,8 @@ impl ISVCore {
         if result.ends_with('s') {
             if result == "jes" {
                 result = "jed".to_string();
+            } else if !present_hint.is_empty() {
+                result = ISVUTILS::string_without_last_n(present_hint, 1);
             }
         }
         Some(result)
@@ -373,22 +536,42 @@ impl ISVCore {
         }
     }
 
-    fn sonic_present_form(
-        prefix: &str,
-        ps: &str,
-        psi: &str,
-        person: &Person,
-        number: &Number,
-    ) -> String {
-        let slot = match (person, number) {
-            (Person::First, Number::Singular) => 0,
-            (Person::Second, Number::Singular) => 1,
-            (Person::Third, Number::Singular) => 2,
-            (Person::First, Number::Plural) => 3,
-            (Person::Second, Number::Plural) => 4,
-            (Person::Third, Number::Plural) => 5,
-        };
+    fn sonic_l_participle(prefix: &str, infinitive_stem: &str) -> String {
+        if infinitive_stem == "vojd" || infinitive_stem == "vȯjd" {
+            "všėl".to_string()
+        } else if infinitive_stem == "id" || infinitive_stem == "jd" {
+            format!("{prefix}šėl")
+        } else if infinitive_stem.ends_with("id") || infinitive_stem.ends_with("jd") {
+            format!(
+                "{}{}šėl",
+                prefix,
+                &infinitive_stem[..infinitive_stem.len() - 2]
+            )
+        } else {
+            format!("{prefix}{infinitive_stem}l")
+        }
+    }
 
+    fn build_sonic_infinitive(prefix: &str, infinitive_stem: &str) -> String {
+        let mut stem = infinitive_stem.to_string();
+        if stem.ends_with("st") {
+            stem.truncate(stem.len() - 1);
+        } else if stem.ends_with('t')
+            || (stem.ends_with('d') && !stem.ends_with("id") && !stem.ends_with("jd"))
+        {
+            stem.truncate(stem.len() - 1);
+            stem.push('s');
+        }
+        ISVCore::transliterate_sonic_back(&format!("{prefix}{stem}tì"))
+    }
+
+    fn build_present_vec(prefix: &str, ps: &str, psi: &str) -> Vec<String> {
+        (0..6)
+            .map(|slot| ISVCore::sonic_present_form_by_slot(prefix, ps, psi, slot))
+            .collect()
+    }
+
+    fn sonic_present_form_by_slot(prefix: &str, ps: &str, psi: &str, slot: usize) -> String {
         let raw = match ps {
             "jes" => ["jesm", "jesi", "jest", "jesmo", "jeste", "sųt"][slot].to_string(),
             "da" => format!(
@@ -449,6 +632,280 @@ impl ISVCore {
             },
         };
         ISVCore::transliterate_sonic_back(&raw)
+    }
+
+    fn build_imperfect_vec(prefix: &str, infinitive_stem: &str) -> Vec<String> {
+        let last = infinitive_stem.chars().last().unwrap_or('\0');
+        let impst = if !matches!(
+            last,
+            'a' | 'e' | 'i' | 'o' | 'u' | 'y' | 'ę' | 'ų' | 'å' | 'ě' | 'ė' | 'ȯ' | ')'
+        ) {
+            if last == 'k' {
+                format!("{}če", ISVUTILS::string_without_last_n(infinitive_stem, 1))
+            } else if infinitive_stem.ends_with("žeg") {
+                "žže".to_string()
+            } else if last == 'g' {
+                format!("{}že", ISVUTILS::string_without_last_n(infinitive_stem, 1))
+            } else {
+                format!("{infinitive_stem}e")
+            }
+        } else if infinitive_stem == "by" && prefix.is_empty() {
+            "bě".to_string()
+        } else {
+            infinitive_stem.to_string()
+        };
+        ["h", "še", "še", "hmo", "ste", "hų"]
+            .iter()
+            .map(|ending| ISVCore::transliterate_sonic_back(&format!("{prefix}{impst}{ending}")))
+            .collect()
+    }
+
+    fn build_future_vec(infinitive: &str, ps: &str) -> Vec<String> {
+        let verb = if ((infinitive == "biti" || infinitive == "бити")
+            && (ps == "j" || ps == "je" || ps == "jes"))
+            || infinitive == "byti"
+            || infinitive == "bytì"
+            || infinitive == "быти"
+        {
+            "".to_string()
+        } else {
+            ISVCore::transliterate_sonic_back(infinitive)
+        };
+        ["bųdų", "bųdeš", "bųde", "bųdemo", "bųdete", "bųdųt"]
+            .iter()
+            .map(|aux| format!("{aux} {verb}"))
+            .collect()
+    }
+
+    fn build_perfect_vec(lpa: &str) -> Vec<String> {
+        [
+            format!("jesm {lpa}(a)"),
+            format!("jesi {lpa}(a)"),
+            format!("(je) {lpa}"),
+            format!("(je) {lpa}a"),
+            format!("(je) {lpa}o"),
+            format!("jesmo {lpa}i"),
+            format!("jeste {lpa}i"),
+            format!("(sųt) {lpa}i"),
+        ]
+        .into_iter()
+        .map(|line| ISVCore::postprocess_lpa_line(&line))
+        .collect()
+    }
+
+    fn build_pluperfect_vec(lpa: &str) -> Vec<String> {
+        [
+            format!("běh {lpa}(a)"),
+            format!("běše {lpa}(a)"),
+            format!("běše {lpa}"),
+            format!("běše {lpa}a"),
+            format!("běše {lpa}o"),
+            format!("běhmo {lpa}i"),
+            format!("běste {lpa}i"),
+            format!("běhų {lpa}i"),
+        ]
+        .into_iter()
+        .map(|line| ISVCore::postprocess_lpa_line(&line))
+        .collect()
+    }
+
+    fn build_conditional_vec(lpa: &str) -> Vec<String> {
+        [
+            format!("byh {lpa}(a)"),
+            format!("bys {lpa}(a)"),
+            format!("by {lpa}"),
+            format!("by {lpa}a"),
+            format!("by {lpa}o"),
+            format!("byhmo {lpa}i"),
+            format!("byste {lpa}i"),
+            format!("by {lpa}i"),
+        ]
+        .into_iter()
+        .map(|line| ISVCore::postprocess_lpa_line(&line))
+        .collect()
+    }
+
+    fn postprocess_lpa_line(line: &str) -> String {
+        let mut res = if line.contains("šėl") {
+            ISVCore::idti(line)
+        } else {
+            line.to_string()
+        };
+        if res.contains("žegl") {
+            res = ISVCore::zegti(&res);
+        }
+        ISVCore::transliterate_sonic_back(&res)
+    }
+
+    fn build_imperative_vec(prefix: &str, ps: &str) -> Vec<String> {
+        let chars: Vec<char> = ps.chars().collect();
+        let last = chars.last().copied().unwrap_or('\0');
+        let penultimate = chars.iter().rev().nth(1).copied().unwrap_or('\0');
+        let mut p2s = if ps == "jes" {
+            "bųď".to_string()
+        } else if ps == "da" {
+            format!("{prefix}{ps}j")
+        } else if ISVCore::is_irregular_stem(ps) {
+            format!("{prefix}{ps}ď")
+        } else if (last == 'ĵ' || last == 'j') && !(penultimate == 'l' || penultimate == 'n') {
+            format!("{prefix}{ps}")
+        } else if last == 'a' || last == 'e' || last == 'ě' {
+            format!("{prefix}{ps}j")
+        } else if last == 'i' {
+            format!("{prefix}{ps}")
+        } else {
+            format!("{prefix}{ps}i")
+        };
+        p2s = p2s.replace("jij", "j").replace("ĵij", "ĵ");
+        [p2s.clone(), format!("{p2s}mo"), format!("{p2s}te")]
+            .into_iter()
+            .map(|form| ISVCore::transliterate_sonic_back(&form))
+            .collect()
+    }
+
+    fn build_prap(prefix: &str, ps: &str) -> String {
+        let last = ps.chars().last().unwrap_or('\0');
+        let base = if ps == "jes" {
+            format!("{prefix}sų")
+        } else if ISVCore::is_irregular_stem(ps) {
+            format!("{prefix}{ps}dų")
+        } else if last == 'a' || last == 'e' || last == 'ě' {
+            format!("{prefix}{ps}jų")
+        } else if last == 'i' {
+            format!("{}{}ę", prefix, ISVUTILS::string_without_last_n(ps, 1))
+        } else {
+            format!("{prefix}{ps}ų")
+        };
+        ISVCore::transliterate_sonic_back(&format!("{base}ćí ({base}ćá, {base}ćé)"))
+    }
+
+    fn build_prpp(prefix: &str, ps: &str, psi: &str) -> String {
+        let mut result = String::new();
+        let mut ps = ps.to_string();
+        if ps == "jes" {
+            result = "—".to_string();
+        } else if ISVCore::is_irregular_stem(&ps) {
+            ps = format!("{ps}do");
+        }
+        let last = ps.chars().last().unwrap_or('\0');
+        if last == 'ĵ' {
+            let cut = ISVUTILS::string_without_last_n(&ps, 1);
+            let psj = format!("{cut}j");
+            result = format!("{prefix}{psj}emý (—á, —œ), {prefix}{cut}mý (—á, —œ)");
+        } else if last == 'j' {
+            result = format!("{prefix}{psi}emý ({prefix}{psi}emá, {prefix}{psi}emœ)");
+        } else if matches!(last, 's' | 'z' | 't' | 'd' | 'l') {
+            result = format!("{prefix}{ps}omý ({prefix}{ps}omá, {prefix}{ps}omœ)");
+        } else if last == 'i' || last == 'o' {
+            result = format!("{prefix}{ps}mý ({prefix}{ps}má, {prefix}{ps}mœ)");
+        } else if result != "—" {
+            result = format!("{prefix}{psi}emý ({prefix}{psi}emá, {prefix}{psi}emœ)");
+        }
+        ISVCore::transliterate_sonic_back(&result)
+    }
+
+    fn build_pfap(lpa: &str) -> String {
+        let before_l = lpa.chars().rev().nth(1).unwrap_or('\0');
+        let mut result = if matches!(
+            before_l,
+            'a' | 'e' | 'i' | 'o' | 'u' | 'y' | 'ę' | 'ų' | 'å' | 'ě' | 'ė' | 'ȯ' | ')'
+        ) {
+            format!("{}vši", ISVUTILS::string_without_last_n(lpa, 1))
+        } else {
+            format!("{}ši", ISVUTILS::string_without_last_n(lpa, 1))
+        };
+        if result.contains("šėv") {
+            result = ISVCore::idti(&result);
+        }
+        let fem_neut_stem = ISVUTILS::string_without_last_n(&result, 1);
+        result = format!("{result} ({fem_neut_stem}á, {fem_neut_stem}é)");
+        ISVCore::transliterate_sonic_back(&result)
+    }
+
+    fn build_pfpp(prefix: &str, infinitive_stem: &str, psi: &str) -> String {
+        let is = infinitive_stem;
+        let last = is.chars().last().unwrap_or('\0');
+        let ppps = if (matches!(last, 'i' | 'y' | 'u' | 'ě')
+            && psi.ends_with(['j', 'v', 'n'])
+            && psi != "imaj")
+            || matches!(last, 'ę' | 'u' | 'ų' | 'å')
+            || is == "by"
+            || (is.ends_with("lě") && psi.ends_with("lj"))
+        {
+            format!("{prefix}{is}t")
+        } else if last == 'a' || last == 'e' || last == 'ě' {
+            format!("{prefix}{is}n")
+        } else if last == 'i' {
+            let mut ppps = format!("{prefix}{is}Xen");
+            for (from, to) in [
+                ("stiX", "šćX"),
+                ("zdiX", "žđX"),
+                ("siX", "šX"),
+                ("ziX", "žX"),
+                ("tiX", "ćX"),
+                ("diX", "đX"),
+                ("jiX", "jX"),
+                ("šiX", "šX"),
+                ("žiX", "žX"),
+                ("čiX", "čX"),
+                ("iX", "jX"),
+                ("X", ""),
+            ] {
+                ppps = ppps.replace(from, to);
+            }
+            ppps
+        } else if last == 'k' || last == 'g' {
+            if psi.ends_with('i') {
+                format!("{}{}en", prefix, ISVUTILS::string_without_last_n(psi, 1))
+            } else {
+                format!("{prefix}{psi}en")
+            }
+        } else {
+            format!("{prefix}{is}en")
+        };
+        ISVCore::transliterate_sonic_back(&format!("{ppps}ý ({ppps}á, {ppps}ó)"))
+    }
+
+    fn build_gerund(pfpp: &str) -> String {
+        let stem = pfpp.split('ý').next().unwrap_or(pfpp).trim_end();
+        ISVCore::transliterate_sonic_back(&format!("{stem}ıje")).replace("ne ", "ne")
+    }
+
+    fn is_irregular_stem(ps: &str) -> bool {
+        matches!(ps, "da" | "je" | "jě" | "ja" | "vě")
+    }
+
+    fn idti(input: &str) -> String {
+        input
+            .replace("šėl(a)", "šėl/šla")
+            .replace("šėl(a)", "šėl/šla")
+            .replace("všėl/šla", "všėl/vȯšla")
+            .replace("všėl/šla", "všėl/vȯšla")
+            .replace("šėla", "šla")
+            .replace("šėlo", "šlo")
+            .replace("šėli", "šli")
+            .replace("všl", "vȯšl")
+            .replace("izoš", "izš")
+            .replace("izȯš", "izš")
+            .replace("obȯš", "obš")
+            .replace("oboš", "obš")
+            .replace("odȯš", "odš")
+            .replace("odoš", "odš")
+            .replace("podȯš", "podš")
+            .replace("podoš", "podš")
+            .replace("nadȯš", "nadš")
+            .replace("nadoš", "nadš")
+    }
+
+    fn zegti(input: &str) -> String {
+        if input.ends_with("žegl(a)") {
+            input.replace("žegl(a)", "žegl/žgla")
+        } else {
+            input
+                .replace("žegla", "žgla")
+                .replace("žeglo", "žglo")
+                .replace("žegli", "žgli")
+        }
     }
 
     fn transliterate_sonic_back(input: &str) -> String {

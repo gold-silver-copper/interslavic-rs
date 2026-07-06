@@ -123,3 +123,41 @@ fn explicit_present_hint_selects_duplicate_dictionary_verb_rows() {
         "bolějų"
     );
 }
+
+#[test]
+fn full_verb_paradigm_includes_compound_tenses_and_participles() {
+    assert_eq!(
+        ISV::verb(
+            "pisati",
+            Person::First,
+            Number::Singular,
+            Gender::Masculine,
+            Tense::Future,
+        ),
+        "bųdų pisatì"
+    );
+    assert_eq!(
+        ISV::verb(
+            "pisati",
+            Person::Third,
+            Number::Singular,
+            Gender::Feminine,
+            Tense::Perfect,
+        ),
+        "(je) pisala"
+    );
+
+    let forms = ISV::verb_forms_with_metadata("pisati", "(piše)", true, true);
+    assert_eq!(forms.infinitive, "pisatì");
+    assert_eq!(forms.imperfect[0], "pisah");
+    assert_eq!(forms.future[0], "bųdų pisatì");
+    assert_eq!(forms.perfect[0], "jesm pisal(a)");
+    assert_eq!(forms.pluperfect[5], "běhmo pisali");
+    assert_eq!(forms.conditional[7], "by pisali");
+    assert_eq!(forms.imperative, vec!["piši", "pišimo", "pišite"]);
+    assert_eq!(forms.prap.as_deref(), Some("pišųćí (pišųćá, pišųćé)"));
+    assert_eq!(forms.prpp.as_deref(), Some("pišemý (pišemá, pišemœ)"));
+    assert_eq!(forms.pfap, "pisavši (pisavšá, pisavšé)");
+    assert_eq!(forms.pfpp.as_deref(), Some("pisaný (pisaná, pisanó)"));
+    assert_eq!(forms.gerund, "pisańje");
+}

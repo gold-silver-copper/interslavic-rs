@@ -5,7 +5,9 @@
 //! focused on single-form inflection.
 
 use interslavic_core::ISVCore;
-pub use interslavic_core::{Animacy, Case, Gender, NounGender, Number, Person, Tense};
+pub use interslavic_core::{
+    Animacy, Case, Gender, NounGender, Number, Person, Tense, VerbParadigm,
+};
 
 mod dictionary;
 use dictionary::*;
@@ -55,7 +57,9 @@ impl ISV {
         ISVCore::decline_adj(word, &case, &number, &gender, animacy)
     }
 
-    /// One present-tense verb form.
+    /// One finite verb form. Present, imperfect, future, perfect, pluperfect,
+    /// and conditional are supported; imperative and participial/gerund forms
+    /// are available through `verb_forms`.
     pub fn verb(
         word: &str,
         person: Person,
@@ -66,19 +70,22 @@ impl ISV {
         let trimmed = word.trim();
         let entries = lookup_verbs_by_lemma(trimmed);
         if let Some(entry) = entries.first() {
-            return ISVCore::conjugate_verb_with_present_hint(
+            return ISVCore::conjugate_verb_with_options(
                 entry.lemma,
                 entry.addition,
                 &person,
                 &number,
+                &gender,
                 &tense,
+                entry.transitive,
+                entry.imperfective,
             );
         }
 
         ISVCore::conjugate_verb(trimmed, &person, &number, &gender, &tense)
     }
 
-    /// One present-tense verb form with an explicit dictionary present-stem hint.
+    /// One finite verb form with an explicit dictionary present-stem hint.
     ///
     /// This is intended for typed dictionary rows that have multiple entries for
     /// the same lemma. It does not parse arbitrary phrase strings.
@@ -96,6 +103,31 @@ impl ISV {
             &number,
             &tense,
         )
+    }
+
+    /// Full verb paradigm with dictionary metadata when available.
+    pub fn verb_forms(word: &str) -> VerbParadigm {
+        let trimmed = word.trim();
+        let entries = lookup_verbs_by_lemma(trimmed);
+        if let Some(entry) = entries.first() {
+            return ISVCore::verb_paradigm_with_options(
+                entry.lemma,
+                entry.addition,
+                entry.transitive,
+                entry.imperfective,
+            );
+        }
+        ISVCore::verb_paradigm_with_options(trimmed, "", true, true)
+    }
+
+    /// Full verb paradigm with explicit dictionary metadata.
+    pub fn verb_forms_with_metadata(
+        word: &str,
+        present_hint: &str,
+        transitive: bool,
+        imperfective: bool,
+    ) -> VerbParadigm {
+        ISVCore::verb_paradigm_with_options(word.trim(), present_hint, transitive, imperfective)
     }
 
     fn select_noun_entry<'a>(

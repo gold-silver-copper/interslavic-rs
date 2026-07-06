@@ -21,6 +21,8 @@ pub(crate) struct DictionaryEntry {
 pub(crate) struct VerbDictionaryEntry {
     pub lemma: &'static str,
     pub addition: &'static str,
+    pub transitive: bool,
+    pub imperfective: bool,
 }
 
 mod noun_generated {
