@@ -1,3 +1,28 @@
+//! Dependency-free Interslavic morphology rules.
+//!
+//! This crate contains the algorithmic core used by the table-backed
+//! `interslavic` facade. It does not read dictionary TSV data and has no
+//! third-party dependencies.
+//!
+//! ```
+//! use interslavic_core::*;
+//!
+//! assert_eq!(
+//!     ISVCore::decline_noun("suma", &Case::Acc, &Number::Singular),
+//!     "sumų"
+//! );
+//! assert_eq!(
+//!     ISVCore::conjugate_verb(
+//!         "učiti",
+//!         &Person::First,
+//!         &Number::Singular,
+//!         &Gender::Feminine,
+//!         &Tense::Present,
+//!     ),
+//!     "učų"
+//! );
+//! ```
+
 mod case_endings;
 use case_endings::*;
 mod known_nouns;
@@ -181,6 +206,7 @@ impl ISVCore {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn conjugate_verb_with_options(
         word: &str,
         present_hint: &str,
@@ -327,8 +353,7 @@ impl ISVCore {
             "vedeti", "věděti", "jesti", "jěsti", "dati", "dųti", "byti", "žegti",
         ];
         for verb in NON_REGULAR {
-            if infinitive.ends_with(verb) {
-                let maybe_prefix = &infinitive[..infinitive.len() - verb.len()];
+            if let Some(maybe_prefix) = infinitive.strip_suffix(verb) {
                 if PREFIXES.contains(&maybe_prefix) {
                     return maybe_prefix.to_string();
                 }
@@ -419,7 +444,7 @@ impl ISVCore {
             if !prefix.is_empty() {
                 if pts.contains(prefix) {
                     pts = pts[prefix.len()..].to_string();
-                } else if prefix.len() > 0 && pts.len() >= prefix.len() - 1 {
+                } else if !prefix.is_empty() && pts.len() >= prefix.len() - 1 {
                     pts = pts[prefix.len() - 1..].to_string();
                 }
             }

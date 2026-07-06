@@ -14,9 +14,12 @@ default-members = [
 resolver = "2"
 
 [workspace.package]
+authors = ["gold-silver-copper"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/gold-silver-copper/interslavic-rs"
+keywords = ["interslavic", "inflection", "morphology", "nlp"]
+categories = ["text-processing", "internationalization"]
 
 [workspace.dependencies]
 interslavic-core = { path = "crates/interslavic-core", version = "0.3.0" }

@@ -2,17 +2,25 @@
 
 [![Crates.io](https://img.shields.io/crates/v/interslavic.svg)](https://crates.io/crates/interslavic)
 [![Documentation](https://docs.rs/interslavic/badge.svg)](https://docs.rs/interslavic/latest/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/bevyengine/bevy/blob/master/LICENSE)
+![License](https://img.shields.io/crates/l/interslavic)
 [![Downloads](https://img.shields.io/crates/d/interslavic.svg)](https://crates.io/crates/interslavic)
 
-Interslavic inflection in four crates:
+**interslavic** is a fast Rust inflection library for Interslavic. It combines a dependency-free morphology core with generated dictionary metadata, making the common API ergonomic while keeping runtime data loading out of the crate.
+
+The project is organized as four crates:
 
 - `interslavic-core`: dependency-free morphology rules.
-- `interslavic`: small public API with generated dictionary metadata.
+- `interslavic`: public API with embedded generated dictionary metadata.
 - `interslavic-extractor`: offline metadata generator.
-- `xtask`: workspace commands for refreshing/checking generated data.
+- `xtask`: workspace commands for refreshing, checking, benchmarking, and parity testing.
 
-Dictionary source sheet: https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/edit?gid=1987833874#gid=1987833874
+Dictionary source sheet: <https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/edit?gid=1987833874#gid=1987833874>
+
+## Installation
+
+```bash
+cargo add interslavic
+```
 
 ## Example
 
@@ -48,7 +56,7 @@ fn main() {
         "mųža"
     );
 
-    // Adjectives and verbs are also single-form APIs. Adjective phrases with
+    // Adjectives and verbs are single-form APIs. Adjective phrases with
     // particles/complements should be modeled by the caller, not declined as a unit.
     assert_eq!(
         ISV::adj(
@@ -95,24 +103,51 @@ fn main() {
 }
 ```
 
+More runnable examples:
+
+```bash
+cargo run -p interslavic --example basic
+cargo run -p interslavic --example verb_paradigm
+cargo run -p interslavic --example sentence
+cargo run -p interslavic --example speedmark --release
+```
+
+## Crate overview
+
+### `interslavic`
+
+The public facade for application code. It looks up generated dictionary metadata first and falls back to `interslavic-core` rules for unknown words. Use this crate when you want dictionary-aware noun metadata, verb present-stem hints, transitivity/imperfectivity flags, and a compact `ISV` namespace.
+
+### `interslavic-core`
+
+The dependency-free rule engine. It does not know about the dictionary TSV or generated PHF tables. Use it directly only when a tiny dependency-free morphology layer is more important than dictionary-backed metadata.
+
+### `interslavic-extractor`
+
+Offline generator for committed Rust metadata under `crates/interslavic/generated`. It parses the dictionary TSV and emits deterministic PHF tables. Runtime crates do not parse TSV data.
+
+### `xtask`
+
+Developer workflow wrapper for repeatable commands.
+
 ## Data generation
 
-The runtime crate does not parse dictionary TSV data. Generated Rust metadata is
-committed under `crates/interslavic/generated` and included at compile time.
-
-Refresh and check it with:
+Generated Rust metadata is committed under `crates/interslavic/generated` and included at compile time. Refresh and check it with:
 
 ```bash
 cargo xtask refresh-data
 cargo xtask check-registry
 ```
 
+`check-registry` is intentionally dump-free: it verifies that committed generated metadata is deterministic for the committed TSV. It does not contact the upstream dictionary sheet.
+
 ## sonic16x parity and accuracy
 
 This crate is tested against [`sonic16x/interslavic`](https://github.com/sonic16x/interslavic), the JavaScript implementation used by the Interslavic dictionary. The comparison script fetches the latest upstream `master` branch, generates reference forms with `@interslavic/utils`, compares the Rust output, and writes reports under `target/infl-comparison`.
 
 ```bash
-node tools/compare-latest-sonic.js
+cargo xtask accuracy
+# equivalent to: node tools/compare-latest-sonic.js
 ```
 
 Latest measured compatible accuracy against sonic16x commit `0fab0c5b4463118d46b1cdcd506926d8848052c9` / `@interslavic/utils@3.4.0`:
@@ -124,7 +159,25 @@ Latest measured compatible accuracy against sonic16x commit `0fab0c5b4463118d46b
 | verbs: present, imperfect, perfect, pluperfect, future, conditional, imperative, participles, gerund | 4,345 | 216,339 | 100.0000% | 0 |
 | total core comparable | 16,457 | 471,927 | 99.9983% | 8 |
 
-“Compatible” means the Rust form matched one of sonic16x's accepted alternatives when sonic returns comma/slash/parenthetical variants. Phrase strings from dictionary rows are reported separately because this crate's core APIs accept typed lemmas/metadata rather than arbitrary phrases; the latest run skipped 1,488 phrase rows and 8 Sonic-null/reference rows.
+“Compatible” means the Rust form matched one of sonic16x's accepted alternatives when sonic returns comma/slash/parenthetical variants. Phrase strings from dictionary rows are reported separately because this crate's core APIs accept typed lemmas/metadata rather than arbitrary phrases.
+
+## Developer commands
+
+```bash
+cargo xtask check-all       # fmt check, workspace tests, generated metadata check
+cargo xtask examples        # compile/run the lightweight examples
+cargo xtask speed           # run the speedmark example in release mode
+cargo xtask accuracy        # run sonic16x parity comparison
+cargo xtask refresh-data    # regenerate committed dictionary metadata
+cargo xtask check-registry  # verify generated metadata is current
+```
+
+## API philosophy and limitations
+
+- Public methods return a single `String`; accepted alternatives are represented as slash-separated strings when the morphology engine has multiple compatible forms.
+- `ISV::noun_with` is the escape hatch for explicit gender/animacy when a lemma is ambiguous or context-sensitive.
+- Verb phrase strings are not parsed as arbitrary syntax. Use typed helpers such as `verb_with_present_hint` or `verb_forms_with_metadata` for dictionary rows with extra metadata.
+- `interslavic-core` stays dependency-free; dictionary-backed behavior belongs in `interslavic`.
 
 ## License
 

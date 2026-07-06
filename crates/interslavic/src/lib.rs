@@ -1,8 +1,37 @@
 //! Interslavic inflection with embedded dictionary metadata.
 //!
 //! `interslavic-core` contains the dependency-free morphology rules. This crate
-//! adds generated dictionary metadata for noun lookup and keeps the public API
-//! focused on single-form inflection.
+//! adds generated dictionary metadata for noun and verb lookup and keeps the public
+//! API focused on single-form inflection.
+//!
+//! # Examples
+//!
+//! ```
+//! use interslavic::*;
+//!
+//! assert_eq!(ISV::noun("adept", Case::Acc, Number::Singular), "adepta");
+//! assert_eq!(ISV::noun("oko", Case::Nom, Number::Plural), "oči / očesa");
+//! assert_eq!(
+//!     ISV::adj(
+//!         "dobry",
+//!         Case::Gen,
+//!         Number::Singular,
+//!         Gender::Masculine,
+//!         Animacy::Animate,
+//!     ),
+//!     "dobrogo"
+//! );
+//! assert_eq!(
+//!     ISV::verb(
+//!         "učiti",
+//!         Person::First,
+//!         Number::Singular,
+//!         Gender::Feminine,
+//!         Tense::Present,
+//!     ),
+//!     "učų"
+//! );
+//! ```
 
 use interslavic_core::ISVCore;
 pub use interslavic_core::{

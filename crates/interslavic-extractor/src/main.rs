@@ -343,3 +343,42 @@ fn remove_bracketed_text(input: &str, open: char, close: char) -> String {
     }
     result.trim().to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_part_of_speech_extracts_noun_metadata() {
+        let parsed = parse_part_of_speech("m.anim.pl");
+        assert!(parsed.is_noun);
+        assert!(!parsed.is_verb);
+        assert_eq!(parsed.gender, Some(Gender::Masculine));
+        assert!(parsed.animate);
+        assert!(parsed.plural_only);
+        assert!(!parsed.singular_only);
+        assert!(!parsed.indeclinable);
+    }
+
+    #[test]
+    fn parse_part_of_speech_extracts_verb_metadata() {
+        let parsed = parse_part_of_speech("v.tr.ipf");
+        assert!(parsed.is_verb);
+        assert!(parsed.transitive);
+        assert!(parsed.imperfective);
+    }
+
+    #[test]
+    fn normalize_lemma_removes_dictionary_annotations() {
+        assert_eq!(normalize_lemma(" \"hektar [unit]\"! "), "hektar");
+        assert_eq!(normalize_lemma("uško [dim. [nested]]"), "uško");
+    }
+
+    #[test]
+    fn core_verb_filter_rejects_phrases_and_alternatives() {
+        assert!(is_core_verb_lemma("pisati"));
+        assert!(!is_core_verb_lemma("bazovati na"));
+        assert!(!is_core_verb_lemma("pisati/pisati"));
+        assert!(!is_core_verb_lemma("(piše)"));
+    }
+}

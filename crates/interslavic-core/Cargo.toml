@@ -3,8 +3,12 @@ name = "interslavic-core"
 version = "0.3.0"
 edition.workspace = true
 description = "Dependency-free Interslavic morphology rules"
+readme = "README.md"
 license.workspace = true
 repository.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
