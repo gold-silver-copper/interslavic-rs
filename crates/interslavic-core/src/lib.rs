@@ -1466,7 +1466,15 @@ impl ISVCore {
         for (idx, c) in chars.iter().enumerate() {
             result.push(*c);
             if idx >= mark_from && "cšžčćńľŕťďśźđj".contains(*c) {
-                result.push('ь');
+                // A LEMMA ending in soft consonant + `o` is a foreign citation
+                // form (adadžo, bandžo): native soft neuters already end in -e
+                // (morje). Marking the softness there would O⇒E-convert the
+                // nominative itself (adadžo → adadže) — the citation form must
+                // echo. Oblique cells are unaffected (the yer is stripped).
+                let before_final_o = idx + 2 == chars.len() && chars.last() == Some(&'o');
+                if !before_final_o {
+                    result.push('ь');
+                }
             }
         }
         result
@@ -1961,6 +1969,11 @@ impl ISVCore {
     pub fn is_ost_class(word: &str) -> bool {
         word.ends_with("ost")
             || word.ends_with("ost́")
+            // The precomposed soft-t spelling (U+0165), the common way the
+            // abstract feminine suffix is written (novosť, točnosť). The
+            // length guard leaves the two 4-char lexical words (kosť f,
+            // gosť m!) to the dictionary lookup instead of the heuristic.
+            || (word.ends_with("osť") && word.chars().count() >= 5)
             || word.ends_with("ěć")
             || word.ends_with("ěč")
             || word.ends_with("eć")
