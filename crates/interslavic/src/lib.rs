@@ -35,7 +35,7 @@
 
 use interslavic_core::ISVCore;
 pub use interslavic_core::{
-    Animacy, Case, Gender, NounGender, Number, Person, Tense, VerbParadigm,
+    phono, Animacy, Case, Gender, NounGender, Number, Person, Tense, VerbParadigm,
 };
 
 mod dictionary;
