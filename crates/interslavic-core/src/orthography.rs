@@ -22,8 +22,8 @@
 /// The flavored → standard character correspondences (lowercase). Exposed so a
 /// downstream tool can regenerate a matching fold in another language — e.g. a
 /// client-side JavaScript mirror — from one authoritative table instead of
-/// transcribing it by hand. `đ` is the only many-to-one entry (it expands to
-/// the digraph `dž`).
+/// transcribing it by hand. `đ` is the only entry whose output is more than
+/// one character (it expands to the digraph `dž`).
 ///
 /// [`to_standard`] is the single source for the lowercase fold; a test asserts
 /// it reproduces every pair here exactly.
