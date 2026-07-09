@@ -34,8 +34,8 @@
 //! ```
 
 pub use interslavic_core::{
-    cells, orthography, phono, prepositions, Animacy, Case, Gender, NounGender, Number, Person,
-    Tense, VerbParadigm,
+    cells, orthography, phono, prepositions, AdjParadigm, Animacy, Case, Gender, NounGender,
+    NounParadigm, Number, Person, Tense, VerbParadigm, CASE_ORDER,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)
@@ -90,6 +90,107 @@ impl ISV {
     /// should model particles/complements separately and pass only the adjective.
     pub fn adj(word: &str, case: Case, number: Number, gender: Gender, animacy: Animacy) -> String {
         ISVCore::decline_adj(word, &case, &number, &gender, animacy)
+    }
+
+    /// The whole noun paradigm — every case in both numbers — with gender and
+    /// animacy inferred from the dictionary (falling back to the rule engine's
+    /// guess for out-of-lexicon words), the counterpart of [`ISV::verb_forms`].
+    /// Cells equal the corresponding [`ISV::noun`] calls; index them with
+    /// [`NounParadigm::get`].
+    ///
+    /// ```
+    /// use interslavic::{Case, Number, ISV};
+    /// let p = ISV::noun_forms("žena");
+    /// assert_eq!(p.get(Case::Gen, Number::Singular), "ženy");
+    /// assert_eq!(p.get(Case::Ins, Number::Singular), "ženojų");
+    /// ```
+    pub fn noun_forms(lemma: &str) -> NounParadigm {
+        let trimmed = lemma.trim();
+        let (gender, animacy) = match lookup_nouns_by_lemma(trimmed).first() {
+            Some(entry) => (
+                dictionary_gender_to_api(entry.gender),
+                if entry.animate {
+                    Animacy::Animate
+                } else {
+                    Animacy::Inanimate
+                },
+            ),
+            None => (
+                match ISVCore::guess_gender(trimmed) {
+                    Gender::Masculine => NounGender::Masculine,
+                    Gender::Feminine => NounGender::Feminine,
+                    Gender::Neuter => NounGender::Neuter,
+                },
+                if ISVCore::noun_is_animate(trimmed) {
+                    Animacy::Animate
+                } else {
+                    Animacy::Inanimate
+                },
+            ),
+        };
+        NounParadigm {
+            lemma: trimmed.to_string(),
+            gender,
+            animacy,
+            singular: CASE_ORDER
+                .iter()
+                .map(|&c| Self::noun(trimmed, c, Number::Singular))
+                .collect(),
+            plural: CASE_ORDER
+                .iter()
+                .map(|&c| Self::noun(trimmed, c, Number::Plural))
+                .collect(),
+        }
+    }
+
+    /// The whole noun paradigm with caller-supplied gender and animacy — the
+    /// paradigm counterpart of [`ISV::noun_with`]. Dictionary metadata such as
+    /// fleeting-vowel additions and number restrictions still applies;
+    /// `gender`/`animacy` override the dictionary row.
+    pub fn noun_forms_with(lemma: &str, gender: NounGender, animacy: Animacy) -> NounParadigm {
+        let trimmed = lemma.trim();
+        NounParadigm {
+            lemma: trimmed.to_string(),
+            gender,
+            animacy,
+            singular: CASE_ORDER
+                .iter()
+                .map(|&c| Self::noun_with(trimmed, c, Number::Singular, gender, animacy))
+                .collect(),
+            plural: CASE_ORDER
+                .iter()
+                .map(|&c| Self::noun_with(trimmed, c, Number::Plural, gender, animacy))
+                .collect(),
+        }
+    }
+
+    /// The whole adjective paradigm — every case × number × gender/animacy
+    /// column. Purely rule-driven (no dictionary), like [`ISV::adj`]; cells
+    /// equal the corresponding `ISV::adj` calls. Index with [`AdjParadigm::get`].
+    ///
+    /// ```
+    /// use interslavic::{Animacy, Case, Gender, Number, ISV};
+    /// let p = ISV::adj_forms("dobry");
+    /// assert_eq!(p.get(Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), "dobrogo");
+    /// assert_eq!(p.get(Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate), "dobra");
+    /// ```
+    pub fn adj_forms(word: &str) -> AdjParadigm {
+        let w = word.trim();
+        let column = |gender: Gender, animacy: Animacy| -> [Vec<String>; 2] {
+            [Number::Singular, Number::Plural].map(|number| {
+                CASE_ORDER
+                    .iter()
+                    .map(|&c| Self::adj(w, c, number, gender, animacy))
+                    .collect()
+            })
+        };
+        AdjParadigm {
+            lemma: w.to_string(),
+            masculine_animate: column(Gender::Masculine, Animacy::Animate),
+            masculine_inanimate: column(Gender::Masculine, Animacy::Inanimate),
+            feminine: column(Gender::Feminine, Animacy::Inanimate),
+            neuter: column(Gender::Neuter, Animacy::Inanimate),
+        }
     }
 
     /// The synthetic comparative of an adjective, as `(comparative adjective,
