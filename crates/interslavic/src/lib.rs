@@ -91,7 +91,9 @@ impl ISV {
     /// synthetically (relational `-sky`/`-cky`, already-comparative `-ši`/`-ći`,
     /// soft `-ji` possessives) — use the analytic comparative (`vyše`/`bolje`
     /// followed by the positive) there. The comparative is a soft adjective,
-    /// so its paradigm is `ISV::adj(comparative, …)`.
+    /// so its paradigm is `ISV::adj(comparative, …)`. Expects a positive-degree
+    /// qualitative adjective in flavored orthography; other input (verbs,
+    /// determiners) is unspecified.
     ///
     /// ```
     /// use interslavic::ISV;

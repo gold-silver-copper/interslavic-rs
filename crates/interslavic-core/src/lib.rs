@@ -1086,6 +1086,12 @@ impl ISVCore {
     /// seam is palatalized and the softness of the result picks `-ějši`/`-ěje`
     /// (hard) vs `-ejši`/`-eje` (soft), e.g. novy→novějši, blagy stays
     /// irregular, ryđi→ryđejši.
+    ///
+    /// Precondition: `adj` is a positive-degree qualitative adjective written
+    /// in the flavored (etymological) orthography; the result is unspecified
+    /// for other input (a verb infinitive also ends in `-i` and would gradate
+    /// spuriously). Determiners and other non-gradable words should not be
+    /// passed here.
     pub fn comparative(adj: &str) -> Option<(String, String)> {
         // Non-gradable: relational -sky/-cky, already-comparative/participial
         // -ši/-ći, and soft -ji possessives (ji+ejši would be malformed).
@@ -1115,17 +1121,25 @@ impl ISVCore {
         if stem.chars().count() < 2 {
             return None;
         }
-        // -ky / -eky / -oky class: -ši on the truncated root, adverb by
-        // iotation. Roots shorter than 3 chars (diky → *di-) fall through to
-        // the regular rule instead of producing a degenerate stem.
-        for suf in ["ok", "ek", "k"] {
-            if let Some(root) = stem.strip_suffix(suf) {
-                if root.chars().count() >= 3 {
-                    let comp = format!("{root}ši");
-                    let adv = format!("{}e", crate::phono::iotate_final(root));
-                    return Some((comp, adv));
+        // -ky / -eky / -oky class: -ši on the truncated root (kratky→kratši,
+        // vysoky→vysši, uzky→uzši), adverb by iotation of the root
+        // (kratky→kraće, vysoky→vyše, uzky→uže). A few adjectives end in -ky
+        // with the k belonging to the ROOT rather than the -ky suffix; they
+        // palatalize regularly instead (diky→dičejši, not *diši), so they are
+        // excluded here and fall through to the regular rule below. (Root
+        // length cannot tell them apart — both diky and uzky leave a 2-char
+        // root — so the distinction is lexical.)
+        const ROOT_FINAL_K: &[&str] = &["diky"];
+        if !ROOT_FINAL_K.contains(&adj) {
+            for suf in ["ok", "ek", "k"] {
+                if let Some(root) = stem.strip_suffix(suf) {
+                    if root.chars().count() >= 2 {
+                        let comp = format!("{root}ši");
+                        let adv = format!("{}e", crate::phono::iotate_final(root));
+                        return Some((comp, adv));
+                    }
+                    break;
                 }
-                break;
             }
         }
         // Regular: palatalize the seam, then the full softness predicate picks

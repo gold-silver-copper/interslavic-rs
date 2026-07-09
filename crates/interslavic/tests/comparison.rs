@@ -19,7 +19,11 @@ fn comparatives_follow_steen() {
     assert_eq!(comp("žestoky"), Some(("žestši".into(), "žešće".into()))); // st → šć
                                                                           // Soft đ-final stem takes -ejši, not hard -ějši.
     assert_eq!(comp("ryđi"), Some(("ryđejši".into(), "ryđeje".into())));
-    // Short k-root falls through to the regular rule (not a degenerate *diši).
+    // Short-root -ky truncators (2-char root) still truncate, not palatalize:
+    // the -ky is the suffix here, so drop it (uz-, niz-) rather than uzč-.
+    assert_eq!(comp("uzky"), Some(("uzši".into(), "uže".into())));
+    assert_eq!(comp("nizky"), Some(("nizši".into(), "niže".into())));
+    // But diky's k is root-final, so it palatalizes regularly (not *diši).
     assert_eq!(comp("diky"), Some(("dičejši".into(), "dičeje".into())));
 }
 
