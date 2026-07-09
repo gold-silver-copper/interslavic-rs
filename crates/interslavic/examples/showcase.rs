@@ -634,7 +634,7 @@ fn core_pronouns_and_numerals() {
 fn core_verbs() {
     heading("ISVCore::conjugate_verb family");
     row(
-        "conjugate_verb(\"delati\", 3pl present)",
+        "conjugate_verb(\"dělati\", 3pl present)",
         &ISVCore::conjugate_verb(
             "dělati",
             &Person::Third,
@@ -655,7 +655,7 @@ fn core_verbs() {
         ),
     );
     row(
-        "conjugate_verb_with_options(\"pisati\", perfective/transitive, perfect 3sg f)",
+        "conjugate_verb_with_options(\"napisati\", perfective/transitive, perfect 3sg f)",
         &ISVCore::conjugate_verb_with_options(
             "napisati",
             "",
