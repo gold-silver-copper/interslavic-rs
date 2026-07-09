@@ -117,6 +117,51 @@ impl ISV {
         ISVCore::superlative(adj.trim())
     }
 
+    /// One pronoun form, or `None` if the lemma is not a recognized pronoun.
+    /// Covers the `toj`-class demonstratives, the `moj`-class possessives and
+    /// interrogatives (incl. `naš`/`vaš`/`čij`), `kto`/`čto` and derivatives,
+    /// the `-koli` indefinites, `veś`, and the adjectivally-declined
+    /// determiners (`ktory`, `kaky`, `samy`, …).
+    ///
+    /// ```
+    /// use interslavic::*;
+    /// assert_eq!(ISV::pronoun("toj", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), Some("togo".into()));
+    /// assert_eq!(ISV::pronoun("moj", Case::Dat, Number::Singular, Gender::Neuter, Animacy::Inanimate), Some("mojemu".into()));
+    /// assert_eq!(ISV::pronoun("kto", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("kogo".into()));
+    /// assert_eq!(ISV::pronoun("stol", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), None);
+    /// ```
+    pub fn pronoun(
+        lemma: &str,
+        case: Case,
+        number: Number,
+        gender: Gender,
+        animacy: Animacy,
+    ) -> Option<String> {
+        ISVCore::decline_pronoun(lemma.trim(), &case, &number, &gender, animacy)
+    }
+
+    /// One numeral form, or `None` if the lemma is not a recognized numeral.
+    /// Covers `jedin`, the dual-remnant `dva`/`oba`/`obydva` and `tri`/`četyri`,
+    /// the i-stem numerals `pęť`…`desęť`, and the adjectivally-declined ordinals
+    /// (`pŕvy`, `drugy`, …). Cardinals return their citation form for the
+    /// nominative and accusative.
+    ///
+    /// ```
+    /// use interslavic::*;
+    /// assert_eq!(ISV::numeral("pęť", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("pęti".into()));
+    /// assert_eq!(ISV::numeral("tri", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("trěh".into()));
+    /// assert_eq!(ISV::numeral("pŕvy", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), Some("pŕvogo".into()));
+    /// ```
+    pub fn numeral(
+        lemma: &str,
+        case: Case,
+        number: Number,
+        gender: Gender,
+        animacy: Animacy,
+    ) -> Option<String> {
+        ISVCore::decline_numeral(lemma.trim(), &case, &number, &gender, animacy)
+    }
+
     /// One finite verb form. Present, imperfect, future, perfect, pluperfect,
     /// and conditional are supported; imperative and participial/gerund forms
     /// are available through `verb_forms`.

@@ -1159,6 +1159,202 @@ impl ISVCore {
     pub fn superlative(adj: &str) -> Option<(String, String)> {
         ISVCore::comparative(adj).map(|(c, a)| (format!("naj{c}"), format!("naj{a}")))
     }
+
+    /// The pronominal (hard `toj` / soft `moj`) declension of a synthetic
+    /// adjective lemma, with the masculine nominative singular — and the
+    /// masculine inanimate accusative singular, which is syncretic with it —
+    /// overridden to the pronoun's actual nominative.
+    ///
+    /// The oblique cells of the pronominal declension are identical to the
+    /// adjectival ones (togo≡the gen.sg of hard `ty`, mojego≡the gen.sg of
+    /// soft `moji`), so `decline_adj` on a synthetic `stem+y`/`stem+i` lemma
+    /// produces them; only the two nominative-syncretic masculine cells
+    /// differ (a pronoun has `toj`, not `*ty`).
+    fn pronominal_via_adj(
+        synthetic: &str,
+        nom_masc: &str,
+        case: &Case,
+        number: &Number,
+        gender: &Gender,
+        animacy: Animacy,
+    ) -> String {
+        let is_masc_nom_sg = *gender == Gender::Masculine
+            && *number == Number::Singular
+            && (*case == Case::Nom || (*case == Case::Acc && animacy == Animacy::Inanimate));
+        if is_masc_nom_sg {
+            nom_masc.to_string()
+        } else {
+            ISVCore::decline_adj(synthetic, case, number, gender, animacy)
+        }
+    }
+
+    /// One pronoun form, or `None` if `lemma` is not a recognized pronoun
+    /// paradigm. Covers the `toj`-class demonstratives, the `moj`-class
+    /// possessives/interrogatives (incl. `naš`/`vaš`/`čij`), `kto`/`čto` and
+    /// their derivatives, the internally-inflecting `-koli` indefinites,
+    /// `veś`, and the adjectivally-declined determiners (`ktory`, `kaky`,
+    /// `samy`, …).
+    ///
+    /// Recognition is by word SHAPE, not a closed lexicon: the last-resort
+    /// branch declines any `-y`/`-i` word as an adjective, so a same-shaped
+    /// non-pronoun yields a (correctly-declined) `Some` rather than `None`.
+    /// Lemmas are the flavored (etymological) citation forms.
+    pub fn decline_pronoun(
+        lemma: &str,
+        case: &Case,
+        number: &Number,
+        gender: &Gender,
+        animacy: Animacy,
+    ) -> Option<String> {
+        let l = lemma.trim();
+        if l.is_empty() || l.contains(' ') {
+            return None;
+        }
+        // -koli indefinites inflect internally on the head, then re-append the
+        // particle. Strip iteratively (not recursively) so a pathological
+        // "kolikoli…" input cannot overflow the stack.
+        let mut head = l;
+        let mut koli = 0usize;
+        while let Some(rest) = head.strip_suffix("koli") {
+            if rest.is_empty() {
+                break;
+            }
+            head = rest;
+            koli += 1;
+        }
+        if koli > 0 {
+            return ISVCore::decline_pronoun(head, case, number, gender, animacy)
+                .map(|f| format!("{f}{}", "koli".repeat(koli)));
+        }
+        // toj-class demonstratives: hard pronominal declension.
+        if matches!(l, "toj" | "tutoj" | "tamtoj" | "onoj" | "ov") {
+            let stem = l.strip_suffix("oj").unwrap_or(l);
+            let synthetic = format!("{stem}y");
+            return Some(ISVCore::pronominal_via_adj(
+                &synthetic, l, case, number, gender, animacy,
+            ));
+        }
+        // kto and its derivatives (nikto, něstokto, vsekto, …).
+        if let Some(head) = l.strip_suffix("kto") {
+            return Some(match case {
+                Case::Nom => l.to_string(),
+                Case::Gen | Case::Acc => format!("{head}kogo"),
+                Case::Dat => format!("{head}komu"),
+                Case::Ins => format!("{head}kym"),
+                Case::Loc => format!("{head}kom"),
+            });
+        }
+        // čto / što and derivatives (inanimate: accusative = nominative).
+        if let Some(head) = l.strip_suffix("čto").or_else(|| l.strip_suffix("što")) {
+            return Some(match case {
+                Case::Nom | Case::Acc => l.to_string(),
+                Case::Gen => format!("{head}čego"),
+                Case::Dat => format!("{head}čemu"),
+                Case::Ins => format!("{head}čim"),
+                Case::Loc => format!("{head}čem"),
+            });
+        }
+        // veś "all, whole": soft pronominal declension over the vs- stem.
+        if l == "veś" || l == "ves" {
+            return Some(ISVCore::pronominal_via_adj(
+                "vsi", l, case, number, gender, animacy,
+            ));
+        }
+        // moj-class possessives/interrogatives (moj, tvoj, svoj, koj, čij, naš,
+        // vaš, and their ni-/ně-/vse- prefixed derivatives): soft pronominal
+        // declension over the full lemma. The length guard excludes the bare
+        // conjunction "oj".
+        if (l.ends_with("oj") && l.chars().count() >= 3)
+            || l.ends_with("čij")
+            || l == "naš"
+            || l == "vaš"
+        {
+            let synthetic = format!("{l}i");
+            return Some(ISVCore::pronominal_via_adj(
+                &synthetic, l, case, number, gender, animacy,
+            ));
+        }
+        // Adjectivally-declined determiners (ktory, kaky, samy, vsaky, iny…).
+        if l.ends_with(['y', 'i']) && l.chars().count() >= 3 {
+            return Some(ISVCore::decline_adj(l, case, number, gender, animacy));
+        }
+        None
+    }
+
+    /// One numeral form, or `None` if `lemma` is not a recognized numeral.
+    /// Covers `jedin` (adjectival, with the irregular masculine nominative),
+    /// the dual-remnant `dva`/`oba`/`obydva` and `tri`/`četyri`, the i-stem
+    /// numerals `pęť`…`desęť` (declining like `kosť`), and the adjectivally-
+    /// declined ordinals (`pŕvy`, `drugy`, …). Cardinals return their citation
+    /// form for nominative/accusative.
+    ///
+    /// Recognition is by word SHAPE (an i-stem lemma is detected by its final
+    /// `-ť`, an ordinal by its `-y`/`-i`), not a closed lexicon, so a same-
+    /// shaped non-numeral — a feminine i-stem noun like `kosť` — yields a
+    /// (correctly-declined) `Some`. Lemmas are the flavored citation forms
+    /// (`desęť`, not `deset`).
+    pub fn decline_numeral(
+        lemma: &str,
+        case: &Case,
+        number: &Number,
+        gender: &Gender,
+        animacy: Animacy,
+    ) -> Option<String> {
+        let l = lemma.trim();
+        if l.is_empty() || l.contains(' ') {
+            return None;
+        }
+        // jedin: declines like the hard adjective *jedny, except the masculine
+        // nominative singular is the irregular citation form jedin.
+        if l == "jedin" {
+            return Some(ISVCore::pronominal_via_adj(
+                "jedny", "jedin", case, number, gender, animacy,
+            ));
+        }
+        // Dual remnants 2 (gender only in nom/acc), oba/obydva likewise.
+        for (base, stem) in [("dva", "dv"), ("oba", "ob"), ("obydva", "obydv")] {
+            if l == base {
+                return Some(match case {
+                    Case::Nom | Case::Acc => {
+                        if *gender == Gender::Feminine {
+                            format!("{stem}ě")
+                        } else {
+                            l.to_string()
+                        }
+                    }
+                    Case::Gen | Case::Loc => format!("{stem}oh"),
+                    Case::Dat => format!("{stem}om"),
+                    Case::Ins => format!("{stem}oma"),
+                });
+            }
+        }
+        // 3 and 4: dual-remnant declension, no gender.
+        if l == "tri" || l == "četyri" {
+            let stem = l.strip_suffix('i').unwrap_or(l);
+            return Some(match case {
+                Case::Nom | Case::Acc => l.to_string(),
+                Case::Gen | Case::Loc => format!("{stem}ěh"),
+                Case::Dat => format!("{stem}ěm"),
+                Case::Ins => format!("{stem}ěmi"),
+            });
+        }
+        // 5 and up (pęť…desęť and the -nadsęť/-deset series): the i-stem
+        // (kosť-class) declension.
+        if let Some(stem) = l.strip_suffix('ť') {
+            if stem.chars().count() >= 2 {
+                return Some(match case {
+                    Case::Nom | Case::Acc => l.to_string(),
+                    Case::Gen | Case::Dat | Case::Loc => format!("{stem}ti"),
+                    Case::Ins => format!("{l}jų"),
+                });
+            }
+        }
+        // Ordinals and other adjectivally-shaped numerals (pŕvy, drugy…).
+        if l.ends_with(['y', 'i']) && l.chars().count() >= 3 {
+            return Some(ISVCore::decline_adj(l, case, number, gender, animacy));
+        }
+        None
+    }
 }
 
 //NOUN STUFF
