@@ -91,7 +91,6 @@ fn toj_class_hard_pronominal() {
         ),
         Some("ti".into())
     );
-    assert_eq!(ms("toj", Case::Gen).map(|_| ()), Some(())); // (gen.sg checked above)
     assert_eq!(
         pron(
             "toj",
@@ -370,6 +369,7 @@ fn i_stem_numerals_and_ordinals() {
 fn unrecognized_lemmas_return_none() {
     assert_eq!(ms("stol", Case::Gen), None);
     assert_eq!(ms("", Case::Gen), None);
+    assert_eq!(ms("oj", Case::Gen), None); // bare conjunction, below the -oj guard
     assert_eq!(
         num(
             "stol",

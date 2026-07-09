@@ -1194,6 +1194,11 @@ impl ISVCore {
     /// their derivatives, the internally-inflecting `-koli` indefinites,
     /// `veś`, and the adjectivally-declined determiners (`ktory`, `kaky`,
     /// `samy`, …).
+    ///
+    /// Recognition is by word SHAPE, not a closed lexicon: the last-resort
+    /// branch declines any `-y`/`-i` word as an adjective, so a same-shaped
+    /// non-pronoun yields a (correctly-declined) `Some` rather than `None`.
+    /// Lemmas are the flavored (etymological) citation forms.
     pub fn decline_pronoun(
         lemma: &str,
         case: &Case,
@@ -1205,12 +1210,21 @@ impl ISVCore {
         if l.is_empty() || l.contains(' ') {
             return None;
         }
-        // -koli indefinites inflect internally: decline the head, re-append.
-        if let Some(head) = l.strip_suffix("koli") {
-            if !head.is_empty() {
-                return ISVCore::decline_pronoun(head, case, number, gender, animacy)
-                    .map(|f| format!("{f}koli"));
+        // -koli indefinites inflect internally on the head, then re-append the
+        // particle. Strip iteratively (not recursively) so a pathological
+        // "kolikoli…" input cannot overflow the stack.
+        let mut head = l;
+        let mut koli = 0usize;
+        while let Some(rest) = head.strip_suffix("koli") {
+            if rest.is_empty() {
+                break;
             }
+            head = rest;
+            koli += 1;
+        }
+        if koli > 0 {
+            return ISVCore::decline_pronoun(head, case, number, gender, animacy)
+                .map(|f| format!("{f}{}", "koli".repeat(koli)));
         }
         // toj-class demonstratives: hard pronominal declension.
         if matches!(l, "toj" | "tutoj" | "tamtoj" | "onoj" | "ov") {
@@ -1246,9 +1260,14 @@ impl ISVCore {
                 "vsi", l, case, number, gender, animacy,
             ));
         }
-        // moj-class possessives/interrogatives (incl. ni-/ně-/vse- derived):
-        // soft pronominal declension over the full lemma.
-        if (l.ends_with("oj") && l != "obydvoj") || l.ends_with("čij") || l == "naš" || l == "vaš"
+        // moj-class possessives/interrogatives (moj, tvoj, svoj, koj, čij, naš,
+        // vaš, and their ni-/ně-/vse- prefixed derivatives): soft pronominal
+        // declension over the full lemma. The length guard excludes the bare
+        // conjunction "oj".
+        if (l.ends_with("oj") && l.chars().count() >= 3)
+            || l.ends_with("čij")
+            || l == "naš"
+            || l == "vaš"
         {
             let synthetic = format!("{l}i");
             return Some(ISVCore::pronominal_via_adj(
@@ -1268,6 +1287,12 @@ impl ISVCore {
     /// numerals `pęť`…`desęť` (declining like `kosť`), and the adjectivally-
     /// declined ordinals (`pŕvy`, `drugy`, …). Cardinals return their citation
     /// form for nominative/accusative.
+    ///
+    /// Recognition is by word SHAPE (an i-stem lemma is detected by its final
+    /// `-ť`, an ordinal by its `-y`/`-i`), not a closed lexicon, so a same-
+    /// shaped non-numeral — a feminine i-stem noun like `kosť` — yields a
+    /// (correctly-declined) `Some`. Lemmas are the flavored citation forms
+    /// (`desęť`, not `deset`).
     pub fn decline_numeral(
         lemma: &str,
         case: &Case,
