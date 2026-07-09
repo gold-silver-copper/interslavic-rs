@@ -30,6 +30,7 @@ mod known_nouns;
 use known_nouns::*;
 
 pub mod cells;
+pub mod derivation;
 pub mod orthography;
 pub mod phono;
 pub mod prepositions;

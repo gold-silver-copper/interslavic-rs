@@ -45,6 +45,7 @@ fn main() {
     orthography_module();
     prepositions_module();
     cells_module();
+    derivation_module();
 
     part("4", "THE CORE ENGINE — `ISVCore`, dictionary-free rules");
     core_nouns();
@@ -549,6 +550,22 @@ fn cells_module() {
     );
     for raw in ["generoval(a)", "dělajemy (-a, -o)", "dělaĵųći"] {
         row(raw, &format!("{:?}", cells::variants(raw)));
+    }
+}
+
+/// The `derivation` module — a lemma's regular word family.
+fn derivation_module() {
+    heading("ISV::derive / derivation::derive — the regular derivational family");
+    for (base, pos) in [
+        ("dobry", derivation::Pos::Adjective),
+        ("učiti", derivation::Pos::Verb),
+        ("kniga", derivation::Pos::Noun),
+    ] {
+        let fam: Vec<String> = ISV::derive(base, pos)
+            .iter()
+            .map(|d| format!("{}({})", d.form, d.pattern))
+            .collect();
+        row(&format!("{base} ({pos:?})"), &fam.join(", "));
     }
 }
 

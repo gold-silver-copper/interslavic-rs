@@ -34,8 +34,8 @@
 //! ```
 
 pub use interslavic_core::{
-    cells, orthography, phono, prepositions, AdjParadigm, Animacy, Case, Gender, NounGender,
-    NounParadigm, Number, Person, Tense, VerbParadigm, CASE_ORDER,
+    cells, derivation, orthography, phono, prepositions, AdjParadigm, Animacy, Case, Gender,
+    NounGender, NounParadigm, Number, Person, Tense, VerbParadigm, CASE_ORDER,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)
@@ -191,6 +191,21 @@ impl ISV {
             feminine: column(Gender::Feminine, Animacy::Inanimate),
             neuter: column(Gender::Neuter, Animacy::Inanimate),
         }
+    }
+
+    /// The regular derivational family of a lemma — its abstract noun, adverb,
+    /// verbal noun, agentive, denominal adjectives, diminutive, negation, and
+    /// so on, seam morphophonemics applied. Backed by the [`derivation`]
+    /// module; the caller filters against attestation for real words only.
+    ///
+    /// ```
+    /// use interslavic::{derivation::Pos, ISV};
+    /// let fam = ISV::derive("kniga", Pos::Noun);
+    /// assert!(fam.iter().any(|d| d.form == "knižny")); // denominal adjective
+    /// assert!(fam.iter().any(|d| d.form == "knižka")); // diminutive
+    /// ```
+    pub fn derive(base: &str, pos: derivation::Pos) -> Vec<derivation::Derived> {
+        derivation::derive(base, pos)
     }
 
     /// The synthetic comparative of an adjective, as `(comparative adjective,
