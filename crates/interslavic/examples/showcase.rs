@@ -42,6 +42,7 @@ fn main() {
         "`phono` — morphophonemics (palatalization, iotation, softness)",
     );
     phono_module();
+    orthography_module();
 
     part("4", "THE CORE ENGINE — `ISVCore`, dictionary-free rules");
     core_nouns();
@@ -484,6 +485,17 @@ fn phono_module() {
         "inverse_iotation(voš)",
         &format!("{:?}", phono::inverse_iotation("voš")),
     );
+}
+
+/// The `orthography` module — flavored → standard alphabet folding.
+fn orthography_module() {
+    heading("orthography::to_standard — fold the flavored alphabet to standard");
+    for word in ["dělajųt", "pomoćnȯgo", "međa", "Ěľo", "čas"] {
+        row(word, &orthography::to_standard(word));
+    }
+
+    heading("orthography::FOLD_PAIRS — the correspondence table (for mirrors)");
+    row("FOLD_PAIRS", &format!("{:?}", orthography::FOLD_PAIRS));
 }
 
 // ---------------------------------------------------------------------------

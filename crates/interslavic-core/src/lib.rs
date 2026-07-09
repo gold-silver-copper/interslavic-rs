@@ -29,6 +29,7 @@ mod known_nouns;
 
 use known_nouns::*;
 
+pub mod orthography;
 pub mod phono;
 
 #[derive(Debug, Clone, Default)]
