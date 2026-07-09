@@ -1068,6 +1068,97 @@ impl ISVCore {
                 .replace("(o)", "")
         }
     }
+
+    /// The synthetic comparative of an adjective, as `(comparative adjective,
+    /// comparative adverb)`.
+    ///
+    /// Returns `None` for adjectives that do not gradate synthetically — the
+    /// relational `-sky`/`-cky` type, forms that already are comparatives or
+    /// participial adjectives (`-ši`/`-ći`), and the soft `-ji` possessives —
+    /// for which the analytic comparative (`vyše`/`bolje` + the positive) is
+    /// used instead. The returned comparative is itself a soft adjective, so
+    /// its full paradigm is `decline_adj(comparative, …)`; the superlative is
+    /// `naj-` prefixed (see [`ISVCore::superlative`]).
+    ///
+    /// Rules: seven lexical irregulars (dobry→lěpši, zly→gorši, …); the
+    /// `-ky`/`-eky`/`-oky` class takes `-ši` on the truncated root with an
+    /// iotated adverb (daleky→dalši/dalje, vysoky→vysši/vyše); otherwise the
+    /// seam is palatalized and the softness of the result picks `-ějši`/`-ěje`
+    /// (hard) vs `-ejši`/`-eje` (soft), e.g. novy→novějši, blagy stays
+    /// irregular, ryđi→ryđejši.
+    ///
+    /// Precondition: `adj` is a positive-degree qualitative adjective written
+    /// in the flavored (etymological) orthography; the result is unspecified
+    /// for other input (a verb infinitive also ends in `-i` and would gradate
+    /// spuriously). Determiners and other non-gradable words should not be
+    /// passed here.
+    pub fn comparative(adj: &str) -> Option<(String, String)> {
+        // Non-gradable: relational -sky/-cky, already-comparative/participial
+        // -ši/-ći, and soft -ji possessives (ji+ejši would be malformed).
+        if adj.ends_with("sky")
+            || adj.ends_with("cky")
+            || adj.ends_with("ši")
+            || adj.ends_with("ći")
+            || adj.ends_with("ji")
+        {
+            return None;
+        }
+        // Seven lexical irregulars, matched on the full lemma.
+        for (base, comp, adv) in [
+            ("dobry", "lěpši", "lěpje"),
+            ("zly", "gorši", "gorje"),
+            ("veliky", "večši", "veče"),
+            ("maly", "menši", "menje"),
+            ("blagy", "unši", "unje"),
+            ("legky", "legši", "legše"),
+            ("mękky", "mękši", "mękše"),
+        ] {
+            if adj == base {
+                return Some((comp.to_string(), adv.to_string()));
+            }
+        }
+        let stem = adj.strip_suffix(['y', 'i'])?;
+        if stem.chars().count() < 2 {
+            return None;
+        }
+        // -ky / -eky / -oky class: -ši on the truncated root (kratky→kratši,
+        // vysoky→vysši, uzky→uzši), adverb by iotation of the root
+        // (kratky→kraće, vysoky→vyše, uzky→uže). A few adjectives end in -ky
+        // with the k belonging to the ROOT rather than the -ky suffix; they
+        // palatalize regularly instead (diky→dičejši, not *diši), so they are
+        // excluded here and fall through to the regular rule below. (Root
+        // length cannot tell them apart — both diky and uzky leave a 2-char
+        // root — so the distinction is lexical.)
+        const ROOT_FINAL_K: &[&str] = &["diky"];
+        if !ROOT_FINAL_K.contains(&adj) {
+            for suf in ["ok", "ek", "k"] {
+                if let Some(root) = stem.strip_suffix(suf) {
+                    if root.chars().count() >= 2 {
+                        let comp = format!("{root}ši");
+                        let adv = format!("{}e", crate::phono::iotate_final(root));
+                        return Some((comp, adv));
+                    }
+                    break;
+                }
+            }
+        }
+        // Regular: palatalize the seam, then the full softness predicate picks
+        // the soft (-ejši) vs hard (-ějši) ending.
+        let pal = crate::phono::palatalize_final(stem);
+        let (adj_suf, adv_suf) = if crate::phono::is_soft(&pal) {
+            ("ejši", "eje")
+        } else {
+            ("ějši", "ěje")
+        };
+        Some((format!("{pal}{adj_suf}"), format!("{pal}{adv_suf}")))
+    }
+
+    /// The synthetic superlative of an adjective, as `(superlative adjective,
+    /// superlative adverb)` — the [`ISVCore::comparative`] with the `naj-`
+    /// prefix. `None` when the adjective does not gradate synthetically.
+    pub fn superlative(adj: &str) -> Option<(String, String)> {
+        ISVCore::comparative(adj).map(|(c, a)| (format!("naj{c}"), format!("naj{a}")))
+    }
 }
 
 //NOUN STUFF

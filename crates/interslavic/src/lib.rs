@@ -86,6 +86,37 @@ impl ISV {
         ISVCore::decline_adj(word, &case, &number, &gender, animacy)
     }
 
+    /// The synthetic comparative of an adjective, as `(comparative adjective,
+    /// comparative adverb)`. `None` for adjectives that do not gradate
+    /// synthetically (relational `-sky`/`-cky`, already-comparative `-ši`/`-ći`,
+    /// soft `-ji` possessives) — use the analytic comparative (`vyše`/`bolje`
+    /// followed by the positive) there. The comparative is a soft adjective,
+    /// so its paradigm is `ISV::adj(comparative, …)`. Expects a positive-degree
+    /// qualitative adjective in flavored orthography; other input (verbs,
+    /// determiners) is unspecified.
+    ///
+    /// ```
+    /// use interslavic::ISV;
+    /// assert_eq!(ISV::comparative("novy"), Some(("novějši".into(), "nověje".into())));
+    /// assert_eq!(ISV::comparative("dobry"), Some(("lěpši".into(), "lěpje".into())));
+    /// assert_eq!(ISV::comparative("russky"), None);
+    /// ```
+    pub fn comparative(adj: &str) -> Option<(String, String)> {
+        ISVCore::comparative(adj.trim())
+    }
+
+    /// The synthetic superlative of an adjective, as `(superlative adjective,
+    /// superlative adverb)` — the comparative with the `naj-` prefix. `None`
+    /// when the adjective does not gradate synthetically.
+    ///
+    /// ```
+    /// use interslavic::ISV;
+    /// assert_eq!(ISV::superlative("novy"), Some(("najnovějši".into(), "najnověje".into())));
+    /// ```
+    pub fn superlative(adj: &str) -> Option<(String, String)> {
+        ISVCore::superlative(adj.trim())
+    }
+
     /// One finite verb form. Present, imperfect, future, perfect, pluperfect,
     /// and conditional are supported; imperative and participial/gerund forms
     /// are available through `verb_forms`.
