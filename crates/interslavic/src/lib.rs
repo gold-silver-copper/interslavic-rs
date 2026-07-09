@@ -190,6 +190,42 @@ impl ISV {
         ISVCore::conjugate_verb(trimmed, &person, &number, &gender, &tense)
     }
 
+    /// One finite verb form, or `None` when an infinitive stem cannot be
+    /// derived from `word` (roughly, it does not end in `-ti`/`-t`/`-ť`). The
+    /// checked counterpart of [`ISV::verb`]: it reports clearly non-verb input
+    /// as `None` instead of degrading to a best-effort string, so callers need
+    /// no `catch_unwind` guard. The check is mechanical, not lexical — a `-t`
+    /// noun shaped like an infinitive still yields `Some`.
+    ///
+    /// ```
+    /// use interslavic::*;
+    /// assert!(ISV::try_verb("pisati", Person::First, Number::Singular, Gender::Masculine, Tense::Present).is_some());
+    /// assert_eq!(ISV::try_verb("xyz", Person::First, Number::Singular, Gender::Masculine, Tense::Present), None);
+    /// ```
+    pub fn try_verb(
+        word: &str,
+        person: Person,
+        number: Number,
+        gender: Gender,
+        tense: Tense,
+    ) -> Option<String> {
+        let trimmed = word.trim();
+        let entries = lookup_verbs_by_lemma(trimmed);
+        if let Some(entry) = entries.first() {
+            return ISVCore::conjugate_verb_checked(
+                entry.lemma,
+                entry.addition,
+                &person,
+                &number,
+                &gender,
+                &tense,
+                entry.transitive,
+                entry.imperfective,
+            );
+        }
+        ISVCore::conjugate_verb_checked(trimmed, "", &person, &number, &gender, &tense, true, true)
+    }
+
     /// One finite verb form with an explicit dictionary present-stem hint.
     ///
     /// This is intended for typed dictionary rows that have multiple entries for
@@ -225,6 +261,29 @@ impl ISV {
             );
         }
         ISVCore::verb_paradigm_with_options(trimmed, "", true, true)
+    }
+
+    /// The full verb paradigm, or `None` when an infinitive stem cannot be
+    /// derived from `word` — the checked counterpart of [`ISV::verb_forms`].
+    /// The check is mechanical (infinitive shape), not a lexical verb lookup.
+    ///
+    /// ```
+    /// use interslavic::*;
+    /// assert!(ISV::try_verb_forms("pisati").is_some());
+    /// assert_eq!(ISV::try_verb_forms("xyz"), None);
+    /// ```
+    pub fn try_verb_forms(word: &str) -> Option<VerbParadigm> {
+        let trimmed = word.trim();
+        let entries = lookup_verbs_by_lemma(trimmed);
+        if let Some(entry) = entries.first() {
+            return ISVCore::verb_paradigm_checked(
+                entry.lemma,
+                entry.addition,
+                entry.transitive,
+                entry.imperfective,
+            );
+        }
+        ISVCore::verb_paradigm_checked(trimmed, "", true, true)
     }
 
     /// Full verb paradigm with explicit dictionary metadata.
