@@ -34,7 +34,7 @@
 //! ```
 
 pub use interslavic_core::{
-    phono, Animacy, Case, Gender, NounGender, Number, Person, Tense, VerbParadigm,
+    orthography, phono, Animacy, Case, Gender, NounGender, Number, Person, Tense, VerbParadigm,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)
