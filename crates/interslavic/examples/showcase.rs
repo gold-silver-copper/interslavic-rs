@@ -44,6 +44,7 @@ fn main() {
     phono_module();
     orthography_module();
     prepositions_module();
+    cells_module();
 
     part("4", "THE CORE ENGINE — `ISVCore`, dictionary-free rules");
     core_nouns();
@@ -513,6 +514,21 @@ fn prepositions_module() {
             prepositions::PREPOSITIONS.len()
         ),
     );
+}
+
+/// The `cells` module — normalize a raw paradigm cell into clean form variants.
+fn cells_module() {
+    heading("cells::variants — flatten a raw cell's conventions into plain forms");
+    // Real participle cells straight out of verb_forms carry the conventions.
+    let p = ISV::verb_forms("dělati");
+    let pfpp = p.pfpp.clone().unwrap_or_default();
+    row(
+        &format!("pfpp raw: {pfpp}"),
+        &format!("{:?}", cells::variants(&pfpp)),
+    );
+    for raw in ["generoval(a)", "dělajemy (-a, -o)", "dělaĵųći"] {
+        row(raw, &format!("{:?}", cells::variants(raw)));
+    }
 }
 
 // ---------------------------------------------------------------------------
