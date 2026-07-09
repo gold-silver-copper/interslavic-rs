@@ -34,7 +34,8 @@
 //! ```
 
 pub use interslavic_core::{
-    orthography, phono, Animacy, Case, Gender, NounGender, Number, Person, Tense, VerbParadigm,
+    orthography, phono, prepositions, Animacy, Case, Gender, NounGender, Number, Person, Tense,
+    VerbParadigm,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)
@@ -165,6 +166,21 @@ impl ISV {
         animacy: Animacy,
     ) -> Option<String> {
         ISVCore::decline_numeral(lemma.trim(), &case, &number, &gender, animacy)
+    }
+
+    /// The case(s) a preposition governs, or `None` if `prep` is not a
+    /// recognized single-word preposition. `prep` is the flavored citation
+    /// form; a preposition may govern several cases (the case selects the
+    /// meaning). Backed by the curated [`prepositions`] table.
+    ///
+    /// ```
+    /// use interslavic::{Case, ISV};
+    /// assert_eq!(ISV::preposition_cases("bez"), Some(&[Case::Gen][..]));
+    /// assert_eq!(ISV::preposition_cases("na"), Some(&[Case::Acc, Case::Loc][..]));
+    /// assert_eq!(ISV::preposition_cases("žaba"), None);
+    /// ```
+    pub fn preposition_cases(prep: &str) -> Option<&'static [Case]> {
+        prepositions::preposition_cases(prep.trim())
     }
 
     /// One finite verb form. Present, imperfect, future, perfect, pluperfect,

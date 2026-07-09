@@ -31,6 +31,7 @@ use known_nouns::*;
 
 pub mod orthography;
 pub mod phono;
+pub mod prepositions;
 
 #[derive(Debug, Clone, Default)]
 pub struct ISVCore {}

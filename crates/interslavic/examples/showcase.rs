@@ -43,6 +43,7 @@ fn main() {
     );
     phono_module();
     orthography_module();
+    prepositions_module();
 
     part("4", "THE CORE ENGINE — `ISVCore`, dictionary-free rules");
     core_nouns();
@@ -496,6 +497,22 @@ fn orthography_module() {
 
     heading("orthography::FOLD_PAIRS — the correspondence table (for mirrors)");
     row("FOLD_PAIRS", &format!("{:?}", orthography::FOLD_PAIRS));
+}
+
+/// The `prepositions` module — preposition government (which cases each takes).
+fn prepositions_module() {
+    heading("ISV::preposition_cases / prepositions::preposition_cases");
+    for prep in ["bez", "k", "s", "na", "pod", "za", "žaba"] {
+        row(prep, &format!("{:?}", ISV::preposition_cases(prep)));
+    }
+    heading("prepositions::PREPOSITIONS — the full curated table");
+    row(
+        "count",
+        &format!(
+            "{} single-word prepositions",
+            prepositions::PREPOSITIONS.len()
+        ),
+    );
 }
 
 // ---------------------------------------------------------------------------
