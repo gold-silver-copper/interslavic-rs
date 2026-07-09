@@ -237,15 +237,76 @@ impl ISVCore {
         }
     }
 
+    /// One finite verb form, or `None` when `word` is not a conjugable verb —
+    /// the checked counterpart of [`ISVCore::conjugate_verb_with_options`].
+    #[allow(clippy::too_many_arguments)]
+    pub fn conjugate_verb_checked(
+        word: &str,
+        present_hint: &str,
+        person: &Person,
+        number: &Number,
+        gender: &Gender,
+        tense: &Tense,
+        transitive: bool,
+        imperfective: bool,
+    ) -> Option<String> {
+        let paradigm =
+            ISVCore::verb_paradigm_checked(word, present_hint, transitive, imperfective)?;
+        Some(match tense {
+            Tense::Present => ISVCore::finite_slot(&paradigm.present, person, number),
+            Tense::Imperfect => ISVCore::finite_slot(&paradigm.imperfect, person, number),
+            Tense::Future => ISVCore::finite_slot(&paradigm.future, person, number),
+            Tense::Perfect => {
+                ISVCore::gendered_compound_slot(&paradigm.perfect, person, number, gender)
+            }
+            Tense::PluPerfect => {
+                ISVCore::gendered_compound_slot(&paradigm.pluperfect, person, number, gender)
+            }
+            Tense::Conditional => {
+                ISVCore::gendered_compound_slot(&paradigm.conditional, person, number, gender)
+            }
+        })
+    }
+
+    /// The full verb paradigm. Total: it never panics. A word whose infinitive
+    /// stem cannot be derived falls back to the last-two-characters-stripped
+    /// stem (the same best-effort [`ISVCore::get_infinitive_stem`] uses); call
+    /// [`ISVCore::verb_paradigm_checked`] to detect that case instead of
+    /// silently degrading.
     pub fn verb_paradigm_with_options(
         word: &str,
         present_hint: &str,
         transitive: bool,
         imperfective: bool,
     ) -> VerbParadigm {
+        ISVCore::verb_paradigm_inner(word, present_hint, transitive, imperfective, false)
+            .unwrap_or_else(|| ISVCore::empty_phrase_verb_paradigm(word.trim()))
+    }
+
+    /// The full verb paradigm, or `None` when `word` is not a conjugable verb
+    /// (its infinitive stem cannot be derived). The checked counterpart of
+    /// [`ISVCore::verb_paradigm_with_options`], which falls back instead of
+    /// signalling — use this to distinguish a real verb from arbitrary input
+    /// without a `catch_unwind` guard.
+    pub fn verb_paradigm_checked(
+        word: &str,
+        present_hint: &str,
+        transitive: bool,
+        imperfective: bool,
+    ) -> Option<VerbParadigm> {
+        ISVCore::verb_paradigm_inner(word, present_hint, transitive, imperfective, true)
+    }
+
+    fn verb_paradigm_inner(
+        word: &str,
+        present_hint: &str,
+        transitive: bool,
+        imperfective: bool,
+        strict: bool,
+    ) -> Option<VerbParadigm> {
         let word = word.trim();
         if word.split_whitespace().nth(1).is_some() {
-            return ISVCore::empty_phrase_verb_paradigm(word);
+            return Some(ISVCore::empty_phrase_verb_paradigm(word));
         }
 
         let normalized = match word {
@@ -254,11 +315,15 @@ impl ISVCore {
         };
         let pref = ISVCore::sonic_prefix(normalized);
         let clean_hint = ISVCore::clean_present_hint(present_hint);
-        let Some(infinitive_stem) =
-            ISVCore::sonic_infinitive_stem_with_hint(&pref, normalized, &clean_hint)
-        else {
-            panic!("IMPROPER PRESENT TENSE STEM: {}", word);
-        };
+        // An underivable stem is reported as `None` in strict mode; otherwise
+        // it degrades to the best-effort stem `get_infinitive_stem` uses, so
+        // the total entry point never panics on non-verb input.
+        let infinitive_stem =
+            match ISVCore::sonic_infinitive_stem_with_hint(&pref, normalized, &clean_hint) {
+                Some(stem) => stem,
+                None if strict => return None,
+                None => ISVUTILS::string_without_last_n(normalized, 2),
+            };
         let present_stem =
             ISVCore::sonic_present_tense_stem_from_parts(&pref, &clean_hint, &infinitive_stem);
         let secondary_stem = ISVCore::secondary_present_tense_stem(&present_stem);
@@ -279,7 +344,7 @@ impl ISVCore {
         let pfpp = transitive.then(|| computed_pfpp.clone());
         let gerund = ISVCore::build_gerund(&computed_pfpp);
 
-        VerbParadigm {
+        Some(VerbParadigm {
             infinitive,
             present,
             imperfect,
@@ -293,7 +358,7 @@ impl ISVCore {
             pfap,
             pfpp,
             gerund,
-        }
+        })
     }
 
     fn empty_phrase_verb_paradigm(word: &str) -> VerbParadigm {
@@ -444,10 +509,17 @@ impl ISVCore {
                 pts = pts[3..].to_string();
             }
             if !prefix.is_empty() {
-                if pts.contains(prefix) {
-                    pts = pts[prefix.len()..].to_string();
-                } else if !prefix.is_empty() && pts.len() >= prefix.len() - 1 {
-                    pts = pts[prefix.len() - 1..].to_string();
+                // Strip the prefix off the present hint, char-boundary safe.
+                // `strip_prefix` replaces the old `contains` + byte-index slice
+                // that could panic when the prefix contained a multibyte char.
+                if let Some(rest) = pts.strip_prefix(prefix) {
+                    pts = rest.to_string();
+                } else {
+                    let mut short = prefix.to_string();
+                    short.pop(); // prefix minus its last char, on a boundary
+                    if let Some(rest) = pts.strip_prefix(short.as_str()) {
+                        pts = rest.to_string();
+                    }
                 }
             }
             if pts.ends_with(['m', 'e', 'u', 'ų', '-']) {
