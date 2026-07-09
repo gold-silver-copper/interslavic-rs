@@ -392,6 +392,27 @@ fn facade_finite_verbs() {
 
 /// `ISV::verb_forms`, `ISV::try_verb_forms`, `ISV::verb_forms_with_metadata`.
 fn facade_verb_paradigms() {
+    heading("ISV::noun_forms / adj_forms — full paradigm structs (like verb_forms)");
+    let np = ISV::noun_forms("žena");
+    row(
+        &format!("noun_forms(\"žena\") [{:?}]", np.gender),
+        &format!("sg={:?}", np.singular),
+    );
+    let ap = ISV::adj_forms("dobry");
+    row(
+        "adj_forms(\"dobry\").feminine[sg]",
+        &format!("{:?}", ap.feminine[0]),
+    );
+    row(
+        "  .get(Gen, Sg, Masc, Anim)",
+        ap.get(
+            Case::Gen,
+            Number::Singular,
+            Gender::Masculine,
+            Animacy::Animate,
+        ),
+    );
+
     heading("ISV::verb_forms — the whole paradigm as a VerbParadigm struct");
     print_paradigm("učiti", &ISV::verb_forms("učiti"));
 
