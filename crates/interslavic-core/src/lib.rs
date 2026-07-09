@@ -221,6 +221,18 @@ impl ISVCore {
     ) -> String {
         let paradigm =
             ISVCore::verb_paradigm_with_options(word, present_hint, transitive, imperfective);
+        ISVCore::verb_slot(&paradigm, person, number, gender, tense)
+    }
+
+    /// Pick one finite form out of an already-built paradigm — the shared slot
+    /// selector for the total and checked conjugation entry points.
+    fn verb_slot(
+        paradigm: &VerbParadigm,
+        person: &Person,
+        number: &Number,
+        gender: &Gender,
+        tense: &Tense,
+    ) -> String {
         match tense {
             Tense::Present => ISVCore::finite_slot(&paradigm.present, person, number),
             Tense::Imperfect => ISVCore::finite_slot(&paradigm.imperfect, person, number),
@@ -237,7 +249,8 @@ impl ISVCore {
         }
     }
 
-    /// One finite verb form, or `None` when `word` is not a conjugable verb —
+    /// One finite verb form, or `None` when an infinitive stem cannot be
+    /// derived from `word` (roughly, it does not look like an infinitive) —
     /// the checked counterpart of [`ISVCore::conjugate_verb_with_options`].
     #[allow(clippy::too_many_arguments)]
     pub fn conjugate_verb_checked(
@@ -252,20 +265,7 @@ impl ISVCore {
     ) -> Option<String> {
         let paradigm =
             ISVCore::verb_paradigm_checked(word, present_hint, transitive, imperfective)?;
-        Some(match tense {
-            Tense::Present => ISVCore::finite_slot(&paradigm.present, person, number),
-            Tense::Imperfect => ISVCore::finite_slot(&paradigm.imperfect, person, number),
-            Tense::Future => ISVCore::finite_slot(&paradigm.future, person, number),
-            Tense::Perfect => {
-                ISVCore::gendered_compound_slot(&paradigm.perfect, person, number, gender)
-            }
-            Tense::PluPerfect => {
-                ISVCore::gendered_compound_slot(&paradigm.pluperfect, person, number, gender)
-            }
-            Tense::Conditional => {
-                ISVCore::gendered_compound_slot(&paradigm.conditional, person, number, gender)
-            }
-        })
+        Some(ISVCore::verb_slot(&paradigm, person, number, gender, tense))
     }
 
     /// The full verb paradigm. Total: it never panics. A word whose infinitive
@@ -283,11 +283,16 @@ impl ISVCore {
             .unwrap_or_else(|| ISVCore::empty_phrase_verb_paradigm(word.trim()))
     }
 
-    /// The full verb paradigm, or `None` when `word` is not a conjugable verb
-    /// (its infinitive stem cannot be derived). The checked counterpart of
-    /// [`ISVCore::verb_paradigm_with_options`], which falls back instead of
-    /// signalling — use this to distinguish a real verb from arbitrary input
-    /// without a `catch_unwind` guard.
+    /// The full verb paradigm, or `None` when an infinitive stem cannot be
+    /// derived from `word` — the checked counterpart of
+    /// [`ISVCore::verb_paradigm_with_options`], which falls back to a
+    /// best-effort stem instead of signalling. Use it to reject clearly
+    /// non-verb input without a `catch_unwind` guard.
+    ///
+    /// The check is mechanical, not lexical: a stem is derivable from anything
+    /// shaped like an infinitive (ending in `-ti`/`-t`/`-ť`), so a `-t`/`-ť`
+    /// noun such as `kosť` still yields `Some`. It returns `None` for input
+    /// that cannot be a verb stem at all (empty, `voda`, `xyz`).
     pub fn verb_paradigm_checked(
         word: &str,
         present_hint: &str,

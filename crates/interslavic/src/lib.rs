@@ -190,10 +190,12 @@ impl ISV {
         ISVCore::conjugate_verb(trimmed, &person, &number, &gender, &tense)
     }
 
-    /// One finite verb form, or `None` when `word` is not a conjugable verb.
-    /// The checked counterpart of [`ISV::verb`]: it reports non-verb input as
-    /// `None` instead of degrading to a best-effort string, so callers need no
-    /// `catch_unwind` guard to tell the two apart.
+    /// One finite verb form, or `None` when an infinitive stem cannot be
+    /// derived from `word` (roughly, it does not end in `-ti`/`-t`/`-ť`). The
+    /// checked counterpart of [`ISV::verb`]: it reports clearly non-verb input
+    /// as `None` instead of degrading to a best-effort string, so callers need
+    /// no `catch_unwind` guard. The check is mechanical, not lexical — a `-t`
+    /// noun shaped like an infinitive still yields `Some`.
     ///
     /// ```
     /// use interslavic::*;
@@ -261,8 +263,9 @@ impl ISV {
         ISVCore::verb_paradigm_with_options(trimmed, "", true, true)
     }
 
-    /// The full verb paradigm, or `None` when `word` is not a conjugable verb —
-    /// the checked counterpart of [`ISV::verb_forms`].
+    /// The full verb paradigm, or `None` when an infinitive stem cannot be
+    /// derived from `word` — the checked counterpart of [`ISV::verb_forms`].
+    /// The check is mechanical (infinitive shape), not a lexical verb lookup.
     ///
     /// ```
     /// use interslavic::*;
