@@ -33,9 +33,14 @@
 //! );
 //! ```
 
-use interslavic_core::ISVCore;
 pub use interslavic_core::{
     phono, Animacy, Case, Gender, NounGender, Number, Person, Tense, VerbParadigm,
+};
+// The dependency-free rule engine is also re-exported, so consumers can reach
+// the lower-level dictionary-less API (and the shared morphophonemics helpers)
+// through this crate alone, without a separate `interslavic-core` dependency.
+pub use interslavic_core::{
+    ComplexNoun, Conjugation, ISVCore, HARD_CONSONANTS, ISVUTILS, J_MERGE_CHARS, VOWELS,
 };
 
 mod dictionary;
