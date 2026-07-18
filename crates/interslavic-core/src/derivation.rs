@@ -187,25 +187,25 @@ pub fn derive(base: &str, pos: Pos) -> Vec<Derived> {
                     "pridavnik",
                 );
             }
-            if let Some(astem) = b.strip_suffix('a') {
-                if astem.chars().count() >= 2 {
-                    // Feminine diminutive: kniga → knižka, ruka → ručka.
-                    push(
-                        &mut out,
-                        format!("{}ka", palatalize_final(astem)),
-                        Pos::Noun,
-                        "dimka",
-                        "umenšeny imennik",
-                    );
-                    // -ica: voda → vodica, ruka → ručica.
-                    push(
-                        &mut out,
-                        format!("{}ica", palatalize_final(astem)),
-                        Pos::Noun,
-                        "ica",
-                        "umenšeny/žensky imennik",
-                    );
-                }
+            if let Some(astem) = b.strip_suffix('a')
+                && astem.chars().count() >= 2
+            {
+                // Feminine diminutive: kniga → knižka, ruka → ručka.
+                push(
+                    &mut out,
+                    format!("{}ka", palatalize_final(astem)),
+                    Pos::Noun,
+                    "dimka",
+                    "umenšeny imennik",
+                );
+                // -ica: voda → vodica, ruka → ručica.
+                push(
+                    &mut out,
+                    format!("{}ica", palatalize_final(astem)),
+                    Pos::Noun,
+                    "ica",
+                    "umenšeny/žensky imennik",
+                );
             }
         }
         Pos::Adverb => {}
@@ -230,9 +230,11 @@ mod tests {
         // Soft stem takes the -e adverb.
         assert!(forms("svěži", Pos::Adjective).contains(&"svěže".to_string()));
         // Already-negated adjectives are not doubly negated.
-        assert!(!forms("nemožny", Pos::Adjective)
-            .iter()
-            .any(|f| f.starts_with("nene")));
+        assert!(
+            !forms("nemožny", Pos::Adjective)
+                .iter()
+                .any(|f| f.starts_with("nene"))
+        );
     }
 
     #[test]

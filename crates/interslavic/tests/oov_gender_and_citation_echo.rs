@@ -1,7 +1,7 @@
-//! Regression tests for gold-silver-copper/interslavic-rs#5:
+//! Regression tests for gold-silver-copper/interslavic#5:
 //! out-of-lexicon gender guessing and citation-form echo.
 
-use interslavic::{Case, Number, ISV};
+use interslavic::{Case, ISV, Number};
 
 /// An out-of-lexicon abstract noun in -osť must decline as a feminine i-stem
 /// (like kosť), not be guessed masculine (točnosťa/točnosťem was the bug).
@@ -9,9 +9,9 @@ use interslavic::{Case, Number, ISV};
 fn oov_ost_nouns_are_feminine_i_stems() {
     // A nonsense -osť word guaranteed to be outside the dictionary.
     for w in ["zzzukavosť", "točnosť"] {
-        let gen = ISV::noun(w, Case::Gen, Number::Singular);
+        let r#gen = ISV::noun(w, Case::Gen, Number::Singular);
         assert!(
-            gen.ends_with("osti"),
+            r#gen.ends_with("osti"),
             "{w}: gen.sg must be the i-stem -osti, got {gen}"
         );
         let nom = ISV::noun(w, Case::Nom, Number::Singular);

@@ -50,22 +50,26 @@ fn try_variants_distinguish_verbs_from_garbage() {
     assert!(ISV::try_verb_forms("").is_none());
     assert!(ISV::try_verb_forms("voda").is_none());
 
-    assert!(ISV::try_verb(
-        "pisati",
-        Person::First,
-        Number::Singular,
-        Gender::Masculine,
-        Tense::Present
-    )
-    .is_some());
-    assert!(ISV::try_verb(
-        "xyz",
-        Person::First,
-        Number::Singular,
-        Gender::Masculine,
-        Tense::Present
-    )
-    .is_none());
+    assert!(
+        ISV::try_verb(
+            "pisati",
+            Person::First,
+            Number::Singular,
+            Gender::Masculine,
+            Tense::Present
+        )
+        .is_some()
+    );
+    assert!(
+        ISV::try_verb(
+            "xyz",
+            Person::First,
+            Number::Singular,
+            Gender::Masculine,
+            Tense::Present
+        )
+        .is_none()
+    );
 }
 
 #[test]

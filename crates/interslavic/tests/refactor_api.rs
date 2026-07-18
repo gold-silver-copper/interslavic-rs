@@ -1,4 +1,4 @@
-use interslavic::{Animacy, Case, Gender, Number, Person, Tense, ISV};
+use interslavic::{Animacy, Case, Gender, ISV, Number, Person, Tense};
 
 #[test]
 fn dictionary_backed_facade_remains_public_and_unchanged() {

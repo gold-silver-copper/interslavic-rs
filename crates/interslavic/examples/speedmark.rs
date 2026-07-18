@@ -69,5 +69,7 @@ where
 
     println!("[{label}] last result: {last_result}");
     println!("[{label}] completed in {duration:?} → {total_calls} calls");
-    println!("[{label}] throughput: {calls_per_sec:.2} calls/sec | time per call: {nanos_per_call:.2} ns");
+    println!(
+        "[{label}] throughput: {calls_per_sec:.2} calls/sec | time per call: {nanos_per_call:.2} ns"
+    );
 }

@@ -17,7 +17,7 @@ fn comparatives_follow_steen() {
     assert_eq!(comp("glųboky"), Some(("glųbši".into(), "glųbje".into()))); // labial → j
     assert_eq!(comp("krěhky"), Some(("krěhši".into(), "krěše".into()))); // h → š
     assert_eq!(comp("žestoky"), Some(("žestši".into(), "žešće".into()))); // st → šć
-                                                                          // Soft đ-final stem takes -ejši, not hard -ějši.
+    // Soft đ-final stem takes -ejši, not hard -ějši.
     assert_eq!(comp("ryđi"), Some(("ryđejši".into(), "ryđeje".into())));
     // Short-root -ky truncators (2-char root) still truncate, not palatalize:
     // the -ky is the suffix here, so drop it (uz-, niz-) rather than uzč-.

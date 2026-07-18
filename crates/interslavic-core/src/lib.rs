@@ -35,7 +35,7 @@ pub mod types;
 pub mod utils;
 pub mod verb;
 
-pub use paradigm::{AdjParadigm, NounParadigm, VerbParadigm, CASE_ORDER};
+pub use paradigm::{AdjParadigm, CASE_ORDER, NounParadigm, VerbParadigm};
 pub use types::{Animacy, Case, ComplexNoun, Conjugation, Gender, Number, Person, Tense};
 
 pub const VOWELS: &[char] = &[

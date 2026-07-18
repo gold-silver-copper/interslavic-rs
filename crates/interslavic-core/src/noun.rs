@@ -1,7 +1,7 @@
 //! Noun declension and noun-specific inference and stem helpers.
 
 use crate::known_nouns::*;
-use crate::{adjective, utils, Animacy, Case, Gender, Number};
+use crate::{Animacy, Case, Gender, Number, adjective, utils};
 
 #[allow(clippy::too_many_arguments)]
 pub fn decline_noun_explicit(
@@ -112,12 +112,8 @@ fn decline_noun_steen(
             Case::Nom => noun_nominative_pl(&plural_root, &plural_gender),
             Case::Acc => {
                 let nom = noun_nominative_pl(&plural_root, &plural_gender);
-                let gen = noun_genitive_pl(&plural_root, &plural_gender);
-                if plural_gender == "m1" {
-                    gen
-                } else {
-                    nom
-                }
+                let r#gen = noun_genitive_pl(&plural_root, &plural_gender);
+                if plural_gender == "m1" { r#gen } else { nom }
             }
             Case::Gen => noun_genitive_pl(&plural_root, &plural_gender),
             Case::Loc => noun_locative_pl(&plural_root, &gender),
@@ -492,12 +488,10 @@ fn establish_noun_root(noun: &str, gender: &str) -> String {
         noun.into()
     };
 
-    if !has_vowel_ending {
-        if let Some(index) = last_fluent_vowel_index(noun) {
-            let result_len = result.chars().count();
-            if index > result_len.saturating_sub(3) {
-                result = remove_char_at(&result, index);
-            }
+    if !has_vowel_ending && let Some(index) = last_fluent_vowel_index(noun) {
+        let result_len = result.chars().count();
+        if index > result_len.saturating_sub(3) {
+            result = remove_char_at(&result, index);
         }
     }
     result

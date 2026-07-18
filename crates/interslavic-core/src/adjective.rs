@@ -1,7 +1,7 @@
 //! Adjective declension, comparison, pronouns, and numerals.
 
 use crate::case_endings::*;
-use crate::{noun, Animacy, Case, Gender, Number};
+use crate::{Animacy, Case, Gender, Number, noun};
 
 pub fn decline_adj(
     word: &str,
@@ -358,14 +358,14 @@ pub fn decline_numeral(
     }
     // 5 and up (pęť…desęť and the -nadsęť/-deset series): the i-stem
     // (kosť-class) declension.
-    if let Some(stem) = l.strip_suffix('ť') {
-        if stem.chars().count() >= 2 {
-            return Some(match case {
-                Case::Nom | Case::Acc => l.to_string(),
-                Case::Gen | Case::Dat | Case::Loc => format!("{stem}ti"),
-                Case::Ins => format!("{l}jų"),
-            });
-        }
+    if let Some(stem) = l.strip_suffix('ť')
+        && stem.chars().count() >= 2
+    {
+        return Some(match case {
+            Case::Nom | Case::Acc => l.to_string(),
+            Case::Gen | Case::Dat | Case::Loc => format!("{stem}ti"),
+            Case::Ins => format!("{l}jų"),
+        });
     }
     // Ordinals and other adjectivally-shaped numerals (pŕvy, drugy…).
     if l.ends_with(['y', 'i']) && l.chars().count() >= 3 {

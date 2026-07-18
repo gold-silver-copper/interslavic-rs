@@ -11,13 +11,14 @@ default-members = [
     "crates/interslavic-extractor",
     "crates/xtask",
 ]
-resolver = "2"
+exclude = ["coallescor"]
+resolver = "3"
 
 [workspace.package]
 authors = ["gold-silver-copper"]
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/gold-silver-copper/interslavic-rs"
+repository = "https://github.com/gold-silver-copper/interslavic"
 keywords = ["interslavic", "inflection", "morphology", "nlp"]
 categories = ["text-processing", "internationalization"]
 

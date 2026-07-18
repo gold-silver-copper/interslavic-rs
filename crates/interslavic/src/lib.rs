@@ -34,9 +34,9 @@
 //! ```
 
 pub use interslavic_core::{
-    adjective, cells, derivation, noun, orthography, paradigm, phono, prepositions, types, utils,
-    verb, AdjParadigm, Animacy, Case, Gender, NounParadigm, Number, Person, Tense, VerbParadigm,
-    CASE_ORDER,
+    AdjParadigm, Animacy, CASE_ORDER, Case, Gender, NounParadigm, Number, Person, Tense,
+    VerbParadigm, adjective, cells, derivation, noun, orthography, paradigm, phono, prepositions,
+    types, utils, verb,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)

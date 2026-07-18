@@ -296,7 +296,7 @@ fn main() {
     }
 }
 `);
-  execFileSync('rustc', ['--edition=2021', source, '--extern', `interslavic=${path.join(deps, candidates[0].name)}`, '-L', `dependency=${deps}`, '-o', bin], { cwd: ROOT, stdio: 'inherit' });
+  execFileSync('rustc', ['--edition=2024', source, '--extern', `interslavic=${path.join(deps, candidates[0].name)}`, '-L', `dependency=${deps}`, '-o', bin], { cwd: ROOT, stdio: 'inherit' });
   return bin;
 }
 

@@ -149,8 +149,8 @@ mod tests {
     #[test]
     fn never_empty_no_panic() {
         assert_eq!(variants(""), [""]); // empty input → one empty variant, no panic
-                                        // A cell that is nothing but an unparsed convention still yields a
-                                        // (paren-stripped) fallback rather than an empty list.
+        // A cell that is nothing but an unparsed convention still yields a
+        // (paren-stripped) fallback rather than an empty list.
         assert!(!variants("(-)").is_empty());
     }
 }

@@ -1,5 +1,5 @@
 use interslavic_core::{
-    adjective, noun, utils, verb, Animacy, Case, Gender, Number, Person, Tense,
+    Animacy, Case, Gender, Number, Person, Tense, adjective, noun, utils, verb,
 };
 
 #[test]

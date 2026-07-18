@@ -1,4 +1,4 @@
-//! # `interslavic-rs` — complete API showcase
+//! # `interslavic` — complete API showcase
 //!
 //! A single runnable tour of **every public API** in the workspace: the
 //! dictionary-backed `interslavic` facade (`ISV`), the shared type vocabulary,
@@ -20,7 +20,7 @@
 use interslavic::*;
 
 fn main() {
-    banner("interslavic-rs — complete API showcase");
+    banner("interslavic — complete API showcase");
 
     part(
         "1",
