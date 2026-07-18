@@ -3,7 +3,7 @@
 //! A single runnable tour of **every public API** in the workspace: the
 //! dictionary-backed `interslavic` facade (`ISV`), the shared type vocabulary,
 //! the `phono` morphophonemics module, and the dependency-free `interslavic-core`
-//! rule engine (`ISVCore` + `ISVUTILS`).
+//! rule engine (`noun`, `adjective`, `verb`, and `utils` modules).
 //!
 //! Run it with:
 //!
@@ -16,7 +16,7 @@
 
 // Everything comes from the `interslavic` facade: the dictionary-backed `ISV`,
 // the shared vocabulary (Case, Number, Gender, …), the `phono` module, and the
-// re-exported dependency-free engine (`ISVCore`, `ISVUTILS`) and its constants.
+// re-exported dependency-free engine (`noun`, `adjective`, `verb`, and `utils`) and its constants.
 use interslavic::*;
 
 fn main() {
@@ -47,16 +47,13 @@ fn main() {
     cells_module();
     derivation_module();
 
-    part("4", "THE CORE ENGINE — `ISVCore`, dictionary-free rules");
+    part("4", "THE CORE ENGINE — dictionary-free rule modules");
     core_nouns();
     core_adjectives_and_degrees();
     core_pronouns_and_numerals();
     core_verbs();
 
-    part(
-        "5",
-        "CORE UTILITIES — `ISVUTILS` and the exported constants",
-    );
+    part("5", "CORE UTILITIES — `utils` and the exported constants");
     core_utilities();
     misc_types_and_constants();
 
@@ -101,7 +98,7 @@ fn facade_nouns() {
             "zzzukavosť",
             Case::Gen,
             Number::Singular,
-            NounGender::Feminine,
+            Gender::Feminine,
             Animacy::Inanimate,
         ),
     );
@@ -312,7 +309,7 @@ fn facade_finite_verbs() {
         Tense::Imperfect,
         Tense::Future,
         Tense::Perfect,
-        Tense::PluPerfect,
+        Tense::Pluperfect,
         Tense::Conditional,
     ];
     for tense in tenses {
@@ -447,15 +444,11 @@ fn shared_types() {
     row("Number", "Singular, Plural");
     row("Case", "Nom, Acc, Gen, Loc, Dat, Ins");
     row("Gender", "Masculine, Feminine, Neuter");
-    row(
-        "NounGender",
-        "Masculine, Feminine, Neuter (noun-facing gender)",
-    );
     row("Animacy", "Animate, Inanimate");
     row("Person", "First, Second, Third");
     row(
         "Tense",
-        "Present, Imperfect, Future, Perfect, PluPerfect, Conditional",
+        "Present, Imperfect, Future, Perfect, Pluperfect, Conditional",
     );
     row(
         "Conjugation",
@@ -570,26 +563,26 @@ fn derivation_module() {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Core engine: ISVCore
+// 4. Core engine modules
 // ---------------------------------------------------------------------------
 
 /// Core noun declension (no dictionary): guessed and explicit.
 fn core_nouns() {
-    heading("ISVCore::decline_noun — rule-engine declension, gender guessed");
+    heading("noun::decline_noun — rule-engine declension, gender guessed");
     row(
         "selo (Gen sg)",
-        &ISVCore::decline_noun("selo", &Case::Gen, &Number::Singular),
+        &noun::decline_noun("selo", Case::Gen, Number::Singular),
     );
 
-    heading("ISVCore::decline_noun_explicit — every metadata knob");
+    heading("noun::decline_noun_explicit — every metadata knob");
     // plural_only pluralia tantum, with an explicit oblique-stem addition.
     row(
         "dveri (Gen pl, f, plural_only)",
-        &ISVCore::decline_noun_explicit(
+        &noun::decline_noun_explicit(
             "dveri",
-            &Case::Gen,
-            &Number::Plural,
-            NounGender::Feminine,
+            Case::Gen,
+            Number::Plural,
+            Gender::Feminine,
             Animacy::Inanimate,
             /* plural_only  */ true,
             /* singular_only*/ false,
@@ -600,11 +593,11 @@ fn core_nouns() {
     // An indeclinable loanword echoes its citation form in every cell.
     row(
         "taksi (Ins sg, indeclinable)",
-        &ISVCore::decline_noun_explicit(
+        &noun::decline_noun_explicit(
             "taksi",
-            &Case::Ins,
-            &Number::Singular,
-            NounGender::Neuter,
+            Case::Ins,
+            Number::Singular,
+            Gender::Neuter,
             Animacy::Inanimate,
             false,
             false,
@@ -613,87 +606,87 @@ fn core_nouns() {
         ),
     );
 
-    heading("ISVCore::decline_noun_simple — the common explicit case");
+    heading("noun::decline_noun_simple — the common explicit case");
     row(
         "kosť (Gen sg, f)",
-        &ISVCore::decline_noun_simple(
+        &noun::decline_noun_simple(
             "kosť",
-            &Case::Gen,
-            &Number::Singular,
-            NounGender::Feminine,
+            Case::Gen,
+            Number::Singular,
+            Gender::Feminine,
             Animacy::Inanimate,
         ),
     );
 
-    heading("ISVCore noun helpers");
+    heading("noun module helpers");
     row(
         "guess_gender(\"žena\")",
-        &format!("{:?}", ISVCore::guess_gender("žena")),
+        &format!("{:?}", noun::guess_gender("žena")),
     );
     row(
         "noun_is_animate(\"mųž\")",
-        &format!("{}", ISVCore::noun_is_animate("mųž")),
+        &format!("{}", noun::noun_is_animate("mųž")),
     );
     row(
         "is_ost_class(\"radosť\")",
-        &format!("{}", ISVCore::is_ost_class("radosť")),
+        &format!("{}", noun::is_ost_class("radosť")),
     );
     row(
         "get_noun_stem(\"žena\", sg)",
-        &ISVCore::get_noun_stem("žena", &Number::Singular),
+        &noun::get_noun_stem("žena", Number::Singular),
     );
     row(
         "stem_of_noun_is_soft(\"konj\")",
-        &format!("{}", ISVCore::stem_of_noun_is_soft("konj")),
+        &format!("{}", noun::stem_of_noun_is_soft("konj")),
     );
     row(
         "last_n_chars(\"pisati\", 2)",
-        &ISVCore::last_n_chars("pisati", 2),
+        &utils::last_n_chars("pisati", 2),
     );
 }
 
 /// Core adjective declension, stem helpers and degrees of comparison.
 fn core_adjectives_and_degrees() {
-    heading("ISVCore::decline_adj + adjective stem helpers");
+    heading("adjective::decline_adj + adjective stem helpers");
     row(
         "decline_adj(\"dobry\", Gen sg m anim)",
-        &ISVCore::decline_adj(
+        &adjective::decline_adj(
             "dobry",
-            &Case::Gen,
-            &Number::Singular,
-            &Gender::Masculine,
+            Case::Gen,
+            Number::Singular,
+            Gender::Masculine,
             Animacy::Animate,
         ),
     );
-    row("get_adj_stem(\"dobry\")", &ISVCore::get_adj_stem("dobry"));
+    row("get_adj_stem(\"dobry\")", &adjective::get_adj_stem("dobry"));
     row(
         "stem_of_adj_is_soft(\"svěži\")",
-        &format!("{}", ISVCore::stem_of_adj_is_soft("svěži")),
+        &format!("{}", adjective::stem_of_adj_is_soft("svěži")),
     );
 
-    heading("ISVCore::comparative / ISVCore::superlative (the facade delegates here)");
+    heading("adjective::comparative / adjective::superlative (the facade delegates here)");
     row(
         "comparative(\"vysoky\")",
-        &format!("{:?}", ISVCore::comparative("vysoky")),
+        &format!("{:?}", adjective::comparative("vysoky")),
     );
     row(
         "superlative(\"dobry\")",
-        &format!("{:?}", ISVCore::superlative("dobry")),
+        &format!("{:?}", adjective::superlative("dobry")),
     );
 }
 
 /// Core pronoun and numeral declension (the Option-returning primitives).
 fn core_pronouns_and_numerals() {
-    heading("ISVCore::decline_pronoun / ISVCore::decline_numeral");
+    heading("adjective::decline_pronoun / adjective::decline_numeral");
     row(
         "decline_pronoun(\"moj\", Dat sg n)",
         &format!(
             "{:?}",
-            ISVCore::decline_pronoun(
+            adjective::decline_pronoun(
                 "moj",
-                &Case::Dat,
-                &Number::Singular,
-                &Gender::Neuter,
+                Case::Dat,
+                Number::Singular,
+                Gender::Neuter,
                 Animacy::Inanimate
             )
         ),
@@ -702,11 +695,11 @@ fn core_pronouns_and_numerals() {
         "decline_numeral(\"pęť\", Ins pl)",
         &format!(
             "{:?}",
-            ISVCore::decline_numeral(
+            adjective::decline_numeral(
                 "pęť",
-                &Case::Ins,
-                &Number::Plural,
-                &Gender::Masculine,
+                Case::Ins,
+                Number::Plural,
+                Gender::Masculine,
                 Animacy::Inanimate
             )
         ),
@@ -715,37 +708,37 @@ fn core_pronouns_and_numerals() {
 
 /// Core verb conjugation — total and checked, single forms and full paradigms.
 fn core_verbs() {
-    heading("ISVCore::conjugate_verb family");
+    heading("verb::conjugate_verb family");
     row(
         "conjugate_verb(\"dělati\", 3pl present)",
-        &ISVCore::conjugate_verb(
+        &verb::conjugate_verb(
             "dělati",
-            &Person::Third,
-            &Number::Plural,
-            &Gender::Masculine,
-            &Tense::Present,
+            Person::Third,
+            Number::Plural,
+            Gender::Masculine,
+            Tense::Present,
         ),
     );
     row(
         "conjugate_verb_with_present_hint(\"bolěti\", \"(boli)\", 3sg)",
-        &ISVCore::conjugate_verb_with_present_hint(
+        &verb::conjugate_verb_with_present_hint(
             "bolěti",
             "(boli)",
-            &Person::Third,
-            &Number::Singular,
-            &Gender::Masculine,
-            &Tense::Present,
+            Person::Third,
+            Number::Singular,
+            Gender::Masculine,
+            Tense::Present,
         ),
     );
     row(
         "conjugate_verb_with_options(\"napisati\", perfective/transitive, perfect 3sg f)",
-        &ISVCore::conjugate_verb_with_options(
+        &verb::conjugate_verb_with_options(
             "napisati",
             "",
-            &Person::Third,
-            &Number::Singular,
-            &Gender::Feminine,
-            &Tense::Perfect,
+            Person::Third,
+            Number::Singular,
+            Gender::Feminine,
+            Tense::Perfect,
             true,
             false,
         ),
@@ -754,21 +747,21 @@ fn core_verbs() {
         "conjugate_verb_checked(\"xyz\")",
         &format!(
             "{:?}",
-            ISVCore::conjugate_verb_checked(
+            verb::conjugate_verb_checked(
                 "xyz",
                 "",
-                &Person::First,
-                &Number::Singular,
-                &Gender::Masculine,
-                &Tense::Present,
+                Person::First,
+                Number::Singular,
+                Gender::Masculine,
+                Tense::Present,
                 true,
                 true
             )
         ),
     );
 
-    heading("ISVCore::verb_paradigm_with_options / verb_paradigm_checked");
-    let paradigm = ISVCore::verb_paradigm_with_options("pisati", "", true, true);
+    heading("verb::verb_paradigm_with_options / verb_paradigm_checked");
+    let paradigm = verb::verb_paradigm_with_options("pisati", "", true, true);
     row(
         "verb_paradigm_with_options(\"pisati\").present",
         &format!("{:?}", paradigm.present),
@@ -777,30 +770,30 @@ fn core_verbs() {
         "verb_paradigm_checked(\"pisati\").is_some()",
         &format!(
             "{}",
-            ISVCore::verb_paradigm_checked("pisati", "", true, true).is_some()
+            verb::verb_paradigm_checked("pisati", "", true, true).is_some()
         ),
     );
     row(
         "verb_paradigm_checked(\"voda\")",
         &format!(
             "{:?}",
-            ISVCore::verb_paradigm_checked("voda", "", true, true).map(|_| "…")
+            verb::verb_paradigm_checked("voda", "", true, true).map(|_| "…")
         ),
     );
 
-    heading("ISVCore verb stem helpers");
-    let (stem, conj): (String, Conjugation) = ISVCore::get_present_tense_stem("pisati");
+    heading("verb module stem helpers");
+    let (stem, conj): (String, Conjugation) = verb::get_present_tense_stem("pisati");
     row(
         "get_present_tense_stem(\"pisati\")",
         &format!("stem={stem}, conjugation={conj:?}"),
     );
     row(
         "get_infinitive_stem(\"pisati\")",
-        &ISVCore::get_infinitive_stem("pisati"),
+        &verb::get_infinitive_stem("pisati"),
     );
     row(
         "l_participle(\"pisati\", f, sg)",
-        &ISVCore::l_participle("pisati", &Gender::Feminine, &Number::Singular),
+        &verb::l_participle("pisati", Gender::Feminine, Number::Singular),
     );
 }
 
@@ -808,48 +801,48 @@ fn core_verbs() {
 // 5. Core utilities + constants
 // ---------------------------------------------------------------------------
 
-/// `ISVUTILS` — the low-level string/phonology helpers.
+/// `utils` — the low-level string/phonology helpers.
 fn core_utilities() {
-    heading("ISVUTILS::iotation_merge — fuse a stem with a j-initial suffix");
+    heading("utils::iotation_merge — fuse a stem with a j-initial suffix");
     row(
         "iotation_merge(\"nos\", \"jenьje\")",
-        &ISVUTILS::iotation_merge("nos", "jenьje"),
+        &utils::iotation_merge("nos", "jenьje"),
     );
     row(
         "iotation_merge(\"hod\", \"ju\")",
-        &ISVUTILS::iotation_merge("hod", "ju"),
+        &utils::iotation_merge("hod", "ju"),
     );
 
-    heading("ISVUTILS character predicates");
+    heading("utils character predicates");
     for c in ['a', 'k', 'č', 'j'] {
         row(
             &format!("'{c}'"),
             &format!(
                 "vowel={}, consonant={}, hard={}, soft={}",
-                ISVUTILS::is_vowel(&c),
-                ISVUTILS::is_consonant(&c),
-                ISVUTILS::is_hard_consonant(&c),
-                ISVUTILS::is_soft_consonant(&c),
+                utils::is_vowel(&c),
+                utils::is_consonant(&c),
+                utils::is_hard_consonant(&c),
+                utils::is_soft_consonant(&c),
             ),
         );
     }
     row(
         "ends_with_soft_consonant(\"konj\")",
-        &format!("{}", ISVUTILS::ends_with_soft_consonant("konj")),
+        &format!("{}", utils::ends_with_soft_consonant("konj")),
     );
     row(
-        "last_in_stringslice(\"voda\")",
-        &format!("'{}'", ISVUTILS::last_in_stringslice("voda")),
+        "last_char(\"voda\")",
+        &format!("{:?}", utils::last_char("voda")),
     );
 
-    heading("ISVUTILS string helpers");
+    heading("utils string helpers");
     row(
         "string_without_last_n(\"pisati\", 2)",
-        &ISVUTILS::string_without_last_n("pisati", 2),
+        &utils::string_without_last_n("pisati", 2),
     );
     row(
         "replace_last_occurence(\"a-b-c\", \"-\", \"/\")",
-        &ISVUTILS::replace_last_occurence("a-b-c", "-", "/"),
+        &utils::replace_last_occurence("a-b-c", "-", "/"),
     );
 }
 

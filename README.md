@@ -40,7 +40,7 @@ fn main() {
             "luč",
             Case::Gen,
             Number::Singular,
-            NounGender::Feminine,
+            Gender::Feminine,
             Animacy::Inanimate,
         ),
         "luči"
@@ -50,7 +50,7 @@ fn main() {
             "mųž",
             Case::Acc,
             Number::Singular,
-            NounGender::Masculine,
+            Gender::Masculine,
             Animacy::Animate,
         ),
         "mųža"

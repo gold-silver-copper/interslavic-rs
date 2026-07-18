@@ -31,7 +31,7 @@ fn noun_with_overrides_gender_and_animacy_directly() {
             "luč",
             Case::Gen,
             Number::Singular,
-            NounGender::Feminine,
+            Gender::Feminine,
             Animacy::Inanimate,
         ),
         "luči"
@@ -41,7 +41,7 @@ fn noun_with_overrides_gender_and_animacy_directly() {
             "luč",
             Case::Gen,
             Number::Singular,
-            NounGender::Masculine,
+            Gender::Masculine,
             Animacy::Inanimate,
         ),
         "luča"
@@ -51,7 +51,7 @@ fn noun_with_overrides_gender_and_animacy_directly() {
             "mųž",
             Case::Acc,
             Number::Singular,
-            NounGender::Masculine,
+            Gender::Masculine,
             Animacy::Animate,
         ),
         "mųža"
@@ -61,7 +61,7 @@ fn noun_with_overrides_gender_and_animacy_directly() {
             "mųž",
             Case::Acc,
             Number::Singular,
-            NounGender::Masculine,
+            Gender::Masculine,
             Animacy::Inanimate,
         ),
         "mųž"

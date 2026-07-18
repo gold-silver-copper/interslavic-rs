@@ -10,7 +10,7 @@ fn readme_noun_adjective_and_verb_examples_stay_current() {
             "luč",
             Case::Gen,
             Number::Singular,
-            NounGender::Feminine,
+            Gender::Feminine,
             Animacy::Inanimate,
         ),
         "luči"
@@ -20,7 +20,7 @@ fn readme_noun_adjective_and_verb_examples_stay_current() {
             "mųž",
             Case::Acc,
             Number::Singular,
-            NounGender::Masculine,
+            Gender::Masculine,
             Animacy::Animate,
         ),
         "mųža"

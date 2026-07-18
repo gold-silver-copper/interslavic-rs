@@ -14,28 +14,28 @@ Use this crate when you want a tiny morphology engine for known lemmas or contro
 use interslavic_core::*;
 
 assert_eq!(
-    ISVCore::decline_noun("suma", &Case::Acc, &Number::Singular),
+    noun::decline_noun("suma", Case::Acc, Number::Singular),
     "sumų"
 );
 
 assert_eq!(
-    ISVCore::decline_adj(
+    adjective::decline_adj(
         "dobry",
-        &Case::Gen,
-        &Number::Singular,
-        &Gender::Masculine,
+        Case::Gen,
+        Number::Singular,
+        Gender::Masculine,
         Animacy::Animate,
     ),
     "dobrogo"
 );
 
 assert_eq!(
-    ISVCore::conjugate_verb(
+    verb::conjugate_verb(
         "učiti",
-        &Person::First,
-        &Number::Singular,
-        &Gender::Feminine,
-        &Tense::Present,
+        Person::First,
+        Number::Singular,
+        Gender::Feminine,
+        Tense::Present,
     ),
     "učų"
 );
