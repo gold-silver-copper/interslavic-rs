@@ -17,11 +17,12 @@ resolver = "3"
 [workspace.package]
 authors = ["gold-silver-copper"]
 edition = "2024"
+rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/gold-silver-copper/interslavic"
 keywords = ["interslavic", "inflection", "morphology", "nlp"]
 categories = ["text-processing", "internationalization"]
 
 [workspace.dependencies]
-interslavic-core = { path = "crates/interslavic-core", version = "0.7.0" }
+interslavic-core = { path = "crates/interslavic-core", version = "0.8.0" }
 phf = { version = "0.12", default-features = false, features = ["macros"] }

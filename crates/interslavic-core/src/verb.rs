@@ -254,8 +254,9 @@ fn sonic_prefix(infinitive: &str) -> String {
         "vedeti", "věděti", "jesti", "jěsti", "dati", "dųti", "byti", "žegti",
     ];
     for verb in NON_REGULAR {
-        if let Some(maybe_prefix) = infinitive.strip_suffix(verb)
-            && PREFIXES.contains(&maybe_prefix)
+        if let Some(maybe_prefix) = infinitive
+            .strip_suffix(verb)
+            .filter(|maybe_prefix| PREFIXES.contains(maybe_prefix))
         {
             return maybe_prefix.to_string();
         }
@@ -305,12 +306,12 @@ fn clean_present_hint(raw: &str) -> String {
     if let Some((head, _)) = pts.split_once([';', ',', '/']) {
         pts = head.to_string();
     }
-    if let Some(index) = pts.find('+')
-        && pts[index + 1..]
+    if let Some(index) = pts.find('+').filter(|index| {
+        pts[*index + 1..]
             .chars()
             .next()
             .is_some_and(|c| c.is_ascii_digit())
-    {
+    }) {
         pts.replace_range(index..=index + 1, "");
     }
     pts.trim().to_string()

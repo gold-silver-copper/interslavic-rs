@@ -358,9 +358,7 @@ pub fn decline_numeral(
     }
     // 5 and up (pęť…desęť and the -nadsęť/-deset series): the i-stem
     // (kosť-class) declension.
-    if let Some(stem) = l.strip_suffix('ť')
-        && stem.chars().count() >= 2
-    {
+    if let Some(stem) = l.strip_suffix('ť').filter(|stem| stem.chars().count() >= 2) {
         return Some(match case {
             Case::Nom | Case::Acc => l.to_string(),
             Case::Gen | Case::Dat | Case::Loc => format!("{stem}ti"),

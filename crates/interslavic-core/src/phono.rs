@@ -61,8 +61,10 @@ pub fn is_soft(stem: &str) -> bool {
 /// consonant is not one of the palatalization sources).
 pub fn palatalize_final(stem: &str) -> String {
     let mut s = stem.to_string();
-    if let Some(last) = s.chars().last()
-        && let Some((_, soft)) = PALATALIZATION.iter().find(|(hard, _)| *hard == last)
+    if let Some((_, soft)) = s
+        .chars()
+        .last()
+        .and_then(|last| PALATALIZATION.iter().find(|(hard, _)| *hard == last))
     {
         s.pop();
         s.push(*soft);

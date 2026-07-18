@@ -488,7 +488,12 @@ fn establish_noun_root(noun: &str, gender: &str) -> String {
         noun.into()
     };
 
-    if !has_vowel_ending && let Some(index) = last_fluent_vowel_index(noun) {
+    let fluent_vowel_index = if has_vowel_ending {
+        None
+    } else {
+        last_fluent_vowel_index(noun)
+    };
+    if let Some(index) = fluent_vowel_index {
         let result_len = result.chars().count();
         if index > result_len.saturating_sub(3) {
             result = remove_char_at(&result, index);

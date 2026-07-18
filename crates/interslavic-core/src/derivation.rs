@@ -187,8 +187,9 @@ pub fn derive(base: &str, pos: Pos) -> Vec<Derived> {
                     "pridavnik",
                 );
             }
-            if let Some(astem) = b.strip_suffix('a')
-                && astem.chars().count() >= 2
+            if let Some(astem) = b
+                .strip_suffix('a')
+                .filter(|astem| astem.chars().count() >= 2)
             {
                 // Feminine diminutive: kniga → knižka, ruka → ručka.
                 push(
