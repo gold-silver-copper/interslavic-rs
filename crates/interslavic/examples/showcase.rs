@@ -444,7 +444,6 @@ fn shared_types() {
     row("Number", "Singular, Plural");
     row("Case", "Nom, Acc, Gen, Loc, Dat, Ins");
     row("Gender", "Masculine, Feminine, Neuter");
-    row("Gender", "Masculine, Feminine, Neuter (noun-facing gender)");
     row("Animacy", "Animate, Inanimate");
     row("Person", "First, Second, Third");
     row(
