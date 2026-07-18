@@ -229,9 +229,9 @@ use std::panic;
 fn clean(s: String) -> String { s.replace('\t', " ").replace('\n', " ") }
 fn emit(ref_key: &str, key: &str, value: String) { println!("{}\t{}\t{}", ref_key, key, clean(value)); }
 fn parse_bool(s: &str) -> bool { matches!(s, "true" | "True" | "1") }
-fn gender(s: &str) -> NounGender { match s { "feminine" => NounGender::Feminine, "neuter" => NounGender::Neuter, _ => NounGender::Masculine } }
+fn gender(s: &str) -> Gender { match s { "feminine" => Gender::Feminine, "neuter" => Gender::Neuter, _ => Gender::Masculine } }
 fn anim(b: bool) -> Animacy { if b { Animacy::Animate } else { Animacy::Inanimate } }
-fn noun_form(word: &str, case: Case, number: Number, gender: NounGender, animate: bool) -> String {
+fn noun_form(word: &str, case: Case, number: Number, gender: Gender, animate: bool) -> String {
     panic::catch_unwind(|| ISV::noun_with(word, case, number, gender, anim(animate))).unwrap_or_else(|_| "<PANIC>".to_string())
 }
 fn adj_form(word: &str, case: Case, number: Number, gender: Gender, animate: bool) -> String {

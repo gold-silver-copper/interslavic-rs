@@ -23,19 +23,13 @@ fn noun_forms_cells_equal_single_form_calls() {
 
 #[test]
 fn noun_forms_with_matches_noun_with() {
-    let p = ISV::noun_forms_with("kosť", NounGender::Feminine, Animacy::Inanimate);
-    assert_eq!(p.gender, NounGender::Feminine);
+    let p = ISV::noun_forms_with("kosť", Gender::Feminine, Animacy::Inanimate);
+    assert_eq!(p.gender, Gender::Feminine);
     for number in NUMBERS {
         for case in CASES {
             assert_eq!(
                 p.get(case, number),
-                ISV::noun_with(
-                    "kosť",
-                    case,
-                    number,
-                    NounGender::Feminine,
-                    Animacy::Inanimate
-                ),
+                ISV::noun_with("kosť", case, number, Gender::Feminine, Animacy::Inanimate),
             );
         }
     }
@@ -67,7 +61,7 @@ fn adj_forms_cells_equal_single_form_calls() {
 #[test]
 fn paradigm_golden_forms() {
     let z = ISV::noun_forms("žena");
-    assert_eq!(z.gender, NounGender::Feminine);
+    assert_eq!(z.gender, Gender::Feminine);
     assert_eq!(z.get(Case::Gen, Number::Singular), "ženy");
     assert_eq!(z.get(Case::Ins, Number::Singular), "ženojų");
     assert_eq!(z.get(Case::Gen, Number::Plural), "žen");

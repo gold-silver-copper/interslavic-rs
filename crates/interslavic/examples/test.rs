@@ -19,7 +19,7 @@ fn main() {
             "člen",
             Case::Acc,
             Number::Singular,
-            NounGender::Masculine,
+            Gender::Masculine,
             Animacy::Inanimate,
         )
     );
@@ -29,7 +29,7 @@ fn main() {
             "luč",
             Case::Gen,
             Number::Singular,
-            NounGender::Feminine,
+            Gender::Feminine,
             Animacy::Inanimate,
         )
     );

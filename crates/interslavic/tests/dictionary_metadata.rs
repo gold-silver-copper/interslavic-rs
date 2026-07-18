@@ -56,7 +56,7 @@ fn ambiguous_lemmas_default_to_first_dictionary_row_and_allow_overrides() {
             "člen",
             Case::Acc,
             Number::Singular,
-            NounGender::Masculine,
+            Gender::Masculine,
             Animacy::Inanimate,
         ),
         "člen"
@@ -70,7 +70,7 @@ fn noun_with_prefers_number_compatible_duplicate_metadata() {
             "anestezija",
             Case::Nom,
             Number::Plural,
-            NounGender::Feminine,
+            Gender::Feminine,
             Animacy::Inanimate,
         ),
         "anestezije"
@@ -80,7 +80,7 @@ fn noun_with_prefers_number_compatible_duplicate_metadata() {
             "bor",
             Case::Gen,
             Number::Plural,
-            NounGender::Masculine,
+            Gender::Masculine,
             Animacy::Inanimate,
         ),
         "borov"

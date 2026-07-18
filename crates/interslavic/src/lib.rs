@@ -34,15 +34,14 @@
 //! ```
 
 pub use interslavic_core::{
-    cells, derivation, orthography, phono, prepositions, AdjParadigm, Animacy, Case, Gender,
-    NounGender, NounParadigm, Number, Person, Tense, VerbParadigm, CASE_ORDER,
+    adjective, cells, derivation, noun, orthography, paradigm, phono, prepositions, types, utils,
+    verb, AdjParadigm, Animacy, Case, Gender, NounParadigm, Number, Person, Tense, VerbParadigm,
+    CASE_ORDER,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)
 // through this crate alone, without a separate `interslavic-core` dependency.
-pub use interslavic_core::{
-    ComplexNoun, Conjugation, ISVCore, HARD_CONSONANTS, ISVUTILS, J_MERGE_CHARS, VOWELS,
-};
+pub use interslavic_core::{ComplexNoun, Conjugation, HARD_CONSONANTS, J_MERGE_CHARS, VOWELS};
 
 mod dictionary;
 use dictionary::*;
@@ -59,7 +58,7 @@ impl ISV {
             return Self::noun_from_entry(entry, case, number, None, None);
         }
 
-        ISVCore::decline_noun(lemma, &case, &number)
+        noun::decline_noun(lemma, case, number)
     }
 
     /// Return one noun form with explicit gender and animacy.
@@ -71,7 +70,7 @@ impl ISV {
         lemma: &str,
         case: Case,
         number: Number,
-        gender: NounGender,
+        gender: Gender,
         animacy: Animacy,
     ) -> String {
         let entries = lookup_nouns_by_lemma(lemma);
@@ -81,15 +80,15 @@ impl ISV {
             return Self::noun_from_entry(entry, case, number, Some(gender), Some(animacy));
         }
 
-        ISVCore::decline_noun_explicit(
-            lemma, &case, &number, gender, animacy, false, false, false, None,
+        noun::decline_noun_explicit(
+            lemma, case, number, gender, animacy, false, false, false, None,
         )
     }
 
     /// One adjective form. Adjective phrases are not declined as a unit; callers
     /// should model particles/complements separately and pass only the adjective.
     pub fn adj(word: &str, case: Case, number: Number, gender: Gender, animacy: Animacy) -> String {
-        ISVCore::decline_adj(word, &case, &number, &gender, animacy)
+        adjective::decline_adj(word, case, number, gender, animacy)
     }
 
     /// The whole noun paradigm — every case in both numbers — with gender and
@@ -116,12 +115,8 @@ impl ISV {
                 },
             ),
             None => (
-                match ISVCore::guess_gender(trimmed) {
-                    Gender::Masculine => NounGender::Masculine,
-                    Gender::Feminine => NounGender::Feminine,
-                    Gender::Neuter => NounGender::Neuter,
-                },
-                if ISVCore::noun_is_animate(trimmed) {
+                noun::guess_gender(trimmed),
+                if noun::noun_is_animate(trimmed) {
                     Animacy::Animate
                 } else {
                     Animacy::Inanimate
@@ -147,7 +142,7 @@ impl ISV {
     /// paradigm counterpart of [`ISV::noun_with`]. Dictionary metadata such as
     /// fleeting-vowel additions and number restrictions still applies;
     /// `gender`/`animacy` override the dictionary row.
-    pub fn noun_forms_with(lemma: &str, gender: NounGender, animacy: Animacy) -> NounParadigm {
+    pub fn noun_forms_with(lemma: &str, gender: Gender, animacy: Animacy) -> NounParadigm {
         let trimmed = lemma.trim();
         NounParadigm {
             lemma: trimmed.to_string(),
@@ -224,7 +219,7 @@ impl ISV {
     /// assert_eq!(ISV::comparative("russky"), None);
     /// ```
     pub fn comparative(adj: &str) -> Option<(String, String)> {
-        ISVCore::comparative(adj.trim())
+        adjective::comparative(adj.trim())
     }
 
     /// The synthetic superlative of an adjective, as `(superlative adjective,
@@ -236,7 +231,7 @@ impl ISV {
     /// assert_eq!(ISV::superlative("novy"), Some(("najnovějši".into(), "najnověje".into())));
     /// ```
     pub fn superlative(adj: &str) -> Option<(String, String)> {
-        ISVCore::superlative(adj.trim())
+        adjective::superlative(adj.trim())
     }
 
     /// One pronoun form, or `None` if the lemma is not a recognized pronoun.
@@ -259,7 +254,7 @@ impl ISV {
         gender: Gender,
         animacy: Animacy,
     ) -> Option<String> {
-        ISVCore::decline_pronoun(lemma.trim(), &case, &number, &gender, animacy)
+        adjective::decline_pronoun(lemma.trim(), case, number, gender, animacy)
     }
 
     /// One numeral form, or `None` if the lemma is not a recognized numeral.
@@ -281,7 +276,7 @@ impl ISV {
         gender: Gender,
         animacy: Animacy,
     ) -> Option<String> {
-        ISVCore::decline_numeral(lemma.trim(), &case, &number, &gender, animacy)
+        adjective::decline_numeral(lemma.trim(), case, number, gender, animacy)
     }
 
     /// The case(s) a preposition governs, or `None` if `prep` is not a
@@ -312,19 +307,19 @@ impl ISV {
         let trimmed = word.trim();
         let entries = lookup_verbs_by_lemma(trimmed);
         if let Some(entry) = entries.first() {
-            return ISVCore::conjugate_verb_with_options(
+            return verb::conjugate_verb_with_options(
                 entry.lemma,
                 entry.addition,
-                &person,
-                &number,
-                &gender,
-                &tense,
+                person,
+                number,
+                gender,
+                tense,
                 entry.transitive,
                 entry.imperfective,
             );
         }
 
-        ISVCore::conjugate_verb(trimmed, &person, &number, &gender, &tense)
+        verb::conjugate_verb(trimmed, person, number, gender, tense)
     }
 
     /// One finite verb form, or `None` when an infinitive stem cannot be
@@ -349,18 +344,18 @@ impl ISV {
         let trimmed = word.trim();
         let entries = lookup_verbs_by_lemma(trimmed);
         if let Some(entry) = entries.first() {
-            return ISVCore::conjugate_verb_checked(
+            return verb::conjugate_verb_checked(
                 entry.lemma,
                 entry.addition,
-                &person,
-                &number,
-                &gender,
-                &tense,
+                person,
+                number,
+                gender,
+                tense,
                 entry.transitive,
                 entry.imperfective,
             );
         }
-        ISVCore::conjugate_verb_checked(trimmed, "", &person, &number, &gender, &tense, true, true)
+        verb::conjugate_verb_checked(trimmed, "", person, number, gender, tense, true, true)
     }
 
     /// One finite verb form with an explicit dictionary present-stem hint.
@@ -375,13 +370,13 @@ impl ISV {
         gender: Gender,
         tense: Tense,
     ) -> String {
-        ISVCore::conjugate_verb_with_present_hint(
+        verb::conjugate_verb_with_present_hint(
             word.trim(),
             present_hint,
-            &person,
-            &number,
-            &gender,
-            &tense,
+            person,
+            number,
+            gender,
+            tense,
         )
     }
 
@@ -390,14 +385,14 @@ impl ISV {
         let trimmed = word.trim();
         let entries = lookup_verbs_by_lemma(trimmed);
         if let Some(entry) = entries.first() {
-            return ISVCore::verb_paradigm_with_options(
+            return verb::verb_paradigm_with_options(
                 entry.lemma,
                 entry.addition,
                 entry.transitive,
                 entry.imperfective,
             );
         }
-        ISVCore::verb_paradigm_with_options(trimmed, "", true, true)
+        verb::verb_paradigm_with_options(trimmed, "", true, true)
     }
 
     /// The full verb paradigm, or `None` when an infinitive stem cannot be
@@ -413,14 +408,14 @@ impl ISV {
         let trimmed = word.trim();
         let entries = lookup_verbs_by_lemma(trimmed);
         if let Some(entry) = entries.first() {
-            return ISVCore::verb_paradigm_checked(
+            return verb::verb_paradigm_checked(
                 entry.lemma,
                 entry.addition,
                 entry.transitive,
                 entry.imperfective,
             );
         }
-        ISVCore::verb_paradigm_checked(trimmed, "", true, true)
+        verb::verb_paradigm_checked(trimmed, "", true, true)
     }
 
     /// Full verb paradigm with explicit dictionary metadata.
@@ -430,7 +425,7 @@ impl ISV {
         transitive: bool,
         imperfective: bool,
     ) -> VerbParadigm {
-        ISVCore::verb_paradigm_with_options(word.trim(), present_hint, transitive, imperfective)
+        verb::verb_paradigm_with_options(word.trim(), present_hint, transitive, imperfective)
     }
 
     fn select_noun_entry<'a>(
@@ -438,7 +433,7 @@ impl ISV {
         entries: &'a [DictionaryEntry],
         case: Case,
         number: Number,
-        gender: Option<NounGender>,
+        gender: Option<Gender>,
         animacy: Option<Animacy>,
     ) -> Option<&'a DictionaryEntry> {
         entries.iter().max_by_key(|entry| {
@@ -479,7 +474,7 @@ impl ISV {
         entry: &DictionaryEntry,
         case: Case,
         number: Number,
-        gender_override: Option<NounGender>,
+        gender_override: Option<Gender>,
         animacy_override: Option<Animacy>,
     ) -> String {
         let gender = gender_override.unwrap_or_else(|| dictionary_gender_to_api(entry.gender));
@@ -489,10 +484,10 @@ impl ISV {
             Animacy::Inanimate
         });
 
-        ISVCore::decline_noun_explicit(
+        noun::decline_noun_explicit(
             entry.lemma,
-            &case,
-            &number,
+            case,
+            number,
             gender,
             animacy,
             entry.plural_only,
@@ -503,10 +498,10 @@ impl ISV {
     }
 }
 
-fn dictionary_gender_to_api(gender: DictionaryGender) -> NounGender {
+fn dictionary_gender_to_api(gender: DictionaryGender) -> Gender {
     match gender {
-        DictionaryGender::Masculine | DictionaryGender::MasculineFeminine => NounGender::Masculine,
-        DictionaryGender::Feminine => NounGender::Feminine,
-        DictionaryGender::Neuter => NounGender::Neuter,
+        DictionaryGender::Masculine | DictionaryGender::MasculineFeminine => Gender::Masculine,
+        DictionaryGender::Feminine => Gender::Feminine,
+        DictionaryGender::Neuter => Gender::Neuter,
     }
 }
