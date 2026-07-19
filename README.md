@@ -29,14 +29,14 @@ use interslavic::*;
 
 fn main() {
     // One dictionary-backed noun form.
-    assert_eq!(ISV::noun("adept", Case::Acc, Number::Singular), "adepta");
+    assert_eq!(interslavic::noun("adept", Case::Acc, Number::Singular), "adepta");
 
     // Alternatives are returned as one slash-separated string.
-    assert_eq!(ISV::noun("oko", Case::Nom, Number::Plural), "oči / očesa");
+    assert_eq!(interslavic::noun("oko", Case::Nom, Number::Plural), "oči / očesa");
 
     // Ambiguous or context-sensitive nouns can be overridden directly.
     assert_eq!(
-        ISV::noun_with(
+        interslavic::noun_with(
             "luč",
             Case::Gen,
             Number::Singular,
@@ -46,7 +46,7 @@ fn main() {
         "luči"
     );
     assert_eq!(
-        ISV::noun_with(
+        interslavic::noun_with(
             "mųž",
             Case::Acc,
             Number::Singular,
@@ -59,7 +59,7 @@ fn main() {
     // Adjectives and verbs are single-form APIs. Adjective phrases with
     // particles/complements should be modeled by the caller, not declined as a unit.
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "dobry",
             Case::Gen,
             Number::Singular,
@@ -69,7 +69,7 @@ fn main() {
         "dobrogo"
     );
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "učiti",
             Person::First,
             Number::Singular,
@@ -81,7 +81,7 @@ fn main() {
 
     // Full verb paradigms include simple, compound, imperative, participial,
     // and gerund forms.
-    let pisati = ISV::verb_forms("pisati");
+    let pisati = interslavic::verb_forms("pisati");
     assert_eq!(pisati.future[0], "bųdų pisatì");
     assert_eq!(pisati.perfect[0], "jesm pisal(a)");
     assert_eq!(pisati.imperative, vec!["piši", "pišimo", "pišite"]);
@@ -90,7 +90,7 @@ fn main() {
     // Dictionary integrations that need a specific present-stem hint can use the
     // explicit typed helper instead of passing a phrase string.
     assert_eq!(
-        ISV::verb_with_present_hint(
+        interslavic::verb_with_present_hint(
             "bolěti",
             "(boli)",
             Person::First,
@@ -116,7 +116,7 @@ cargo run -p interslavic --example speedmark --release
 
 ### `interslavic`
 
-The public facade for application code. It looks up generated dictionary metadata first and falls back to `interslavic-core` rules for unknown words. Use this crate when you want dictionary-aware noun metadata, verb present-stem hints, transitivity/imperfectivity flags, and a compact `ISV` namespace.
+The public facade for application code. It looks up generated dictionary metadata first and falls back to `interslavic-core` rules for unknown words. Use this crate when you want dictionary-aware noun metadata, verb present-stem hints, transitivity/imperfectivity flags, and crate-root free functions.
 
 ### `interslavic-core`
 
@@ -174,8 +174,8 @@ cargo xtask check-registry  # verify generated metadata is current
 
 ## API philosophy and limitations
 
-- Public methods return a single `String`; accepted alternatives are represented as slash-separated strings when the morphology engine has multiple compatible forms.
-- `ISV::noun_with` is the escape hatch for explicit gender/animacy when a lemma is ambiguous or context-sensitive.
+- Public functions return a single `String`; accepted alternatives are represented as slash-separated strings when the morphology engine has multiple compatible forms.
+- `interslavic::noun_with` is the escape hatch for explicit gender/animacy when a lemma is ambiguous or context-sensitive.
 - Verb phrase strings are not parsed as arbitrary syntax. Use typed helpers such as `verb_with_present_hint` or `verb_forms_with_metadata` for dictionary rows with extra metadata.
 - `interslavic-core` stays dependency-free; dictionary-backed behavior belongs in `interslavic`.
 

@@ -3,7 +3,7 @@ use interslavic::*;
 #[test]
 fn adjective_phrases_are_not_declined_as_a_unit() {
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "osnovany na",
             Case::Gen,
             Number::Singular,
@@ -13,7 +13,7 @@ fn adjective_phrases_are_not_declined_as_a_unit() {
         "osnovany na"
     );
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "pȯlny naděje",
             Case::Nom,
             Number::Plural,
@@ -27,7 +27,7 @@ fn adjective_phrases_are_not_declined_as_a_unit() {
 #[test]
 fn noun_with_overrides_gender_and_animacy_directly() {
     assert_eq!(
-        ISV::noun_with(
+        interslavic::noun_with(
             "luč",
             Case::Gen,
             Number::Singular,
@@ -37,7 +37,7 @@ fn noun_with_overrides_gender_and_animacy_directly() {
         "luči"
     );
     assert_eq!(
-        ISV::noun_with(
+        interslavic::noun_with(
             "luč",
             Case::Gen,
             Number::Singular,
@@ -47,7 +47,7 @@ fn noun_with_overrides_gender_and_animacy_directly() {
         "luča"
     );
     assert_eq!(
-        ISV::noun_with(
+        interslavic::noun_with(
             "mųž",
             Case::Acc,
             Number::Singular,
@@ -57,7 +57,7 @@ fn noun_with_overrides_gender_and_animacy_directly() {
         "mųža"
     );
     assert_eq!(
-        ISV::noun_with(
+        interslavic::noun_with(
             "mųž",
             Case::Acc,
             Number::Singular,
@@ -70,23 +70,41 @@ fn noun_with_overrides_gender_and_animacy_directly() {
 
 #[test]
 fn neuter_je_genitive_plural_distinguishes_ij_and_ej_classes() {
-    assert_eq!(ISV::noun("kopje", Case::Gen, Number::Plural), "kopij");
-    assert_eq!(ISV::noun("obdobje", Case::Gen, Number::Plural), "obdobij");
-    assert_eq!(ISV::noun("morje", Case::Gen, Number::Plural), "morej");
-    assert_eq!(ISV::noun("polje", Case::Gen, Number::Plural), "polej");
+    assert_eq!(
+        interslavic::noun("kopje", Case::Gen, Number::Plural),
+        "kopij"
+    );
+    assert_eq!(
+        interslavic::noun("obdobje", Case::Gen, Number::Plural),
+        "obdobij"
+    );
+    assert_eq!(
+        interslavic::noun("morje", Case::Gen, Number::Plural),
+        "morej"
+    );
+    assert_eq!(
+        interslavic::noun("polje", Case::Gen, Number::Plural),
+        "polej"
+    );
 }
 
 #[test]
 fn feminine_fluent_vowel_v_and_sibilant_nouns_preserve_vowel() {
-    assert_eq!(ISV::noun("brȯv", Case::Ins, Number::Singular), "brȯvjų");
-    assert_eq!(ISV::noun("krȯv", Case::Ins, Number::Singular), "krȯvjų");
-    assert_eq!(ISV::noun("lȯž", Case::Nom, Number::Singular), "lȯž");
+    assert_eq!(
+        interslavic::noun("brȯv", Case::Ins, Number::Singular),
+        "brȯvjų"
+    );
+    assert_eq!(
+        interslavic::noun("krȯv", Case::Ins, Number::Singular),
+        "krȯvjų"
+    );
+    assert_eq!(interslavic::noun("lȯž", Case::Nom, Number::Singular), "lȯž");
 }
 
 #[test]
 fn seksi_matches_reference_softening() {
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "seksi",
             Case::Nom,
             Number::Singular,
@@ -96,7 +114,7 @@ fn seksi_matches_reference_softening() {
         "sekśi"
     );
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "seksi",
             Case::Acc,
             Number::Singular,
@@ -106,7 +124,7 @@ fn seksi_matches_reference_softening() {
         "seksi"
     );
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "seksi",
             Case::Gen,
             Number::Plural,

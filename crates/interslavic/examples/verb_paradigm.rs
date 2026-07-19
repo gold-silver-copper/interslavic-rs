@@ -1,7 +1,5 @@
-use interslavic::*;
-
 fn main() {
-    let forms = ISV::verb_forms("pisati");
+    let forms = interslavic::verb_forms("pisati");
 
     println!("infinitive: {}", forms.infinitive);
     println!("present: {}", forms.present.join(", "));

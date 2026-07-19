@@ -3,7 +3,7 @@ use interslavic::*;
 #[test]
 fn second_conjugation_drops_extra_j_after_soft_consonants() {
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "učiti",
             Person::First,
             Number::Singular,
@@ -17,7 +17,7 @@ fn second_conjugation_drops_extra_j_after_soft_consonants() {
 #[test]
 fn dictionary_present_hints_match_sonic_reference() {
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "pisati",
             Person::First,
             Number::Singular,
@@ -27,7 +27,7 @@ fn dictionary_present_hints_match_sonic_reference() {
         "pišų"
     );
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "dělati",
             Person::Third,
             Number::Singular,
@@ -37,7 +37,7 @@ fn dictionary_present_hints_match_sonic_reference() {
         "dělaje"
     );
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "byti",
             Person::Third,
             Number::Plural,
@@ -51,7 +51,7 @@ fn dictionary_present_hints_match_sonic_reference() {
 #[test]
 fn ovati_and_evati_verbs_use_uj_present_stem() {
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "aranževati",
             Person::First,
             Number::Singular,
@@ -61,7 +61,7 @@ fn ovati_and_evati_verbs_use_uj_present_stem() {
         "aranžujų"
     );
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "abdikovati",
             Person::Second,
             Number::Plural,
@@ -75,7 +75,7 @@ fn ovati_and_evati_verbs_use_uj_present_stem() {
 #[test]
 fn raw_phrase_strings_are_not_conjugated_as_core_lemmas() {
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "bazovati na",
             Person::First,
             Number::Singular,
@@ -89,7 +89,7 @@ fn raw_phrase_strings_are_not_conjugated_as_core_lemmas() {
 #[test]
 fn verb_lookup_trims_input_before_dictionary_lookup() {
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             " pisati ",
             Person::First,
             Number::Singular,
@@ -103,7 +103,7 @@ fn verb_lookup_trims_input_before_dictionary_lookup() {
 #[test]
 fn explicit_present_hint_selects_duplicate_dictionary_verb_rows() {
     assert_eq!(
-        ISV::verb_with_present_hint(
+        interslavic::verb_with_present_hint(
             "bolěti",
             "(boli)",
             Person::First,
@@ -114,7 +114,7 @@ fn explicit_present_hint_selects_duplicate_dictionary_verb_rows() {
         "boljų"
     );
     assert_eq!(
-        ISV::verb_with_present_hint(
+        interslavic::verb_with_present_hint(
             "bolěti",
             "(bolěje)",
             Person::First,
@@ -125,7 +125,7 @@ fn explicit_present_hint_selects_duplicate_dictionary_verb_rows() {
         "bolějų"
     );
     assert_eq!(
-        ISV::verb_with_present_hint(
+        interslavic::verb_with_present_hint(
             "pisati",
             "(piše)",
             Person::Third,
@@ -139,7 +139,7 @@ fn explicit_present_hint_selects_duplicate_dictionary_verb_rows() {
 
 #[test]
 fn intransitive_dictionary_verbs_do_not_get_passive_participles() {
-    let forms = ISV::verb_forms("cvěsti");
+    let forms = interslavic::verb_forms("cvěsti");
     assert_eq!(forms.prpp, None);
     assert_eq!(forms.pfpp, None);
 }
@@ -147,7 +147,7 @@ fn intransitive_dictionary_verbs_do_not_get_passive_participles() {
 #[test]
 fn full_verb_paradigm_includes_compound_tenses_and_participles() {
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "pisati",
             Person::First,
             Number::Singular,
@@ -157,7 +157,7 @@ fn full_verb_paradigm_includes_compound_tenses_and_participles() {
         "bųdų pisatì"
     );
     assert_eq!(
-        ISV::verb(
+        interslavic::verb(
             "pisati",
             Person::Third,
             Number::Singular,
@@ -167,7 +167,7 @@ fn full_verb_paradigm_includes_compound_tenses_and_participles() {
         "(je) pisala"
     );
 
-    let forms = ISV::verb_forms_with_metadata("pisati", "(piše)", true, true);
+    let forms = interslavic::verb_forms_with_metadata("pisati", "(piše)", true, true);
     assert_eq!(forms.infinitive, "pisatì");
     assert_eq!(forms.imperfect[0], "pisah");
     assert_eq!(forms.future[0], "bųdų pisatì");

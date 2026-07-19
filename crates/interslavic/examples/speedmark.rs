@@ -12,14 +12,14 @@ fn main() {
 fn benchmark_noun() {
     let words = ["adept", "oko", "zzzzzzzzzzzzzzzzz"];
     run_benchmark("noun", &words, |word| {
-        ISV::noun(word, Case::Gen, Number::Plural)
+        interslavic::noun(word, Case::Gen, Number::Plural)
     });
 }
 
 fn benchmark_adjective() {
     let words = ["dobry", "sinji", "zzzzzzzzzzzzzzzzz"];
     run_benchmark("adjective", &words, |word| {
-        ISV::adj(
+        interslavic::adj(
             word,
             Case::Gen,
             Number::Singular,
@@ -32,7 +32,7 @@ fn benchmark_adjective() {
 fn benchmark_verb() {
     let words = ["pisati", "učiti", "zzzzzzzzzzzzzzzzzti"];
     run_benchmark("verb", &words, |word| {
-        ISV::verb(
+        interslavic::verb(
             word,
             Person::Third,
             Number::Singular,
@@ -44,7 +44,9 @@ fn benchmark_verb() {
 
 fn benchmark_paradigm() {
     let words = ["pisati", "učiti"];
-    run_benchmark("verb_paradigm", &words, |word| ISV::verb_forms(word).gerund);
+    run_benchmark("verb_paradigm", &words, |word| {
+        interslavic::verb_forms(word).gerund
+    });
 }
 
 fn run_benchmark<F>(label: &str, words: &[&str], mut f: F)

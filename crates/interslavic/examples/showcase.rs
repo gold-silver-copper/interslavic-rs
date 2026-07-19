@@ -1,7 +1,7 @@
 //! # `interslavic` — complete API showcase
 //!
 //! A single runnable tour of **every public API** in the workspace: the
-//! dictionary-backed `interslavic` facade (`ISV`), the shared type vocabulary,
+//! dictionary-backed `interslavic` crate-root facade, the shared type vocabulary,
 //! the `phono` morphophonemics module, and the dependency-free `interslavic-core`
 //! rule engine (`noun`, `adjective`, `verb`, and `utils` modules).
 //!
@@ -14,7 +14,7 @@
 //! Each line prints an input and the form the library produces, so the output
 //! doubles as living documentation of what every entry point does.
 
-// Everything comes from the `interslavic` facade: the dictionary-backed `ISV`,
+// Everything comes from the `interslavic` facade: the dictionary-backed root functions,
 // the shared vocabulary (Case, Number, Gender, …), the `phono` module, and the
 // re-exported dependency-free engine (`noun`, `adjective`, `verb`, and `utils`) and its constants.
 use interslavic::*;
@@ -24,7 +24,7 @@ fn main() {
 
     part(
         "1",
-        "THE FACADE — `ISV`, the dictionary-backed single-form API",
+        "THE FACADE — crate-root dictionary-backed single-form API",
     );
     facade_nouns();
     facade_adjectives();
@@ -61,12 +61,12 @@ fn main() {
 }
 
 // ---------------------------------------------------------------------------
-// 1. The facade: `ISV`
+// 1. The facade: crate-root functions
 // ---------------------------------------------------------------------------
 
-/// `ISV::noun` and `ISV::noun_with` — dictionary-backed noun declension.
+/// `interslavic::noun` and `interslavic::noun_with` — dictionary-backed noun declension.
 fn facade_nouns() {
-    heading("ISV::noun — declension with automatic gender/animacy lookup");
+    heading("interslavic::noun — declension with automatic gender/animacy lookup");
     // A hard feminine a-stem across all six cases, singular and plural.
     for number in [Number::Singular, Number::Plural] {
         let forms: Vec<String> = [
@@ -78,23 +78,26 @@ fn facade_nouns() {
             Case::Ins,
         ]
         .iter()
-        .map(|&c| ISV::noun("žena", c, number))
+        .map(|&c| interslavic::noun("žena", c, number))
         .collect();
         row(&format!("žena ({number:?})"), &forms.join(", "));
     }
     // Suppletive / irregular plurals come back as a single slash-joined string.
-    row("oko (Nom pl)", &ISV::noun("oko", Case::Nom, Number::Plural));
+    row(
+        "oko (Nom pl)",
+        &interslavic::noun("oko", Case::Nom, Number::Plural),
+    );
     row(
         "mųž (Ins sg)",
-        &ISV::noun("mųž", Case::Ins, Number::Singular),
+        &interslavic::noun("mųž", Case::Ins, Number::Singular),
     );
 
-    heading("ISV::noun_with — caller-supplied gender/animacy override");
+    heading("interslavic::noun_with — caller-supplied gender/animacy override");
     // For an out-of-dictionary word the caller can pin the paradigm class; here
     // an invented -osť abstract noun is forced feminine (an i-stem).
     row(
         "zzzukavosť as f (Gen sg)",
-        &ISV::noun_with(
+        &interslavic::noun_with(
             "zzzukavosť",
             Case::Gen,
             Number::Singular,
@@ -104,25 +107,25 @@ fn facade_nouns() {
     );
 }
 
-/// `ISV::adj` — adjective declension (gender + animacy columns).
+/// `interslavic::adj` — adjective declension (gender + animacy columns).
 fn facade_adjectives() {
-    heading("ISV::adj — hard (dobry) vs soft (svěži) adjective");
+    heading("interslavic::adj — hard (dobry) vs soft (svěži) adjective");
     for word in ["dobry", "svěži"] {
-        let m = ISV::adj(
+        let m = interslavic::adj(
             word,
             Case::Gen,
             Number::Singular,
             Gender::Masculine,
             Animacy::Animate,
         );
-        let f = ISV::adj(
+        let f = interslavic::adj(
             word,
             Case::Gen,
             Number::Singular,
             Gender::Feminine,
             Animacy::Inanimate,
         );
-        let n = ISV::adj(
+        let n = interslavic::adj(
             word,
             Case::Nom,
             Number::Singular,
@@ -132,14 +135,14 @@ fn facade_adjectives() {
         row(word, &format!("gen.sg.m={m}, gen.sg.f={f}, nom.sg.n={n}"));
     }
     // Animacy only affects the masculine accusative singular and nom/acc plural.
-    let anim = ISV::adj(
+    let anim = interslavic::adj(
         "dobry",
         Case::Acc,
         Number::Singular,
         Gender::Masculine,
         Animacy::Animate,
     );
-    let inan = ISV::adj(
+    let inan = interslavic::adj(
         "dobry",
         Case::Acc,
         Number::Singular,
@@ -152,25 +155,28 @@ fn facade_adjectives() {
     );
 }
 
-/// `ISV::comparative` and `ISV::superlative`.
+/// `interslavic::comparative` and `interslavic::superlative`.
 fn facade_degrees_of_comparison() {
-    heading("ISV::comparative / ISV::superlative — (adjective, adverb) pairs");
+    heading("interslavic::comparative / interslavic::superlative — (adjective, adverb) pairs");
     for adj in ["novy", "dobry", "vysoky", "uzky", "svěži"] {
-        match ISV::comparative(adj) {
+        match interslavic::comparative(adj) {
             Some((comp, adv)) => row(adj, &format!("komp. {comp} / {adv}")),
             None => row(adj, "does not gradate synthetically"),
         }
     }
-    if let Some((sup, adv)) = ISV::superlative("novy") {
+    if let Some((sup, adv)) = interslavic::superlative("novy") {
         row("novy (superlative)", &format!("{sup} / {adv}"));
     }
     // Relational adjectives use the analytic comparative instead (None here).
-    row("russky", &format!("{:?}", ISV::comparative("russky")));
+    row(
+        "russky",
+        &format!("{:?}", interslavic::comparative("russky")),
+    );
 }
 
-/// `ISV::pronoun` — closed-class pronoun declension.
+/// `interslavic::pronoun` — closed-class pronoun declension.
 fn facade_pronouns() {
-    heading("ISV::pronoun — toj / moj / kto / veś / ktory");
+    heading("interslavic::pronoun — toj / moj / kto / veś / ktory");
     let cases = [
         Case::Nom,
         Case::Gen,
@@ -183,7 +189,7 @@ fn facade_pronouns() {
         let forms: Vec<String> = cases
             .iter()
             .map(|&c| {
-                ISV::pronoun(
+                interslavic::pronoun(
                     lemma,
                     c,
                     Number::Singular,
@@ -200,7 +206,7 @@ fn facade_pronouns() {
         "kto (Gen) / ktokoli (Gen)",
         &format!(
             "{} / {}",
-            ISV::pronoun(
+            interslavic::pronoun(
                 "kto",
                 Case::Gen,
                 Number::Singular,
@@ -208,7 +214,7 @@ fn facade_pronouns() {
                 Animacy::Animate
             )
             .unwrap(),
-            ISV::pronoun(
+            interslavic::pronoun(
                 "ktokoli",
                 Case::Gen,
                 Number::Singular,
@@ -223,7 +229,7 @@ fn facade_pronouns() {
         "stol (not a pronoun)",
         &format!(
             "{:?}",
-            ISV::pronoun(
+            interslavic::pronoun(
                 "stol",
                 Case::Gen,
                 Number::Singular,
@@ -234,17 +240,18 @@ fn facade_pronouns() {
     );
 }
 
-/// `ISV::numeral` — cardinals, ordinals and the dual-remnant numbers.
+/// `interslavic::numeral` — cardinals, ordinals and the dual-remnant numbers.
 fn facade_numerals() {
-    heading("ISV::numeral — jedin / dva / pęť / pŕvy");
+    heading("interslavic::numeral — jedin / dva / pęť / pŕvy");
     let n = |l: &str, c: Case, g: Gender| {
-        ISV::numeral(l, c, Number::Plural, g, Animacy::Inanimate).unwrap_or_else(|| "—".into())
+        interslavic::numeral(l, c, Number::Plural, g, Animacy::Inanimate)
+            .unwrap_or_else(|| "—".into())
     };
     row(
         "jedin",
         &format!(
             "nom.m={}, gen.m={}, nom.f={}",
-            ISV::numeral(
+            interslavic::numeral(
                 "jedin",
                 Case::Nom,
                 Number::Singular,
@@ -252,7 +259,7 @@ fn facade_numerals() {
                 Animacy::Inanimate
             )
             .unwrap(),
-            ISV::numeral(
+            interslavic::numeral(
                 "jedin",
                 Case::Gen,
                 Number::Singular,
@@ -260,7 +267,7 @@ fn facade_numerals() {
                 Animacy::Inanimate
             )
             .unwrap(),
-            ISV::numeral(
+            interslavic::numeral(
                 "jedin",
                 Case::Nom,
                 Number::Singular,
@@ -290,7 +297,7 @@ fn facade_numerals() {
     );
     row(
         "pŕvy (ordinal, Gen sg m)",
-        &ISV::numeral(
+        &interslavic::numeral(
             "pŕvy",
             Case::Gen,
             Number::Singular,
@@ -301,9 +308,9 @@ fn facade_numerals() {
     );
 }
 
-/// `ISV::verb`, `ISV::try_verb`, `ISV::verb_with_present_hint`.
+/// `interslavic::verb`, `interslavic::try_verb`, `interslavic::verb_with_present_hint`.
 fn facade_finite_verbs() {
-    heading("ISV::verb — one finite form per (person, number, gender, tense)");
+    heading("interslavic::verb — one finite form per (person, number, gender, tense)");
     let tenses = [
         Tense::Present,
         Tense::Imperfect,
@@ -315,7 +322,7 @@ fn facade_finite_verbs() {
     for tense in tenses {
         row(
             &format!("pisati (1sg, {tense:?})"),
-            &ISV::verb(
+            &interslavic::verb(
                 "pisati",
                 Person::First,
                 Number::Singular,
@@ -329,14 +336,14 @@ fn facade_finite_verbs() {
         "pisati (perfect, 3sg)",
         &format!(
             "m={}, f={}",
-            ISV::verb(
+            interslavic::verb(
                 "pisati",
                 Person::Third,
                 Number::Singular,
                 Gender::Masculine,
                 Tense::Perfect
             ),
-            ISV::verb(
+            interslavic::verb(
                 "pisati",
                 Person::Third,
                 Number::Singular,
@@ -346,12 +353,12 @@ fn facade_finite_verbs() {
         ),
     );
 
-    heading("ISV::try_verb — None for non-verbs (no catch_unwind needed)");
+    heading("interslavic::try_verb — None for non-verbs (no catch_unwind needed)");
     row(
         "pisati",
         &format!(
             "{:?}",
-            ISV::try_verb(
+            interslavic::try_verb(
                 "pisati",
                 Person::First,
                 Number::Singular,
@@ -364,7 +371,7 @@ fn facade_finite_verbs() {
         "xyz",
         &format!(
             "{:?}",
-            ISV::try_verb(
+            interslavic::try_verb(
                 "xyz",
                 Person::First,
                 Number::Singular,
@@ -374,10 +381,10 @@ fn facade_finite_verbs() {
         ),
     );
 
-    heading("ISV::verb_with_present_hint — disambiguate a typed dictionary row");
+    heading("interslavic::verb_with_present_hint — disambiguate a typed dictionary row");
     row(
         "bolěti + hint (boli), 3sg present",
-        &ISV::verb_with_present_hint(
+        &interslavic::verb_with_present_hint(
             "bolěti",
             "(boli)",
             Person::Third,
@@ -388,15 +395,15 @@ fn facade_finite_verbs() {
     );
 }
 
-/// `ISV::verb_forms`, `ISV::try_verb_forms`, `ISV::verb_forms_with_metadata`.
+/// `interslavic::verb_forms`, `interslavic::try_verb_forms`, `interslavic::verb_forms_with_metadata`.
 fn facade_verb_paradigms() {
-    heading("ISV::noun_forms / adj_forms — full paradigm structs (like verb_forms)");
-    let np = ISV::noun_forms("žena");
+    heading("interslavic::noun_forms / adj_forms — full paradigm structs (like verb_forms)");
+    let np = interslavic::noun_forms("žena");
     row(
         &format!("noun_forms(\"žena\") [{:?}]", np.gender),
         &format!("sg={:?}", np.singular),
     );
-    let ap = ISV::adj_forms("dobry");
+    let ap = interslavic::adj_forms("dobry");
     row(
         "adj_forms(\"dobry\").feminine[sg]",
         &format!("{:?}", ap.feminine[0]),
@@ -411,20 +418,23 @@ fn facade_verb_paradigms() {
         ),
     );
 
-    heading("ISV::verb_forms — the whole paradigm as a VerbParadigm struct");
-    print_paradigm("učiti", &ISV::verb_forms("učiti"));
+    heading("interslavic::verb_forms — the whole paradigm as a VerbParadigm struct");
+    print_paradigm("učiti", &interslavic::verb_forms("učiti"));
 
-    heading("ISV::try_verb_forms — checked variant");
+    heading("interslavic::try_verb_forms — checked variant");
     row(
         "učiti",
-        &format!("is_some = {}", ISV::try_verb_forms("učiti").is_some()),
+        &format!(
+            "is_some = {}",
+            interslavic::try_verb_forms("učiti").is_some()
+        ),
     );
-    row("xyz", &format!("{:?}", ISV::try_verb_forms("xyz")));
+    row("xyz", &format!("{:?}", interslavic::try_verb_forms("xyz")));
 
-    heading("ISV::verb_forms_with_metadata — explicit aspect/transitivity");
+    heading("interslavic::verb_forms_with_metadata — explicit aspect/transitivity");
     // A perfective, intransitive reading suppresses the present-active and
     // present-passive participles (prap/prpp become None).
-    let p = ISV::verb_forms_with_metadata("napisati", "", false, false);
+    let p = interslavic::verb_forms_with_metadata("napisati", "", false, false);
     row(
         "napisati (perfective, intransitive)",
         &format!(
@@ -517,9 +527,9 @@ fn orthography_module() {
 
 /// The `prepositions` module — preposition government (which cases each takes).
 fn prepositions_module() {
-    heading("ISV::preposition_cases / prepositions::preposition_cases");
+    heading("interslavic::preposition_cases / prepositions::preposition_cases");
     for prep in ["bez", "k", "s", "na", "pod", "za", "žaba"] {
-        row(prep, &format!("{:?}", ISV::preposition_cases(prep)));
+        row(prep, &format!("{:?}", interslavic::preposition_cases(prep)));
     }
     heading("prepositions::PREPOSITIONS — the full curated table");
     row(
@@ -535,7 +545,7 @@ fn prepositions_module() {
 fn cells_module() {
     heading("cells::variants — flatten a raw cell's conventions into plain forms");
     // Real participle cells straight out of verb_forms carry the conventions.
-    let p = ISV::verb_forms("dělati");
+    let p = interslavic::verb_forms("dělati");
     let pfpp = p.pfpp.clone().unwrap_or_default();
     row(
         &format!("pfpp raw: {pfpp}"),
@@ -548,13 +558,13 @@ fn cells_module() {
 
 /// The `derivation` module — a lemma's regular word family.
 fn derivation_module() {
-    heading("ISV::derive / derivation::derive — the regular derivational family");
+    heading("interslavic::derive / derivation::derive — the regular derivational family");
     for (base, pos) in [
         ("dobry", derivation::Pos::Adjective),
         ("učiti", derivation::Pos::Verb),
         ("kniga", derivation::Pos::Noun),
     ] {
-        let fam: Vec<String> = ISV::derive(base, pos)
+        let fam: Vec<String> = interslavic::derive(base, pos)
             .iter()
             .map(|d| format!("{}({})", d.form, d.pattern))
             .collect();
