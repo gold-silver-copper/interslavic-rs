@@ -15,11 +15,11 @@ This crate is the ergonomic public facade for the workspace. It combines generat
 ```rust
 use interslavic::*;
 
-assert_eq!(ISV::noun("adept", Case::Acc, Number::Singular), "adepta");
-assert_eq!(ISV::noun("oko", Case::Nom, Number::Plural), "oči / očesa");
+assert_eq!(interslavic::noun("adept", Case::Acc, Number::Singular), "adepta");
+assert_eq!(interslavic::noun("oko", Case::Nom, Number::Plural), "oči / očesa");
 
 assert_eq!(
-    ISV::adj(
+    interslavic::adj(
         "dobry",
         Case::Gen,
         Number::Singular,
@@ -30,7 +30,7 @@ assert_eq!(
 );
 
 assert_eq!(
-    ISV::verb(
+    interslavic::verb(
         "učiti",
         Person::First,
         Number::Singular,

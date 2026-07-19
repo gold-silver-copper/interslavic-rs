@@ -1,7 +1,5 @@
-use interslavic::*;
-
 fn comp(adj: &str) -> Option<(String, String)> {
-    ISV::comparative(adj)
+    interslavic::comparative(adj)
 }
 
 #[test]
@@ -45,12 +43,12 @@ fn non_gradable_adjectives_return_none() {
 #[test]
 fn superlative_prefixes_naj() {
     assert_eq!(
-        ISV::superlative("novy"),
+        interslavic::superlative("novy"),
         Some(("najnovějši".into(), "najnověje".into()))
     );
     assert_eq!(
-        ISV::superlative("dobry"),
+        interslavic::superlative("dobry"),
         Some(("najlěpši".into(), "najlěpje".into()))
     );
-    assert_eq!(ISV::superlative("russky"), None);
+    assert_eq!(interslavic::superlative("russky"), None);
 }

@@ -4,17 +4,23 @@ fn main() {
     println!("Nouns");
     println!(
         "  adept acc.sg = {}",
-        ISV::noun("adept", Case::Acc, Number::Singular)
+        interslavic::noun("adept", Case::Acc, Number::Singular)
     );
     println!(
         "  oko nom.pl = {}",
-        ISV::noun("oko", Case::Nom, Number::Plural)
+        interslavic::noun("oko", Case::Nom, Number::Plural)
     );
 
-    assert_eq!(ISV::noun("adept", Case::Acc, Number::Singular), "adepta");
-    assert_eq!(ISV::noun("oko", Case::Nom, Number::Plural), "oči / očesa");
+    assert_eq!(
+        interslavic::noun("adept", Case::Acc, Number::Singular),
+        "adepta"
+    );
+    assert_eq!(
+        interslavic::noun("oko", Case::Nom, Number::Plural),
+        "oči / očesa"
+    );
 
-    let adjective = ISV::adj(
+    let adjective = interslavic::adj(
         "dobry",
         Case::Gen,
         Number::Singular,
@@ -25,7 +31,7 @@ fn main() {
     println!("  dobry gen.sg masculine animate = {adjective}");
     assert_eq!(adjective, "dobrogo");
 
-    let verb = ISV::verb(
+    let verb = interslavic::verb(
         "učiti",
         Person::First,
         Number::Singular,

@@ -1,15 +1,15 @@
 use interslavic::*;
 
 fn pron(l: &str, c: Case, n: Number, g: Gender, a: Animacy) -> Option<String> {
-    ISV::pronoun(l, c, n, g, a)
+    interslavic::pronoun(l, c, n, g, a)
 }
 fn num(l: &str, c: Case, n: Number, g: Gender, a: Animacy) -> Option<String> {
-    ISV::numeral(l, c, n, g, a)
+    interslavic::numeral(l, c, n, g, a)
 }
 
 // Shorthands for the common masc-inanimate singular query.
 fn ms(l: &str, c: Case) -> Option<String> {
-    ISV::pronoun(
+    interslavic::pronoun(
         l,
         c,
         Number::Singular,

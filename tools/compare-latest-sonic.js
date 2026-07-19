@@ -232,14 +232,14 @@ fn parse_bool(s: &str) -> bool { matches!(s, "true" | "True" | "1") }
 fn gender(s: &str) -> Gender { match s { "feminine" => Gender::Feminine, "neuter" => Gender::Neuter, _ => Gender::Masculine } }
 fn anim(b: bool) -> Animacy { if b { Animacy::Animate } else { Animacy::Inanimate } }
 fn noun_form(word: &str, case: Case, number: Number, gender: Gender, animate: bool) -> String {
-    panic::catch_unwind(|| ISV::noun_with(word, case, number, gender, anim(animate))).unwrap_or_else(|_| "<PANIC>".to_string())
+    panic::catch_unwind(|| interslavic::noun_with(word, case, number, gender, anim(animate))).unwrap_or_else(|_| "<PANIC>".to_string())
 }
 fn adj_form(word: &str, case: Case, number: Number, gender: Gender, animate: bool) -> String {
-    panic::catch_unwind(|| ISV::adj(word, case, number, gender, anim(animate))).unwrap_or_else(|_| "<PANIC>".to_string())
+    panic::catch_unwind(|| interslavic::adj(word, case, number, gender, anim(animate))).unwrap_or_else(|_| "<PANIC>".to_string())
 }
 fn verb_forms(word: &str, present_hint: &str, transitive: bool, imperfective: bool) -> Vec<(String, String)> {
     panic::catch_unwind(|| {
-        let p = ISV::verb_forms_with_metadata(word, present_hint, transitive, imperfective);
+        let p = interslavic::verb_forms_with_metadata(word, present_hint, transitive, imperfective);
         let mut out = Vec::new();
         out.push(("infinitive".to_string(), p.infinitive));
         for (i, key) in ["present_1_sg", "present_2_sg", "present_3_sg", "present_1_pl", "present_2_pl", "present_3_pl"].iter().enumerate() { out.push((key.to_string(), p.present[i].clone())); }

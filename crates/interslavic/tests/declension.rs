@@ -1,7 +1,7 @@
 use interslavic::*;
 
 fn noun(word: &str, case: Case, number: Number) -> String {
-    ISV::noun(word, case, number)
+    interslavic::noun(word, case, number)
 }
 
 #[test]
@@ -43,7 +43,7 @@ fn noun_declension_handles_irregular_and_soft_classes() {
 #[test]
 fn adjective_declension_uses_sonic16x_nasal_endings() {
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "babin",
             Case::Nom,
             Number::Singular,
@@ -53,7 +53,7 @@ fn adjective_declension_uses_sonic16x_nasal_endings() {
         "babin"
     );
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "babin",
             Case::Gen,
             Number::Singular,
@@ -63,7 +63,7 @@ fn adjective_declension_uses_sonic16x_nasal_endings() {
         "babinogo"
     );
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "dȯlžėn",
             Case::Gen,
             Number::Singular,
@@ -73,7 +73,7 @@ fn adjective_declension_uses_sonic16x_nasal_endings() {
         "dȯlžnogo"
     );
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "samy",
             Case::Acc,
             Number::Singular,
@@ -83,7 +83,7 @@ fn adjective_declension_uses_sonic16x_nasal_endings() {
         "samų"
     );
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "samy",
             Case::Ins,
             Number::Singular,
@@ -93,7 +93,7 @@ fn adjective_declension_uses_sonic16x_nasal_endings() {
         "samojų"
     );
     assert_eq!(
-        ISV::adj(
+        interslavic::adj(
             "sinji",
             Case::Ins,
             Number::Singular,

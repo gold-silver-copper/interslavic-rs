@@ -1,7 +1,7 @@
 use interslavic::*;
 
 fn noun(word: &str, case: Case, number: Number) -> String {
-    ISV::noun(word, case, number)
+    interslavic::noun(word, case, number)
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn generated_lookup_strips_bracketed_dictionary_annotations() {
 fn ambiguous_lemmas_default_to_first_dictionary_row_and_allow_overrides() {
     assert_eq!(noun("člen", Case::Acc, Number::Singular), "člena");
     assert_eq!(
-        ISV::noun_with(
+        interslavic::noun_with(
             "člen",
             Case::Acc,
             Number::Singular,
@@ -66,7 +66,7 @@ fn ambiguous_lemmas_default_to_first_dictionary_row_and_allow_overrides() {
 #[test]
 fn noun_with_prefers_number_compatible_duplicate_metadata() {
     assert_eq!(
-        ISV::noun_with(
+        interslavic::noun_with(
             "anestezija",
             Case::Nom,
             Number::Plural,
@@ -76,7 +76,7 @@ fn noun_with_prefers_number_compatible_duplicate_metadata() {
         "anestezije"
     );
     assert_eq!(
-        ISV::noun_with(
+        interslavic::noun_with(
             "bor",
             Case::Gen,
             Number::Plural,

@@ -3,19 +3,19 @@ use interslavic::*;
 fn main() {
     println!(
         "mųž gen sg: {}",
-        ISV::noun("mųž", Case::Gen, Number::Singular)
+        interslavic::noun("mųž", Case::Gen, Number::Singular)
     );
     println!(
         "Abhaz nom pl: {}",
-        ISV::noun("Abhaz", Case::Nom, Number::Plural)
+        interslavic::noun("Abhaz", Case::Nom, Number::Plural)
     );
     println!(
         "člen default acc sg: {}",
-        ISV::noun("člen", Case::Acc, Number::Singular)
+        interslavic::noun("člen", Case::Acc, Number::Singular)
     );
     println!(
         "člen inanimate acc sg: {}",
-        ISV::noun_with(
+        interslavic::noun_with(
             "člen",
             Case::Acc,
             Number::Singular,
@@ -25,7 +25,7 @@ fn main() {
     );
     println!(
         "luč feminine gen sg: {}",
-        ISV::noun_with(
+        interslavic::noun_with(
             "luč",
             Case::Gen,
             Number::Singular,
@@ -36,7 +36,7 @@ fn main() {
 
     println!(
         "dobry gen sg: {}",
-        ISV::adj(
+        interslavic::adj(
             "dobry",
             Case::Gen,
             Number::Singular,
@@ -47,7 +47,7 @@ fn main() {
 
     println!(
         "učiti 1sg present: {}",
-        ISV::verb(
+        interslavic::verb(
             "učiti",
             Person::First,
             Number::Singular,

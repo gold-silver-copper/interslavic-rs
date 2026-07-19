@@ -9,19 +9,19 @@ struct Subject {
 }
 
 fn subject_phrase(adjective: &str, subject: Subject) -> String {
-    let adjective = ISV::adj(
+    let adjective = interslavic::adj(
         adjective,
         Case::Nom,
         subject.number,
         subject.gender,
         subject.animacy,
     );
-    let noun = ISV::noun(subject.lemma, Case::Nom, subject.number);
+    let noun = interslavic::noun(subject.lemma, Case::Nom, subject.number);
     format!("{adjective} {noun}")
 }
 
 fn predicate(verb: &str, subject: Subject) -> String {
-    ISV::verb(
+    interslavic::verb(
         verb,
         Person::Third,
         subject.number,

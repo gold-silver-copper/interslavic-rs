@@ -1,22 +1,22 @@
 use interslavic::*;
 
 // Issue #10: the verb APIs must be total (never panic). Previously
-// ISV::verb / ISV::verb_forms panicked ("IMPROPER PRESENT TENSE STEM") on any
-// word whose infinitive stem could not be derived; ISV::verb_with_present_hint
+// interslavic::verb / interslavic::verb_forms panicked ("IMPROPER PRESENT TENSE STEM") on any
+// word whose infinitive stem could not be derived; interslavic::verb_with_present_hint
 // could panic on a char boundary when the prefix contained a multibyte char.
 
 #[test]
 fn verb_apis_do_not_panic_on_non_verbs() {
     // Reaching the end of the loop without unwinding IS the assertion.
     for w in ["", "  ", "xyz", "voda", "123", "ž", "hello world", "a", "ť"] {
-        let _ = ISV::verb(
+        let _ = interslavic::verb(
             w,
             Person::First,
             Number::Singular,
             Gender::Masculine,
             Tense::Present,
         );
-        let _ = ISV::verb_forms(w);
+        let _ = interslavic::verb_forms(w);
     }
 }
 
@@ -31,7 +31,7 @@ fn verb_with_present_hint_does_not_panic() {
         ("byti", "ěěě"),
         ("dělati", "sę dělaje"),
     ] {
-        let _ = ISV::verb_with_present_hint(
+        let _ = interslavic::verb_with_present_hint(
             w,
             hint,
             Person::Third,
@@ -44,14 +44,14 @@ fn verb_with_present_hint_does_not_panic() {
 
 #[test]
 fn try_variants_distinguish_verbs_from_garbage() {
-    assert!(ISV::try_verb_forms("pisati").is_some());
-    assert!(ISV::try_verb_forms("učiti").is_some());
-    assert!(ISV::try_verb_forms("xyz").is_none());
-    assert!(ISV::try_verb_forms("").is_none());
-    assert!(ISV::try_verb_forms("voda").is_none());
+    assert!(interslavic::try_verb_forms("pisati").is_some());
+    assert!(interslavic::try_verb_forms("učiti").is_some());
+    assert!(interslavic::try_verb_forms("xyz").is_none());
+    assert!(interslavic::try_verb_forms("").is_none());
+    assert!(interslavic::try_verb_forms("voda").is_none());
 
     assert!(
-        ISV::try_verb(
+        interslavic::try_verb(
             "pisati",
             Person::First,
             Number::Singular,
@@ -61,7 +61,7 @@ fn try_variants_distinguish_verbs_from_garbage() {
         .is_some()
     );
     assert!(
-        ISV::try_verb(
+        interslavic::try_verb(
             "xyz",
             Person::First,
             Number::Singular,
@@ -77,6 +77,10 @@ fn checked_and_total_agree_for_real_verbs() {
     // The checked path is the same algorithm; for a real verb it must produce
     // exactly the total paradigm.
     for w in ["pisati", "učiti", "dělati", "byti"] {
-        assert_eq!(ISV::try_verb_forms(w), Some(ISV::verb_forms(w)), "{w}");
+        assert_eq!(
+            interslavic::try_verb_forms(w),
+            Some(interslavic::verb_forms(w)),
+            "{w}"
+        );
     }
 }
