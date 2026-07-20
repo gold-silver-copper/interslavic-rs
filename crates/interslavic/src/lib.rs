@@ -212,6 +212,11 @@ pub fn derive(base: &str, pos: derivation::Pos) -> Vec<derivation::Derived> {
 /// assert_eq!(interslavic::comparative("novy"), Some(("novějši".into(), "nověje".into())));
 /// assert_eq!(interslavic::comparative("dobry"), Some(("lěpši".into(), "lěpje".into())));
 /// assert_eq!(interslavic::comparative("russky"), None);
+/// // The regular -ějši/-ěje pattern and the -ky truncation class.
+/// assert_eq!(interslavic::comparative("bystry"), Some(("bystrějši".into(), "bystrěje".into())));
+/// assert_eq!(interslavic::comparative("silny"), Some(("silnějši".into(), "silněje".into())));
+/// assert_eq!(interslavic::comparative("slaby"), Some(("slabějši".into(), "slaběje".into())));
+/// assert_eq!(interslavic::comparative("blizky"), Some(("blizši".into(), "bliže".into())));
 /// ```
 pub fn comparative(adj: &str) -> Option<(String, String)> {
     adjective::comparative(adj.trim())
@@ -245,6 +250,9 @@ pub fn superlative(adj: &str) -> Option<(String, String)> {
 /// assert_eq!(interslavic::pronoun("toj", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), Some("togo".into()));
 /// assert_eq!(interslavic::pronoun("moj", Case::Dat, Number::Singular, Gender::Neuter, Animacy::Inanimate), Some("mojemu".into()));
 /// assert_eq!(interslavic::pronoun("kto", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("kogo".into()));
+/// // svoj declines via the moj-class (soft pronominal) path.
+/// assert_eq!(interslavic::pronoun("svoj", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("svojego".into()));
+/// assert_eq!(interslavic::pronoun("svoj", Case::Loc, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("svojej".into()));
 /// assert_eq!(interslavic::pronoun("ty", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("tebe".into()));
 /// assert_eq!(interslavic::pronoun("on", Case::Dat, Number::Singular, Gender::Masculine, Animacy::Animate), Some("jemu".into()));
 /// assert_eq!(interslavic::pronoun("my", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Animate), Some("nas".into()));
@@ -322,6 +330,12 @@ pub fn reflexive_pronoun(case: Case, style: PronounStyle) -> Option<String> {
 /// assert_eq!(interslavic::numeral("pęť", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("pęti".into()));
 /// assert_eq!(interslavic::numeral("tri", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("trěh".into()));
 /// assert_eq!(interslavic::numeral("pŕvy", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), Some("pŕvogo".into()));
+/// // Oblique forms of the low cardinals exist across the paradigm.
+/// assert_eq!(interslavic::numeral("dva", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvoh".into()));
+/// assert_eq!(interslavic::numeral("dva", Case::Dat, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvom".into()));
+/// assert_eq!(interslavic::numeral("dva", Case::Ins, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvoma".into()));
+/// assert_eq!(interslavic::numeral("tri", Case::Dat, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("trěm".into()));
+/// assert_eq!(interslavic::numeral("pęť", Case::Ins, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("pęťjų".into()));
 /// ```
 pub fn numeral(
     lemma: &str,
@@ -448,6 +462,25 @@ pub fn l_participle(infinitive: &str, gender: Gender, number: Number) -> String 
 }
 
 /// Full verb paradigm with dictionary metadata when available.
+///
+/// The imperative and gerund cells are populated across the conjugation
+/// classes:
+///
+/// ```
+/// use interslavic::*;
+/// // -iti class.
+/// let p = verb_forms("učiti");
+/// assert_eq!(p.imperative, vec!["uči", "učimo", "učite"]);
+/// assert_eq!(p.gerund, "učeńje");
+/// // -ovati class.
+/// let p = verb_forms("kupovati");
+/// assert_eq!(p.imperative[0], "kupuj");
+/// assert_eq!(p.gerund, "kupovańje");
+/// // -ati class (with the consonant mutation of the present stem).
+/// let p = verb_forms("pisati");
+/// assert_eq!(p.imperative[0], "piši");
+/// assert_eq!(p.gerund, "pisańje");
+/// ```
 pub fn verb_forms(word: &str) -> VerbParadigm {
     let trimmed = word.trim();
     let entries = lookup_verbs_by_lemma(trimmed);
