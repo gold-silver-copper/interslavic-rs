@@ -485,6 +485,72 @@ pub fn try_verb_forms(word: &str) -> Option<VerbParadigm> {
     verb::verb_paradigm_checked(trimmed, "", true, true)
 }
 
+/// The declinable adjective lemma inside a paradigm participle cell: the
+/// masculine head of `"osvětljený (osvětljená, osvětljenó)"` with the
+/// acute-marked long ending flattened to the plain `-y`/`-i` the
+/// adjective engine declines.
+fn participle_lemma(participle: &str) -> String {
+    let head = participle.split(" (").next().unwrap_or(participle).trim();
+    head.chars()
+        .map(|c| match c {
+            'ý' => 'y',
+            'í' => 'i',
+            c => c,
+        })
+        .collect()
+}
+
+/// One declined form of the past passive participle — the participle from
+/// [`verb_forms()`]'s `pfpp`, declined as an adjective ("komnata jest
+/// osvětljena", "to jest opoznano"). `None` when the verb has no passive
+/// participle (intransitives). Covers the `-ny`, `-ty`, and iotated
+/// `-jeny` shapes; equivalent to feeding the `pfpp` lemma through
+/// [`adj()`], with the `Option` handling in one place.
+///
+/// ```
+/// use interslavic::*;
+/// // Iotated -jeny stem: osvětliti -> osvětljeny.
+/// assert_eq!(passive_participle("osvětliti", Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("osvětljena".into()));
+/// // -ny shape: opoznati -> opoznany.
+/// assert_eq!(passive_participle("opoznati", Case::Nom, Number::Singular, Gender::Neuter, Animacy::Inanimate), Some("opoznano".into()));
+/// // -ty shape, declined obliquely: ubiti -> ubity -> ubitogo.
+/// assert_eq!(passive_participle("ubiti", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("ubitogo".into()));
+/// // Intransitive verbs have no passive participle.
+/// assert_eq!(passive_participle("idti", Case::Nom, Number::Singular, Gender::Masculine, Animacy::Animate), None);
+/// ```
+pub fn passive_participle(
+    infinitive: &str,
+    case: Case,
+    number: Number,
+    gender: Gender,
+    animacy: Animacy,
+) -> Option<String> {
+    let pfpp = verb_forms(infinitive).pfpp?;
+    Some(adj(&participle_lemma(&pfpp), case, number, gender, animacy))
+}
+
+/// One declined form of the present active participle — the `prap` from
+/// [`verb_forms()`] declined as a (soft) adjective ("pišųća žena").
+/// `None` when the verb has no present active participle (perfectives).
+///
+/// ```
+/// use interslavic::*;
+/// assert_eq!(active_participle("pisati", Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("pišųća".into()));
+/// assert_eq!(active_participle("pisati", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("pišųćego".into()));
+/// // Perfective verbs have no present active participle.
+/// assert_eq!(active_participle("ubiti", Case::Nom, Number::Singular, Gender::Masculine, Animacy::Animate), None);
+/// ```
+pub fn active_participle(
+    infinitive: &str,
+    case: Case,
+    number: Number,
+    gender: Gender,
+    animacy: Animacy,
+) -> Option<String> {
+    let prap = verb_forms(infinitive).prap?;
+    Some(adj(&participle_lemma(&prap), case, number, gender, animacy))
+}
+
 /// Full verb paradigm with explicit dictionary metadata.
 pub fn verb_forms_with_metadata(
     word: &str,
