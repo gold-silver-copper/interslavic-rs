@@ -74,3 +74,47 @@ fn readme_verb_paradigm_examples_stay_current() {
         "boljų"
     );
 }
+
+#[test]
+fn readme_pronoun_and_participle_examples_stay_current() {
+    use PronounStyle::*;
+    assert_eq!(
+        interslavic::personal_pronoun(
+            Person::Second,
+            Number::Singular,
+            Gender::Masculine,
+            Case::Gen,
+            Full
+        ),
+        Some("tebe".to_string())
+    );
+    assert_eq!(
+        interslavic::personal_pronoun(
+            Person::Third,
+            Number::Singular,
+            Gender::Masculine,
+            Case::Gen,
+            AfterPreposition
+        ),
+        Some("njego".to_string())
+    );
+    assert_eq!(
+        interslavic::reflexive_pronoun(Case::Acc, Clitic),
+        Some("sę".to_string())
+    );
+
+    assert_eq!(
+        interslavic::l_participle("idti", Gender::Feminine, Number::Singular),
+        "šla"
+    );
+    assert_eq!(
+        interslavic::passive_participle(
+            "osvětliti",
+            Case::Nom,
+            Number::Singular,
+            Gender::Feminine,
+            Animacy::Inanimate
+        ),
+        Some("osvětljena".to_string())
+    );
+}
