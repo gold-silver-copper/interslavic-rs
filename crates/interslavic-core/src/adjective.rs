@@ -209,16 +209,24 @@ fn pronominal_via_adj(
 }
 
 /// One pronoun form, or `None` if `lemma` is not a recognized pronoun
-/// paradigm. Covers the `toj`-class demonstratives, the `moj`-class
+/// paradigm. Covers the personal pronouns and reflexive `sebe` (full forms
+/// only — the clitic and prepositional n- series are explicit in
+/// [`crate::pronoun`]), the `toj`-class demonstratives, the `moj`-class
 /// possessives/interrogatives (incl. `naš`/`vaš`/`čij`), `kto`/`čto` and
 /// their derivatives, the internally-inflecting `-koli` indefinites,
 /// `veś`, and the adjectivally-declined determiners (`ktory`, `kaky`,
 /// `samy`, …).
 ///
-/// Recognition is by word SHAPE, not a closed lexicon: the last-resort
-/// branch declines any `-y`/`-i` word as an adjective, so a same-shaped
-/// non-pronoun yields a (correctly-declined) `Some` rather than `None`.
-/// Lemmas are the flavored (etymological) citation forms.
+/// A personal lemma fixes the person and (3rd person) gender, overriding
+/// the `gender`/`animacy` arguments; `number` still selects the column
+/// (`decline_pronoun("ja", …, Number::Plural, …)` → `nas`). The reflexive
+/// has no nominative, so that cell is `None`.
+///
+/// Beyond the closed classes, recognition is by word SHAPE, not a
+/// lexicon: the last-resort branch declines any `-y`/`-i` word as an
+/// adjective, so a same-shaped non-pronoun yields a (correctly-declined)
+/// `Some` rather than `None`. Lemmas are the flavored (etymological)
+/// citation forms.
 pub fn decline_pronoun(
     lemma: &str,
     case: Case,
@@ -228,6 +236,17 @@ pub fn decline_pronoun(
 ) -> Option<String> {
     let l = lemma.trim();
     if l.is_empty() || l.contains(' ') {
+        return None;
+    }
+    // Personal pronouns and the reflexive are a closed suppletive class;
+    // they must be checked before the shape-based branches (`oni` would
+    // otherwise be declined as an adjective).
+    if let Some(form) = crate::pronoun::personal_lemma_full(l, case, number) {
+        return Some(form);
+    }
+    if l == "sebe" {
+        // The reflexive exists but the requested cell (nominative) does
+        // not; report the missing cell, not an unrecognized lemma.
         return None;
     }
     // -koli indefinites inflect internally on the head, then re-append the
