@@ -421,6 +421,32 @@ pub fn verb_with_present_hint(
     verb::conjugate_verb_with_present_hint(word.trim(), present_hint, person, number, gender, tense)
 }
 
+/// The l-participle of an infinitive — the gender/number-marked past
+/// active form the compound tenses are built on, useful on its own for
+/// fixed-gender past subjects ("strěla tę ubila"). Suppletion is handled
+/// (`idti` → `šėl`/`šla`/…), and the form always agrees with the
+/// participle inside [`verb_forms()`]'s perfect/pluperfect/conditional.
+///
+/// ```
+/// use interslavic::*;
+/// // A regular verb.
+/// assert_eq!(l_participle("pisati", Gender::Masculine, Number::Singular), "pisal");
+/// assert_eq!(l_participle("pisati", Gender::Feminine, Number::Singular), "pisala");
+/// assert_eq!(l_participle("pisati", Gender::Neuter, Number::Singular), "pisalo");
+/// assert_eq!(l_participle("pisati", Gender::Masculine, Number::Plural), "pisali");
+/// // The idti suppletion.
+/// assert_eq!(l_participle("idti", Gender::Masculine, Number::Singular), "šėl");
+/// assert_eq!(l_participle("idti", Gender::Feminine, Number::Singular), "šla");
+/// assert_eq!(l_participle("idti", Gender::Neuter, Number::Singular), "šlo");
+/// assert_eq!(l_participle("idti", Gender::Masculine, Number::Plural), "šli");
+/// // A prefixed perfective.
+/// assert_eq!(l_participle("ubiti", Gender::Masculine, Number::Singular), "ubil");
+/// assert_eq!(l_participle("ubiti", Gender::Feminine, Number::Singular), "ubila");
+/// ```
+pub fn l_participle(infinitive: &str, gender: Gender, number: Number) -> String {
+    verb::l_participle(infinitive, gender, number)
+}
+
 /// Full verb paradigm with dictionary metadata when available.
 pub fn verb_forms(word: &str) -> VerbParadigm {
     let trimmed = word.trim();
