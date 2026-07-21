@@ -5,6 +5,71 @@ strings and consumers bless first-variant outputs into their expectations:
 reordering variants is a breaking change and must be called out explicitly
 in the release notes (fenced by `tests/variant_order.rs`).
 
+## 0.11.0 — 2026-07-21
+
+Follow-up release from the mrzavec zero-pre-inflection conversion: one
+confirmed bug, two ergonomics items, one contract fence, one parity-scope
+extension. Existing parity numbers are byte-stable; the one intentional
+output change is enumerated below.
+
+### Fixed
+
+- **`l_participle` diverged from the paradigm on d/t-stem `-sti` verbs**
+  (`ukrasti` gave `ukrasla`; the parity-verified paradigm path gives
+  `ukradla` — same for `krasti`, `pasti`, `sěsti`, `vesti`, `gnesti`).
+  The facade never did the dictionary lookup, so it had no present-stem
+  hint, and the hint is what recovers the dental stem. The stem
+  derivation is now genuinely shared (`stem_context` in core), the
+  facade resolves the hint like `verb()` does, and a self-consistency
+  sweep locks the invariant: all 3,859 embedded dictionary verb lemmas ×
+  six gender/number cells (23,154 cells) agree with the l-participle
+  inside `verb_forms`' perfect cells — 0 divergent.
+- `active_participle` leaked the internal `ĵ` marker into declined forms
+  for `-aj` stems (`dělaĵųća` → now `dělajųća`); fixed by the surface
+  cleaning below.
+
+### Changed
+
+- **`verb_forms`/`try_verb_forms` cells are now surface-ready**: the
+  builders' internal intervocalic-j marker `ĵ` is flattened to `j`.
+  Exactly two fields ever carried it (dictionary-wide sweep): the
+  `imperative` (5,433 cells, e.g. `počivaĵ` → `počivaj`) and `prap`
+  (1,597 cells, e.g. `počivaĵųćí…` → `počivajųćí…`). Variant structure,
+  gender-form conventions, and citation accents are unchanged. The
+  previous marker-carrying cells remain available via the new
+  `verb_forms_raw()`/`try_verb_forms_raw()`, and
+  `verb_forms_with_metadata` stays raw — it is the parity/integration
+  entry point, and the JS reference itself emits the marker (which is
+  why the parity numbers are unaffected). slovowiki's exporter (218
+  tests) verified green against the new default: its `clean_cell`
+  already flattens via `cells::variants`, so its output is unchanged.
+
+### Added
+
+- **`perfect_parts()`** (facade) / `verb::perfect_parts_with_hint`
+  (core): the perfect tense as data — `PerfectParts { auxiliary:
+  Option<String>, participle: String }`. The auxiliary is
+  `Some("jesm"/"jesi"/"jesmo"/"jeste")` in the 1st/2nd persons and
+  `None` in the 3rd (the standard normally omits it; the emphatic
+  `je`/`jest`/`sųt` is the caller's to add). The participle comes from
+  the same shared stem context as the compound tenses, so the accessor
+  can never disagree with the paradigm.
+- Parity harness: an **out-of-vocabulary verb scope** — a fixed sample
+  of plausible non-dictionary lemmas per class (`-jati`, `-nųti`,
+  `-ovati`, prefixed `-sti`), membership re-checked each run — tracks
+  the hintless rule-engine path: 12 lemmas / 612 forms, 100% compatible.
+- Variant-order fence: `tests/variant_order.rs` pins byform order for a
+  representative cell per declension class, and the changelog gains the
+  policy line above.
+
+### Notes
+
+- The `stajati` question is settled against the parity reference: the JS
+  implementation does **not** contract OOV `-jati` presents (`stajaje,
+  staja`; even `dajati` gives `dajaje, daja`, never `daje`), so this
+  crate keeps `stajaje`. The slovowiki form index's `staje` row diverges
+  from the parity standard on their side — flagged to their team.
+
 ## 0.10.0 — 2026-07-20
 
 Additive API release closing the gaps found by the mrzavec runtime-inflection
