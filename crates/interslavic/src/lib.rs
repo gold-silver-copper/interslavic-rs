@@ -34,9 +34,9 @@
 //! ```
 
 pub use interslavic_core::{
-    AdjParadigm, Animacy, CASE_ORDER, Case, Gender, NounParadigm, Number, Person, PronounStyle,
-    Tense, VerbParadigm, adjective, cells, derivation, noun, orthography, paradigm, phono,
-    prepositions, pronoun, types, utils, verb,
+    AdjParadigm, Animacy, CASE_ORDER, Case, Gender, NounParadigm, Number, PerfectParts, Person,
+    PronounStyle, Tense, VerbParadigm, adjective, cells, derivation, noun, orthography, paradigm,
+    phono, prepositions, pronoun, types, utils, verb,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)
@@ -456,12 +456,106 @@ pub fn verb_with_present_hint(
 /// // A prefixed perfective.
 /// assert_eq!(l_participle("ubiti", Gender::Masculine, Number::Singular), "ubil");
 /// assert_eq!(l_participle("ubiti", Gender::Feminine, Number::Singular), "ubila");
+/// // A d/t-stem -sti verb: the dictionary present-hint recovers the
+/// // dental stem, in agreement with the compound tenses.
+/// assert_eq!(l_participle("ukrasti", Gender::Feminine, Number::Singular), "ukradla");
+/// assert_eq!(l_participle("vesti", Gender::Masculine, Number::Plural), "vedli");
 /// ```
 pub fn l_participle(infinitive: &str, gender: Gender, number: Number) -> String {
-    verb::l_participle(infinitive, gender, number)
+    let trimmed = infinitive.trim();
+    let entries = lookup_verbs_by_lemma(trimmed);
+    if let Some(entry) = entries.first() {
+        return verb::l_participle_with_hint(entry.lemma, entry.addition, gender, number);
+    }
+    verb::l_participle(trimmed, gender, number)
+}
+
+/// The perfect tense as structured parts: the auxiliary where the
+/// standard requires one (`None` in the third person, which normally
+/// drops it — "ona ukradla", not "ona jest ukradla"), and the correctly
+/// gendered l-participle with no bracket conventions. Built on the same
+/// stem context as [`l_participle()`] and [`verb_forms()`]'s compound
+/// cells, so the three can never disagree. A caller that wants the
+/// emphatic third-person auxiliary adds `je`/`jest` or `sųt` itself.
+///
+/// ```
+/// use interslavic::*;
+/// let p = perfect_parts("pisati", Person::First, Number::Singular, Gender::Masculine);
+/// assert_eq!(p.auxiliary.as_deref(), Some("jesm"));
+/// assert_eq!(p.participle, "pisal");
+/// let p = perfect_parts("pisati", Person::First, Number::Singular, Gender::Feminine);
+/// assert_eq!(p.participle, "pisala");
+///
+/// // 3rd person: no auxiliary, all genders.
+/// let p = perfect_parts("pisati", Person::Third, Number::Singular, Gender::Feminine);
+/// assert_eq!(p.auxiliary, None);
+/// assert_eq!(p.participle, "pisala");
+/// assert_eq!(perfect_parts("pisati", Person::Third, Number::Singular, Gender::Neuter).participle, "pisalo");
+/// let p = perfect_parts("pisati", Person::Third, Number::Plural, Gender::Masculine);
+/// assert_eq!((p.auxiliary, p.participle), (None, "pisali".into()));
+///
+/// // The d/t-stem -sti class resolves through the dictionary hint.
+/// let p = perfect_parts("ukrasti", Person::Third, Number::Singular, Gender::Feminine);
+/// assert_eq!((p.auxiliary, p.participle), (None, "ukradla".into()));
+/// ```
+pub fn perfect_parts(
+    infinitive: &str,
+    person: Person,
+    number: Number,
+    gender: Gender,
+) -> PerfectParts {
+    let trimmed = infinitive.trim();
+    let entries = lookup_verbs_by_lemma(trimmed);
+    if let Some(entry) = entries.first() {
+        return verb::perfect_parts_with_hint(entry.lemma, entry.addition, person, number, gender);
+    }
+    verb::perfect_parts_with_hint(trimmed, "", person, number, gender)
+}
+
+/// Flatten the builders' internal intervocalic-j marker `ĵ` to its
+/// surface spelling `j` in every cell of a paradigm. Only the imperative
+/// and present-active-participle cells ever carry the marker; the other
+/// fields pass through untouched. Variant structure, gender-form
+/// conventions, and citation accents are all preserved — they are
+/// documented cell shape, and `cells::variants` remains the flattening
+/// step for them.
+fn surface_paradigm(mut p: VerbParadigm) -> VerbParadigm {
+    fn clean(s: &mut String) {
+        if s.contains('ĵ') {
+            *s = s.replace('ĵ', "j");
+        }
+    }
+    clean(&mut p.infinitive);
+    for cells in [
+        &mut p.present,
+        &mut p.imperfect,
+        &mut p.perfect,
+        &mut p.pluperfect,
+        &mut p.future,
+        &mut p.conditional,
+        &mut p.imperative,
+    ] {
+        cells.iter_mut().for_each(clean);
+    }
+    for cell in [&mut p.prap, &mut p.prpp, &mut p.pfpp] {
+        if let Some(s) = cell.as_mut() {
+            clean(s);
+        }
+    }
+    clean(&mut p.pfap);
+    clean(&mut p.gerund);
+    p
 }
 
 /// Full verb paradigm with dictionary metadata when available.
+///
+/// Cells are surface-ready: the internal `ĵ` marker the builders use is
+/// flattened to `j` (`imperative[0]` of *počivati* is `"počivaj"`, its
+/// `prap` head `"počivajųćí"`). [`verb_forms_raw()`] returns the
+/// marker-carrying cells for integrations that need them (the parity
+/// harness compares those, because the JS reference emits the marker
+/// too). Parenthesized variant conventions are still present — flatten
+/// them with [`cells::variants`].
 ///
 /// The imperative and gerund cells are populated across the conjugation
 /// classes:
@@ -480,8 +574,28 @@ pub fn l_participle(infinitive: &str, gender: Gender, number: Number) -> String 
 /// let p = verb_forms("pisati");
 /// assert_eq!(p.imperative[0], "piši");
 /// assert_eq!(p.gerund, "pisańje");
+/// // -ati class without mutation: surface j, not the internal ĵ.
+/// let p = verb_forms("počivati");
+/// assert_eq!(p.imperative[0], "počivaj");
+/// assert_eq!(p.prap.as_deref(), Some("počivajųćí (počivajųćá, počivajųćé)"));
 /// ```
 pub fn verb_forms(word: &str) -> VerbParadigm {
+    surface_paradigm(verb_forms_raw(word))
+}
+
+/// [`verb_forms()`] without the surface cleaning: cells carry the
+/// builders' internal `ĵ` marker exactly as the JS parity reference
+/// emits it (`"počivaĵ"`). This is the escape hatch for integrations
+/// that normalize cells themselves (via [`cells::variants`], which
+/// flattens the marker along with the other conventions) or that compare
+/// against `@interslavic/utils` byte-for-byte.
+///
+/// ```
+/// use interslavic::*;
+/// assert_eq!(verb_forms_raw("počivati").imperative[0], "počivaĵ");
+/// assert_eq!(cells::variants(&verb_forms_raw("počivati").imperative[0]), ["počivaj"]);
+/// ```
+pub fn verb_forms_raw(word: &str) -> VerbParadigm {
     let trimmed = word.trim();
     let entries = lookup_verbs_by_lemma(trimmed);
     if let Some(entry) = entries.first() {
@@ -498,6 +612,8 @@ pub fn verb_forms(word: &str) -> VerbParadigm {
 /// The full verb paradigm, or `None` when an infinitive stem cannot be
 /// derived from `word` — the checked counterpart of [`verb_forms()`].
 /// The check is mechanical (infinitive shape), not a lexical verb lookup.
+/// Cells are surface-ready like [`verb_forms()`]'s; the raw counterpart
+/// is [`try_verb_forms_raw()`].
 ///
 /// ```
 /// use interslavic::*;
@@ -505,6 +621,12 @@ pub fn verb_forms(word: &str) -> VerbParadigm {
 /// assert_eq!(interslavic::try_verb_forms("xyz"), None);
 /// ```
 pub fn try_verb_forms(word: &str) -> Option<VerbParadigm> {
+    try_verb_forms_raw(word).map(surface_paradigm)
+}
+
+/// [`try_verb_forms()`] without the surface cleaning — see
+/// [`verb_forms_raw()`].
+pub fn try_verb_forms_raw(word: &str) -> Option<VerbParadigm> {
     let trimmed = word.trim();
     let entries = lookup_verbs_by_lemma(trimmed);
     if let Some(entry) = entries.first() {
@@ -570,6 +692,8 @@ pub fn passive_participle(
 /// use interslavic::*;
 /// assert_eq!(active_participle("pisati", Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("pišųća".into()));
 /// assert_eq!(active_participle("pisati", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("pišųćego".into()));
+/// // -aj stems come out with the surface j, not the internal ĵ marker.
+/// assert_eq!(active_participle("dělati", Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("dělajųća".into()));
 /// // Perfective verbs have no present active participle.
 /// assert_eq!(active_participle("ubiti", Case::Nom, Number::Singular, Gender::Masculine, Animacy::Animate), None);
 /// ```
@@ -584,7 +708,12 @@ pub fn active_participle(
     Some(adj(&participle_lemma(&prap), case, number, gender, animacy))
 }
 
-/// Full verb paradigm with explicit dictionary metadata.
+/// Full verb paradigm with explicit dictionary metadata. Cells are RAW
+/// (marker-carrying) like [`verb_forms_raw()`]'s: this is the typed
+/// dictionary-integration entry point, and the parity harness compares
+/// its output byte-for-byte against `@interslavic/utils`, which emits
+/// the internal `ĵ` marker too. Flatten with [`cells::variants`] for
+/// display.
 pub fn verb_forms_with_metadata(
     word: &str,
     present_hint: &str,
@@ -668,5 +797,61 @@ fn dictionary_gender_to_api(gender: DictionaryGender) -> Gender {
         DictionaryGender::Masculine | DictionaryGender::MasculineFeminine => Gender::Masculine,
         DictionaryGender::Feminine => Gender::Feminine,
         DictionaryGender::Neuter => Gender::Neuter,
+    }
+}
+
+#[cfg(test)]
+mod l_participle_consistency {
+    use super::*;
+
+    /// The invariant: for EVERY verb lemma in the embedded dictionary,
+    /// the standalone [`l_participle`] agrees with the l-participle
+    /// inside [`verb_forms`]'s compound cells in all six gender/number
+    /// slots. The paradigm path is the parity-verified one, so any
+    /// divergence is a bug by definition. Phrase lemmas are skipped:
+    /// their paradigm cells echo the raw phrase (phrases are not part of
+    /// the typed lemma API).
+    #[test]
+    fn every_dictionary_lemma_agrees_with_the_paradigm() {
+        let mut compared = 0usize;
+        let mut divergent: Vec<String> = Vec::new();
+        for lemma in dictionary::all_verb_lemmas() {
+            if lemma.split_whitespace().nth(1).is_some() {
+                continue;
+            }
+            let paradigm = verb_forms(lemma);
+            // perfect[2..5] are the 3sg m/f/n cells "(je) <participle>",
+            // perfect[7] the 3pl "(sųt) <participle>i"; variants()[0] is
+            // the auxiliary-less form.
+            let expectations = [
+                (Gender::Masculine, Number::Singular, &paradigm.perfect[2]),
+                (Gender::Feminine, Number::Singular, &paradigm.perfect[3]),
+                (Gender::Neuter, Number::Singular, &paradigm.perfect[4]),
+                (Gender::Masculine, Number::Plural, &paradigm.perfect[7]),
+                (Gender::Feminine, Number::Plural, &paradigm.perfect[7]),
+                (Gender::Neuter, Number::Plural, &paradigm.perfect[7]),
+            ];
+            for (gender, number, cell) in expectations {
+                let expected = cells::variants(cell)
+                    .into_iter()
+                    .next()
+                    .expect("variants is never empty");
+                let actual = l_participle(lemma, gender, number);
+                compared += 1;
+                if actual != expected {
+                    divergent.push(format!(
+                        "{lemma} {gender:?}/{number:?}: l_participle={actual} paradigm={expected}"
+                    ));
+                }
+            }
+        }
+        assert!(compared > 10_000, "sweep unexpectedly small: {compared}");
+        assert!(
+            divergent.is_empty(),
+            "{} of {} cells diverge from the paradigm:\n{}",
+            divergent.len(),
+            compared,
+            divergent.join("\n")
+        );
     }
 }
