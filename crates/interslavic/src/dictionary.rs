@@ -68,3 +68,10 @@ pub(crate) fn lookup_verbs_by_lemma(word: &str) -> &'static [VerbDictionaryEntry
 }
 
 static EMPTY_VERBS: &[VerbDictionaryEntry] = &[];
+
+/// Every verb lemma in the embedded dictionary — test-only, used by the
+/// l-participle self-consistency sweep.
+#[cfg(test)]
+pub(crate) fn all_verb_lemmas() -> impl Iterator<Item = &'static str> {
+    verb_generated::VERB_METADATA.keys().copied()
+}

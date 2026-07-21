@@ -456,9 +456,18 @@ pub fn verb_with_present_hint(
 /// // A prefixed perfective.
 /// assert_eq!(l_participle("ubiti", Gender::Masculine, Number::Singular), "ubil");
 /// assert_eq!(l_participle("ubiti", Gender::Feminine, Number::Singular), "ubila");
+/// // A d/t-stem -sti verb: the dictionary present-hint recovers the
+/// // dental stem, in agreement with the compound tenses.
+/// assert_eq!(l_participle("ukrasti", Gender::Feminine, Number::Singular), "ukradla");
+/// assert_eq!(l_participle("vesti", Gender::Masculine, Number::Plural), "vedli");
 /// ```
 pub fn l_participle(infinitive: &str, gender: Gender, number: Number) -> String {
-    verb::l_participle(infinitive, gender, number)
+    let trimmed = infinitive.trim();
+    let entries = lookup_verbs_by_lemma(trimmed);
+    if let Some(entry) = entries.first() {
+        return verb::l_participle_with_hint(entry.lemma, entry.addition, gender, number);
+    }
+    verb::l_participle(trimmed, gender, number)
 }
 
 /// Full verb paradigm with dictionary metadata when available.
@@ -668,5 +677,61 @@ fn dictionary_gender_to_api(gender: DictionaryGender) -> Gender {
         DictionaryGender::Masculine | DictionaryGender::MasculineFeminine => Gender::Masculine,
         DictionaryGender::Feminine => Gender::Feminine,
         DictionaryGender::Neuter => Gender::Neuter,
+    }
+}
+
+#[cfg(test)]
+mod l_participle_consistency {
+    use super::*;
+
+    /// The invariant: for EVERY verb lemma in the embedded dictionary,
+    /// the standalone [`l_participle`] agrees with the l-participle
+    /// inside [`verb_forms`]'s compound cells in all six gender/number
+    /// slots. The paradigm path is the parity-verified one, so any
+    /// divergence is a bug by definition. Phrase lemmas are skipped:
+    /// their paradigm cells echo the raw phrase (phrases are not part of
+    /// the typed lemma API).
+    #[test]
+    fn every_dictionary_lemma_agrees_with_the_paradigm() {
+        let mut compared = 0usize;
+        let mut divergent: Vec<String> = Vec::new();
+        for lemma in dictionary::all_verb_lemmas() {
+            if lemma.split_whitespace().nth(1).is_some() {
+                continue;
+            }
+            let paradigm = verb_forms(lemma);
+            // perfect[2..5] are the 3sg m/f/n cells "(je) <participle>",
+            // perfect[7] the 3pl "(sųt) <participle>i"; variants()[0] is
+            // the auxiliary-less form.
+            let expectations = [
+                (Gender::Masculine, Number::Singular, &paradigm.perfect[2]),
+                (Gender::Feminine, Number::Singular, &paradigm.perfect[3]),
+                (Gender::Neuter, Number::Singular, &paradigm.perfect[4]),
+                (Gender::Masculine, Number::Plural, &paradigm.perfect[7]),
+                (Gender::Feminine, Number::Plural, &paradigm.perfect[7]),
+                (Gender::Neuter, Number::Plural, &paradigm.perfect[7]),
+            ];
+            for (gender, number, cell) in expectations {
+                let expected = cells::variants(cell)
+                    .into_iter()
+                    .next()
+                    .expect("variants is never empty");
+                let actual = l_participle(lemma, gender, number);
+                compared += 1;
+                if actual != expected {
+                    divergent.push(format!(
+                        "{lemma} {gender:?}/{number:?}: l_participle={actual} paradigm={expected}"
+                    ));
+                }
+            }
+        }
+        assert!(compared > 10_000, "sweep unexpectedly small: {compared}");
+        assert!(
+            divergent.is_empty(),
+            "{} of {} cells diverge from the paradigm:\n{}",
+            divergent.len(),
+            compared,
+            divergent.join("\n")
+        );
     }
 }

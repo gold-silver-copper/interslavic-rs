@@ -133,6 +133,28 @@ pub fn verb_paradigm_checked(
     verb_paradigm_inner(word, present_hint, transitive, imperfective, true)
 }
 
+/// The stem derivation shared by every emitter: finite-form normalization
+/// (`je`/`jest`/`sųt` → `byti`), prefix split, hint cleaning, and the
+/// hint-aware infinitive stem — the context [`verb_paradigm_with_options`],
+/// [`l_participle_with_hint`], and [`perfect_parts_with_hint`] all derive
+/// from, so their stems can never disagree. `None` only in strict mode
+/// when no infinitive stem is derivable; otherwise the stem degrades to
+/// the same best-effort form [`get_infinitive_stem`] uses.
+fn stem_context(word: &str, present_hint: &str, strict: bool) -> Option<(String, String, String)> {
+    let normalized = match word {
+        "sųt" | "je" | "jest" => "byti",
+        other => other,
+    };
+    let prefix = sonic_prefix(normalized);
+    let clean_hint = clean_present_hint(present_hint);
+    let infinitive_stem = match sonic_infinitive_stem_with_hint(&prefix, normalized, &clean_hint) {
+        Some(stem) => stem,
+        None if strict => return None,
+        None => utils::string_without_last_n(normalized, 2),
+    };
+    Some((prefix, clean_hint, infinitive_stem))
+}
+
 fn verb_paradigm_inner(
     word: &str,
     present_hint: &str,
@@ -145,20 +167,7 @@ fn verb_paradigm_inner(
         return Some(empty_phrase_verb_paradigm(word));
     }
 
-    let normalized = match word {
-        "sųt" | "je" | "jest" => "byti",
-        other => other,
-    };
-    let pref = sonic_prefix(normalized);
-    let clean_hint = clean_present_hint(present_hint);
-    // An underivable stem is reported as `None` in strict mode; otherwise
-    // it degrades to the best-effort stem `get_infinitive_stem` uses, so
-    // the total entry point never panics on non-verb input.
-    let infinitive_stem = match sonic_infinitive_stem_with_hint(&pref, normalized, &clean_hint) {
-        Some(stem) => stem,
-        None if strict => return None,
-        None => utils::string_without_last_n(normalized, 2),
-    };
+    let (pref, clean_hint, infinitive_stem) = stem_context(word, present_hint, strict)?;
     let present_stem = sonic_present_tense_stem_from_parts(&pref, &clean_hint, &infinitive_stem);
     let secondary_stem = secondary_present_tense_stem(&present_stem);
     let lpa = sonic_l_participle(&pref, &infinitive_stem);
@@ -859,10 +868,25 @@ fn transliterate_sonic_back(input: &str) -> String {
 /// without an infinitive shape degrades to the same best-effort stem
 /// [`get_infinitive_stem`] uses.
 pub fn l_participle(word: &str, gender: Gender, number: Number) -> String {
+    l_participle_with_hint(word, "", gender, number)
+}
+
+/// The l-participle with an explicit dictionary present-stem hint — the
+/// hint-aware counterpart of [`l_participle`]. The hint is what recovers
+/// the dental stem of the d/t-stem `-sti` verbs (`ukrasti` + `(ukrade)` →
+/// `ukradla`, not `*ukrasla`), exactly as it does inside
+/// [`verb_paradigm_with_options`]: both derive their stem from the same
+/// context, so the standalone participle and the one inside the compound
+/// tenses can never disagree.
+pub fn l_participle_with_hint(
+    word: &str,
+    present_hint: &str,
+    gender: Gender,
+    number: Number,
+) -> String {
     let word = word.trim();
-    let prefix = sonic_prefix(word);
-    let infinitive_stem = sonic_infinitive_stem(&prefix, word)
-        .unwrap_or_else(|| utils::string_without_last_n(word, 2));
+    let (prefix, _, infinitive_stem) =
+        stem_context(word, present_hint, false).expect("non-strict stem derivation is total");
     let lpa = sonic_l_participle(&prefix, &infinitive_stem);
     let form = match (number, gender) {
         (Number::Plural, _) => format!("{lpa}i"),
