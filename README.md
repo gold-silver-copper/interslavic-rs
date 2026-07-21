@@ -178,12 +178,18 @@ Latest measured compatible accuracy against sonic16x commit `0fab0c5b4463118d46b
 | adjectives | 3,261 | 156,528 | 100.0000% | 0 |
 | verbs: present, imperfect, perfect, pluperfect, future, conditional, imperative, participles, gerund | 4,345 | 216,339 | 100.0000% | 0 |
 | personal/reflexive pronouns: full, clitic, and prepositional n- series | 4 | 198 | 100.0000% | 0 |
-| total core comparable | 16,461 | 472,125 | 99.9964% | 17 |
+| out-of-vocabulary verbs (fixed sample: -jati, -nųti, -ovati, prefixed -sti) | 12 | 612 | 100.0000% | 0 |
+| total core comparable | 16,473 | 472,737 | 99.9964% | 17 |
 
 The pronoun scope compares every cell of the personal and reflexive
 paradigms (`personal_pronoun`/`reflexive_pronoun`) against
 `declensionPronoun`, including the nonexistence of cells (unattested
-clitics, the reflexive nominative). The noun count moved from 8 to 17
+clitics, the reflexive nominative). The out-of-vocabulary scope tracks the
+hintless rule-engine path on a fixed sample of plausible non-dictionary
+lemmas (membership re-checked against the fetched dictionary each run), so
+OOV behavior is parity-verified too — e.g. the JS reference does **not**
+contract OOV `-jati` presents (`stajati` → `stajaje, staja`, never
+`staje`), and this crate follows it. The noun count moved from 8 to 17
 mismatches between measurements because the live dictionary sheet edited a
 handful of rows (soft-o loans like *adadžo*, substantivized adjectives);
 the change reproduces identically on earlier releases, i.e. it is upstream

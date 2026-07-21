@@ -24,6 +24,7 @@ const MIN_COMPATIBLE_RATES = {
   adjective: 0.999,
   verb: 0.95,
   pronoun: 1,
+  'oov-verb': 0.95,
 };
 
 function updateSonicCheckout() {
@@ -164,6 +165,40 @@ function verbForms(result) {
   forms.pfpp = cleanOptional(result.pfpp);
   forms.gerund = cleanOptional(result.gerund);
   return forms;
+}
+
+// Fixed out-of-vocabulary sample: plausible lemmas per conjugation class
+// that are NOT expected in the dictionary, so the rule-engine (hintless)
+// path is parity-tracked too, not just dictionary lemmas. Membership is
+// re-checked against the fetched dictionary at runtime; a lemma that has
+// entered the dictionary since is skipped and reported.
+const OOV_VERB_SAMPLE = [
+  ['jati', 'stajati'], ['jati', 'izstajati'], ['jati', 'kajati'], ['jati', 'lajati'],
+  ['nuti', 'brenknųti'], ['nuti', 'švignųti'], ['nuti', 'gybnųti'], ['nuti', 'kľunųti'],
+  ['ovati', 'blogovati'], ['ovati', 'hakovati'], ['ovati', 'kartovati'], ['ovati', 'memovati'],
+  ['sti', 'razkrasti'], ['sti', 'prěvesti'], ['sti', 'izplesti'], ['sti', 'nadnesti'],
+];
+
+function buildOovVerbReferences(rows) {
+  const inDictionary = new Set();
+  for (const row of rows) for (const w of splitWords(row.isv)) inDictionary.add(w);
+  const refs = [];
+  const skippedOov = [];
+  for (const [cls, word] of OOV_VERB_SAMPLE) {
+    if (inDictionary.has(word)) {
+      skippedOov.push({ word, reason: 'entered the dictionary; no longer OOV' });
+      continue;
+    }
+    let forms = null;
+    try { forms = verbForms(conjugationVerb(word, '')); } catch (e) {
+      skippedOov.push({ word, reason: `sonic: ${e.message}` });
+      continue;
+    }
+    if (!forms) { skippedOov.push({ word, reason: 'sonic returned null' }); continue; }
+    const refKey = `oov-verb|${word}`;
+    refs.push({ refKey, input: `${refKey}\toov-verb\t${word}`, id: refKey, kind: 'oov-verb', word, details: `oov -${cls}`, addition: '', meta: {}, forms });
+  }
+  return { refs, skippedOov };
 }
 
 // Parse one declensionPronoun cell string into its three form series:
@@ -376,7 +411,7 @@ fn main() {
                     }
                 }
             }
-        } else if kind == "verb" {
+        } else if kind == "verb" || kind == "oov-verb" {
             let present_hint = parts.get(3).copied().unwrap_or("");
             let transitive = parts.get(4).copied().map(parse_bool).unwrap_or(true);
             let imperfective = parts.get(5).copied().map(parse_bool).unwrap_or(true);
@@ -478,7 +513,7 @@ function thresholdFailures(summary) {
   if (summary.compatibleRate < MIN_COMPATIBLE_RATES.total) {
     failures.push(`total compatible rate ${summary.compatibleRate} < ${MIN_COMPATIBLE_RATES.total}`);
   }
-  for (const kind of ['noun', 'adjective', 'verb', 'pronoun']) {
+  for (const kind of ['noun', 'adjective', 'verb', 'pronoun', 'oov-verb']) {
     const item = summary.byKind[kind];
     if (item && item.compatibleRate < MIN_COMPATIBLE_RATES[kind]) {
       failures.push(`${kind} compatible rate ${item.compatibleRate} < ${MIN_COMPATIBLE_RATES[kind]}`);
@@ -506,6 +541,8 @@ function writeMarkdownReport(report) {
   const rows = await loadDictionary();
   const { refs, skipped, skippedPhrases } = buildSonicReferences(rows);
   refs.push(...buildPronounReferences());
+  const { refs: oovRefs, skippedOov } = buildOovVerbReferences(rows);
+  refs.push(...oovRefs);
   fs.writeFileSync(path.join(OUT_DIR, 'sonic-reference-forms.json'), JSON.stringify(refs, null, 2));
   fs.writeFileSync(path.join(OUT_DIR, 'skipped-sonic-reference.json'), JSON.stringify(skipped, null, 2));
   fs.writeFileSync(path.join(OUT_DIR, 'skipped-phrases.json'), JSON.stringify(skippedPhrases, null, 2));
@@ -520,7 +557,7 @@ function writeMarkdownReport(report) {
   }
   fs.writeFileSync(path.join(OUT_DIR, 'mismatch-sample.csv'), csv.join('\n'));
   const failures = thresholdFailures(summary);
-  const report = { generatedAt: new Date().toISOString(), dictionaryUrl: BASIC_URL, dictionaryRows: rows.length, sonic: { repo: 'https://github.com/sonic16x/interslavic', branch: sonicBranch, commit: sonicCommit, utilsPackage: '@interslavic/utils', utilsVersion: sonicUtilsVersion }, rust: { repoPath: ROOT, commit: rustCommit, dirtyStatus: rustStatus }, skippedReferenceParadigms: skipped.length, skippedPhraseRows: skippedPhrases.length, summary, thresholdFailures: failures, artifactFiles: ['sonic16x-basic.tsv', 'sonic-reference-forms.json', 'rust-forms.json', 'mismatches.json', 'mismatch-sample.csv', 'skipped-sonic-reference.json', 'skipped-phrases.json'] };
+  const report = { generatedAt: new Date().toISOString(), dictionaryUrl: BASIC_URL, dictionaryRows: rows.length, sonic: { repo: 'https://github.com/sonic16x/interslavic', branch: sonicBranch, commit: sonicCommit, utilsPackage: '@interslavic/utils', utilsVersion: sonicUtilsVersion }, rust: { repoPath: ROOT, commit: rustCommit, dirtyStatus: rustStatus }, skippedReferenceParadigms: skipped.length, skippedPhraseRows: skippedPhrases.length, skippedOovSample: skippedOov, summary, thresholdFailures: failures, artifactFiles: ['sonic16x-basic.tsv', 'sonic-reference-forms.json', 'rust-forms.json', 'mismatches.json', 'mismatch-sample.csv', 'skipped-sonic-reference.json', 'skipped-phrases.json'] };
   fs.writeFileSync(path.join(OUT_DIR, 'summary.json'), JSON.stringify(report, null, 2));
   writeMarkdownReport(report);
   console.log(JSON.stringify(report, null, 2));
