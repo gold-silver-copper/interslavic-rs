@@ -34,9 +34,9 @@
 //! ```
 
 pub use interslavic_core::{
-    AdjParadigm, Animacy, CASE_ORDER, Case, Gender, NounParadigm, Number, Person, PronounStyle,
-    Tense, VerbParadigm, adjective, cells, derivation, noun, orthography, paradigm, phono,
-    prepositions, pronoun, types, utils, verb,
+    AdjParadigm, Animacy, CASE_ORDER, Case, Gender, NounParadigm, Number, PerfectParts, Person,
+    PronounStyle, Tense, VerbParadigm, adjective, cells, derivation, noun, orthography, paradigm,
+    phono, prepositions, pronoun, types, utils, verb,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)
@@ -468,6 +468,48 @@ pub fn l_participle(infinitive: &str, gender: Gender, number: Number) -> String 
         return verb::l_participle_with_hint(entry.lemma, entry.addition, gender, number);
     }
     verb::l_participle(trimmed, gender, number)
+}
+
+/// The perfect tense as structured parts: the auxiliary where the
+/// standard requires one (`None` in the third person, which normally
+/// drops it — "ona ukradla", not "ona jest ukradla"), and the correctly
+/// gendered l-participle with no bracket conventions. Built on the same
+/// stem context as [`l_participle()`] and [`verb_forms()`]'s compound
+/// cells, so the three can never disagree. A caller that wants the
+/// emphatic third-person auxiliary adds `je`/`jest` or `sųt` itself.
+///
+/// ```
+/// use interslavic::*;
+/// let p = perfect_parts("pisati", Person::First, Number::Singular, Gender::Masculine);
+/// assert_eq!(p.auxiliary.as_deref(), Some("jesm"));
+/// assert_eq!(p.participle, "pisal");
+/// let p = perfect_parts("pisati", Person::First, Number::Singular, Gender::Feminine);
+/// assert_eq!(p.participle, "pisala");
+///
+/// // 3rd person: no auxiliary, all genders.
+/// let p = perfect_parts("pisati", Person::Third, Number::Singular, Gender::Feminine);
+/// assert_eq!(p.auxiliary, None);
+/// assert_eq!(p.participle, "pisala");
+/// assert_eq!(perfect_parts("pisati", Person::Third, Number::Singular, Gender::Neuter).participle, "pisalo");
+/// let p = perfect_parts("pisati", Person::Third, Number::Plural, Gender::Masculine);
+/// assert_eq!((p.auxiliary, p.participle), (None, "pisali".into()));
+///
+/// // The d/t-stem -sti class resolves through the dictionary hint.
+/// let p = perfect_parts("ukrasti", Person::Third, Number::Singular, Gender::Feminine);
+/// assert_eq!((p.auxiliary, p.participle), (None, "ukradla".into()));
+/// ```
+pub fn perfect_parts(
+    infinitive: &str,
+    person: Person,
+    number: Number,
+    gender: Gender,
+) -> PerfectParts {
+    let trimmed = infinitive.trim();
+    let entries = lookup_verbs_by_lemma(trimmed);
+    if let Some(entry) = entries.first() {
+        return verb::perfect_parts_with_hint(entry.lemma, entry.addition, person, number, gender);
+    }
+    verb::perfect_parts_with_hint(trimmed, "", person, number, gender)
 }
 
 /// Full verb paradigm with dictionary metadata when available.

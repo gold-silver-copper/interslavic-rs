@@ -871,6 +871,47 @@ pub fn l_participle(word: &str, gender: Gender, number: Number) -> String {
     l_participle_with_hint(word, "", gender, number)
 }
 
+/// The perfect tense decomposed into data instead of a convention-string:
+/// the auxiliary (where the standard requires one) and the correctly
+/// gendered l-participle, with no bracket conventions to parse.
+///
+/// `auxiliary` is `Some("jesm"/"jesi"/"jesmo"/"jeste")` in the first and
+/// second persons and `None` in the third: per the grammar (steen,
+/// "Verbs": the auxiliary in the 3rd person is normally omitted), `on
+/// ukradl`, not `on jest ukradl`. A caller that wants the emphatic
+/// third-person auxiliary adds `je`/`jest` (singular) or `sųt` (plural)
+/// itself.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PerfectParts {
+    pub auxiliary: Option<String>,
+    pub participle: String,
+}
+
+/// The perfect tense of a verb as structured [`PerfectParts`], with an
+/// explicit dictionary present-stem hint. The participle is
+/// [`l_participle_with_hint`]'s output — the same shared stem context the
+/// paradigm's compound tenses use, so this accessor and
+/// [`verb_paradigm_with_options`]'s `perfect` cells can never disagree.
+pub fn perfect_parts_with_hint(
+    word: &str,
+    present_hint: &str,
+    person: Person,
+    number: Number,
+    gender: Gender,
+) -> PerfectParts {
+    let auxiliary = match (person, number) {
+        (Person::First, Number::Singular) => Some("jesm"),
+        (Person::Second, Number::Singular) => Some("jesi"),
+        (Person::First, Number::Plural) => Some("jesmo"),
+        (Person::Second, Number::Plural) => Some("jeste"),
+        (Person::Third, _) => None,
+    };
+    PerfectParts {
+        auxiliary: auxiliary.map(str::to_string),
+        participle: l_participle_with_hint(word, present_hint, gender, number),
+    }
+}
+
 /// The l-participle with an explicit dictionary present-stem hint — the
 /// hint-aware counterpart of [`l_participle`]. The hint is what recovers
 /// the dental stem of the d/t-stem `-sti` verbs (`ukrasti` + `(ukrade)` →
