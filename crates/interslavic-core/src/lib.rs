@@ -31,12 +31,15 @@ pub mod orthography;
 pub mod paradigm;
 pub mod phono;
 pub mod prepositions;
+pub mod pronoun;
 pub mod types;
 pub mod utils;
 pub mod verb;
 
 pub use paradigm::{AdjParadigm, CASE_ORDER, NounParadigm, VerbParadigm};
-pub use types::{Animacy, Case, ComplexNoun, Conjugation, Gender, Number, Person, Tense};
+pub use types::{
+    Animacy, Case, ComplexNoun, Conjugation, Gender, Number, Person, PronounStyle, Tense,
+};
 
 pub const VOWELS: &[char] = &[
     'a', 'e', 'i', 'í', 'ó', 'o', 'u', 'å', 'ą', 'ę', 'ė', 'é', 'ȯ', 'ų', 'ů', 'ú', 'ý', 'y', 'ě',

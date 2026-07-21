@@ -849,33 +849,26 @@ fn transliterate_sonic_back(input: &str) -> String {
         .replace('ı', "")
 }
 
+/// The l-participle of an infinitive — the gender/number-marked form the
+/// perfect, pluperfect, and conditional are built on (`pisal`/`pisala`/
+/// `pisalo`, plural `pisali`). Built on the same stem derivation and
+/// suppletion handling as [`verb_paradigm_with_options`], so the result
+/// always matches the participle inside the paradigm's compound tenses:
+/// the `idti` family is suppletive (`šėl`/`šla`/`šlo`/`šli`, `došėl`/
+/// `došla`, …) and `žegti` alternates (`žegl`/`žgla`). Total: a word
+/// without an infinitive shape degrades to the same best-effort stem
+/// [`get_infinitive_stem`] uses.
 pub fn l_participle(word: &str, gender: Gender, number: Number) -> String {
-    if word == "idti" {
-        match number {
-            Number::Singular => String::from("šli"),
-            Number::Plural => match gender {
-                Gender::Masculine => String::from("šėl"),
-                Gender::Feminine => String::from("šla"),
-                Gender::Neuter => String::from("šlo"),
-            },
-        }
-    } else {
-        let infinitive_stem = get_infinitive_stem(word);
-        match number {
-            Number::Plural => {
-                format!("{}{}", infinitive_stem, "li")
-            }
-            Number::Singular => match gender {
-                Gender::Masculine => {
-                    format!("{}{}", infinitive_stem, "l")
-                }
-                Gender::Feminine => {
-                    format!("{}{}", infinitive_stem, "la")
-                }
-                Gender::Neuter => {
-                    format!("{}{}", infinitive_stem, "lo")
-                }
-            },
-        }
-    }
+    let word = word.trim();
+    let prefix = sonic_prefix(word);
+    let infinitive_stem = sonic_infinitive_stem(&prefix, word)
+        .unwrap_or_else(|| utils::string_without_last_n(word, 2));
+    let lpa = sonic_l_participle(&prefix, &infinitive_stem);
+    let form = match (number, gender) {
+        (Number::Plural, _) => format!("{lpa}i"),
+        (Number::Singular, Gender::Masculine) => lpa,
+        (Number::Singular, Gender::Feminine) => format!("{lpa}a"),
+        (Number::Singular, Gender::Neuter) => format!("{lpa}o"),
+    };
+    postprocess_lpa_line(&form)
 }

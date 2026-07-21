@@ -34,9 +34,9 @@
 //! ```
 
 pub use interslavic_core::{
-    AdjParadigm, Animacy, CASE_ORDER, Case, Gender, NounParadigm, Number, Person, Tense,
-    VerbParadigm, adjective, cells, derivation, noun, orthography, paradigm, phono, prepositions,
-    types, utils, verb,
+    AdjParadigm, Animacy, CASE_ORDER, Case, Gender, NounParadigm, Number, Person, PronounStyle,
+    Tense, VerbParadigm, adjective, cells, derivation, noun, orthography, paradigm, phono,
+    prepositions, pronoun, types, utils, verb,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)
@@ -212,6 +212,11 @@ pub fn derive(base: &str, pos: derivation::Pos) -> Vec<derivation::Derived> {
 /// assert_eq!(interslavic::comparative("novy"), Some(("novějši".into(), "nověje".into())));
 /// assert_eq!(interslavic::comparative("dobry"), Some(("lěpši".into(), "lěpje".into())));
 /// assert_eq!(interslavic::comparative("russky"), None);
+/// // The regular -ějši/-ěje pattern and the -ky truncation class.
+/// assert_eq!(interslavic::comparative("bystry"), Some(("bystrějši".into(), "bystrěje".into())));
+/// assert_eq!(interslavic::comparative("silny"), Some(("silnějši".into(), "silněje".into())));
+/// assert_eq!(interslavic::comparative("slaby"), Some(("slabějši".into(), "slaběje".into())));
+/// assert_eq!(interslavic::comparative("blizky"), Some(("blizši".into(), "bliže".into())));
 /// ```
 pub fn comparative(adj: &str) -> Option<(String, String)> {
     adjective::comparative(adj.trim())
@@ -229,16 +234,29 @@ pub fn superlative(adj: &str) -> Option<(String, String)> {
 }
 
 /// One pronoun form, or `None` if the lemma is not a recognized pronoun.
-/// Covers the `toj`-class demonstratives, the `moj`-class possessives and
-/// interrogatives (incl. `naš`/`vaš`/`čij`), `kto`/`čto` and derivatives,
-/// the `-koli` indefinites, `veś`, and the adjectivally-declined
-/// determiners (`ktory`, `kaky`, `samy`, …).
+/// Covers the personal pronouns and reflexive `sebe` (full forms; the
+/// clitic and prepositional n- series are explicit in
+/// [`personal_pronoun()`]/[`reflexive_pronoun()`]), the `toj`-class
+/// demonstratives, the `moj`-class possessives and interrogatives (incl.
+/// `naš`/`vaš`/`čij`), `kto`/`čto` and derivatives, the `-koli`
+/// indefinites, `veś`, and the adjectivally-declined determiners
+/// (`ktory`, `kaky`, `samy`, …).
+///
+/// A personal lemma fixes the person and (3rd person) gender, overriding
+/// the `gender`/`animacy` arguments; `number` still selects the column.
 ///
 /// ```
 /// use interslavic::*;
 /// assert_eq!(interslavic::pronoun("toj", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), Some("togo".into()));
 /// assert_eq!(interslavic::pronoun("moj", Case::Dat, Number::Singular, Gender::Neuter, Animacy::Inanimate), Some("mojemu".into()));
 /// assert_eq!(interslavic::pronoun("kto", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("kogo".into()));
+/// // svoj declines via the moj-class (soft pronominal) path.
+/// assert_eq!(interslavic::pronoun("svoj", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("svojego".into()));
+/// assert_eq!(interslavic::pronoun("svoj", Case::Loc, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("svojej".into()));
+/// assert_eq!(interslavic::pronoun("ty", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("tebe".into()));
+/// assert_eq!(interslavic::pronoun("on", Case::Dat, Number::Singular, Gender::Masculine, Animacy::Animate), Some("jemu".into()));
+/// assert_eq!(interslavic::pronoun("my", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Animate), Some("nas".into()));
+/// assert_eq!(interslavic::pronoun("sebe", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("sebe".into()));
 /// assert_eq!(interslavic::pronoun("stol", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), None);
 /// ```
 pub fn pronoun(
@@ -249,6 +267,56 @@ pub fn pronoun(
     animacy: Animacy,
 ) -> Option<String> {
     adjective::decline_pronoun(lemma.trim(), case, number, gender, animacy)
+}
+
+/// One personal-pronoun form (`ja`/`ty`/`on`/`ona`/`ono`/`my`/`vy`/`oni`/
+/// `one`), or `None` when the requested cell does not exist — only for
+/// [`PronounStyle::Clitic`] where no clitic is attested. `gender`
+/// distinguishes forms in the third person only.
+///
+/// The three form series the standard distinguishes are selected by
+/// `style`: full forms (`mene`, `jego`), clitics (`mę`, `go`), and the
+/// prepositional n- forms of the third person (`od njego`, `s njim`;
+/// non-3rd-person cells have no n- variant, so `AfterPreposition` returns
+/// the full form there). Backed by the explicit tables in [`pronoun`]
+/// (`interslavic_core::pronoun`), which follow the `@interslavic/utils`
+/// parity reference; see that module's docs for sourcing.
+///
+/// ```
+/// use interslavic::*;
+/// use PronounStyle::*;
+/// let m = Gender::Masculine;
+/// assert_eq!(personal_pronoun(Person::Second, Number::Singular, m, Case::Gen, Full), Some("tebe".into()));
+/// assert_eq!(personal_pronoun(Person::Second, Number::Singular, m, Case::Acc, Clitic), Some("tę".into()));
+/// assert_eq!(personal_pronoun(Person::Second, Number::Singular, m, Case::Ins, Full), Some("tobojų".into()));
+/// assert_eq!(personal_pronoun(Person::Third, Number::Singular, m, Case::Gen, AfterPreposition), Some("njego".into()));
+/// assert_eq!(personal_pronoun(Person::Third, Number::Singular, m, Case::Nom, Clitic), None);
+/// ```
+pub fn personal_pronoun(
+    person: Person,
+    number: Number,
+    gender: Gender,
+    case: Case,
+    style: PronounStyle,
+) -> Option<String> {
+    pronoun::personal_pronoun(person, number, gender, case, style)
+}
+
+/// One form of the reflexive pronoun `sebe`/`sę`/`si`, or `None` for a
+/// nonexistent cell (the nominative, and `Clitic` outside the accusative
+/// and dative). `AfterPreposition` returns the full form — the reflexive
+/// has no n- variant (`za sebe`, `o sobě`).
+///
+/// ```
+/// use interslavic::*;
+/// use PronounStyle::*;
+/// assert_eq!(reflexive_pronoun(Case::Acc, Clitic), Some("sę".into()));
+/// assert_eq!(reflexive_pronoun(Case::Gen, Full), Some("sebe".into()));
+/// assert_eq!(reflexive_pronoun(Case::Dat, Clitic), Some("si".into()));
+/// assert_eq!(reflexive_pronoun(Case::Nom, Full), None);
+/// ```
+pub fn reflexive_pronoun(case: Case, style: PronounStyle) -> Option<String> {
+    pronoun::reflexive_pronoun(case, style)
 }
 
 /// One numeral form, or `None` if the lemma is not a recognized numeral.
@@ -262,6 +330,12 @@ pub fn pronoun(
 /// assert_eq!(interslavic::numeral("pęť", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("pęti".into()));
 /// assert_eq!(interslavic::numeral("tri", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("trěh".into()));
 /// assert_eq!(interslavic::numeral("pŕvy", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), Some("pŕvogo".into()));
+/// // Oblique forms of the low cardinals exist across the paradigm.
+/// assert_eq!(interslavic::numeral("dva", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvoh".into()));
+/// assert_eq!(interslavic::numeral("dva", Case::Dat, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvom".into()));
+/// assert_eq!(interslavic::numeral("dva", Case::Ins, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvoma".into()));
+/// assert_eq!(interslavic::numeral("tri", Case::Dat, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("trěm".into()));
+/// assert_eq!(interslavic::numeral("pęť", Case::Ins, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("pęťjų".into()));
 /// ```
 pub fn numeral(
     lemma: &str,
@@ -361,7 +435,52 @@ pub fn verb_with_present_hint(
     verb::conjugate_verb_with_present_hint(word.trim(), present_hint, person, number, gender, tense)
 }
 
+/// The l-participle of an infinitive — the gender/number-marked past
+/// active form the compound tenses are built on, useful on its own for
+/// fixed-gender past subjects ("strěla tę ubila"). Suppletion is handled
+/// (`idti` → `šėl`/`šla`/…), and the form always agrees with the
+/// participle inside [`verb_forms()`]'s perfect/pluperfect/conditional.
+///
+/// ```
+/// use interslavic::*;
+/// // A regular verb.
+/// assert_eq!(l_participle("pisati", Gender::Masculine, Number::Singular), "pisal");
+/// assert_eq!(l_participle("pisati", Gender::Feminine, Number::Singular), "pisala");
+/// assert_eq!(l_participle("pisati", Gender::Neuter, Number::Singular), "pisalo");
+/// assert_eq!(l_participle("pisati", Gender::Masculine, Number::Plural), "pisali");
+/// // The idti suppletion.
+/// assert_eq!(l_participle("idti", Gender::Masculine, Number::Singular), "šėl");
+/// assert_eq!(l_participle("idti", Gender::Feminine, Number::Singular), "šla");
+/// assert_eq!(l_participle("idti", Gender::Neuter, Number::Singular), "šlo");
+/// assert_eq!(l_participle("idti", Gender::Masculine, Number::Plural), "šli");
+/// // A prefixed perfective.
+/// assert_eq!(l_participle("ubiti", Gender::Masculine, Number::Singular), "ubil");
+/// assert_eq!(l_participle("ubiti", Gender::Feminine, Number::Singular), "ubila");
+/// ```
+pub fn l_participle(infinitive: &str, gender: Gender, number: Number) -> String {
+    verb::l_participle(infinitive, gender, number)
+}
+
 /// Full verb paradigm with dictionary metadata when available.
+///
+/// The imperative and gerund cells are populated across the conjugation
+/// classes:
+///
+/// ```
+/// use interslavic::*;
+/// // -iti class.
+/// let p = verb_forms("učiti");
+/// assert_eq!(p.imperative, vec!["uči", "učimo", "učite"]);
+/// assert_eq!(p.gerund, "učeńje");
+/// // -ovati class.
+/// let p = verb_forms("kupovati");
+/// assert_eq!(p.imperative[0], "kupuj");
+/// assert_eq!(p.gerund, "kupovańje");
+/// // -ati class (with the consonant mutation of the present stem).
+/// let p = verb_forms("pisati");
+/// assert_eq!(p.imperative[0], "piši");
+/// assert_eq!(p.gerund, "pisańje");
+/// ```
 pub fn verb_forms(word: &str) -> VerbParadigm {
     let trimmed = word.trim();
     let entries = lookup_verbs_by_lemma(trimmed);
@@ -397,6 +516,72 @@ pub fn try_verb_forms(word: &str) -> Option<VerbParadigm> {
         );
     }
     verb::verb_paradigm_checked(trimmed, "", true, true)
+}
+
+/// The declinable adjective lemma inside a paradigm participle cell: the
+/// masculine head of `"osvětljený (osvětljená, osvětljenó)"` with the
+/// acute-marked long ending flattened to the plain `-y`/`-i` the
+/// adjective engine declines.
+fn participle_lemma(participle: &str) -> String {
+    let head = participle.split(" (").next().unwrap_or(participle).trim();
+    head.chars()
+        .map(|c| match c {
+            'ý' => 'y',
+            'í' => 'i',
+            c => c,
+        })
+        .collect()
+}
+
+/// One declined form of the past passive participle — the participle from
+/// [`verb_forms()`]'s `pfpp`, declined as an adjective ("komnata jest
+/// osvětljena", "to jest opoznano"). `None` when the verb has no passive
+/// participle (intransitives). Covers the `-ny`, `-ty`, and iotated
+/// `-jeny` shapes; equivalent to feeding the `pfpp` lemma through
+/// [`adj()`], with the `Option` handling in one place.
+///
+/// ```
+/// use interslavic::*;
+/// // Iotated -jeny stem: osvětliti -> osvětljeny.
+/// assert_eq!(passive_participle("osvětliti", Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("osvětljena".into()));
+/// // -ny shape: opoznati -> opoznany.
+/// assert_eq!(passive_participle("opoznati", Case::Nom, Number::Singular, Gender::Neuter, Animacy::Inanimate), Some("opoznano".into()));
+/// // -ty shape, declined obliquely: ubiti -> ubity -> ubitogo.
+/// assert_eq!(passive_participle("ubiti", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("ubitogo".into()));
+/// // Intransitive verbs have no passive participle.
+/// assert_eq!(passive_participle("idti", Case::Nom, Number::Singular, Gender::Masculine, Animacy::Animate), None);
+/// ```
+pub fn passive_participle(
+    infinitive: &str,
+    case: Case,
+    number: Number,
+    gender: Gender,
+    animacy: Animacy,
+) -> Option<String> {
+    let pfpp = verb_forms(infinitive).pfpp?;
+    Some(adj(&participle_lemma(&pfpp), case, number, gender, animacy))
+}
+
+/// One declined form of the present active participle — the `prap` from
+/// [`verb_forms()`] declined as a (soft) adjective ("pišųća žena").
+/// `None` when the verb has no present active participle (perfectives).
+///
+/// ```
+/// use interslavic::*;
+/// assert_eq!(active_participle("pisati", Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("pišųća".into()));
+/// assert_eq!(active_participle("pisati", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("pišųćego".into()));
+/// // Perfective verbs have no present active participle.
+/// assert_eq!(active_participle("ubiti", Case::Nom, Number::Singular, Gender::Masculine, Animacy::Animate), None);
+/// ```
+pub fn active_participle(
+    infinitive: &str,
+    case: Case,
+    number: Number,
+    gender: Gender,
+    animacy: Animacy,
+) -> Option<String> {
+    let prap = verb_forms(infinitive).prap?;
+    Some(adj(&participle_lemma(&prap), case, number, gender, animacy))
 }
 
 /// Full verb paradigm with explicit dictionary metadata.

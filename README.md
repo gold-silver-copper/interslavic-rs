@@ -87,6 +87,26 @@ fn main() {
     assert_eq!(pisati.imperative, vec!["piši", "pišimo", "pišite"]);
     assert_eq!(pisati.gerund, "pisańje");
 
+    // Personal pronouns carry all three form series: full, clitic, and the
+    // prepositional n- forms of the third person.
+    use PronounStyle::*;
+    assert_eq!(
+        interslavic::personal_pronoun(Person::Second, Number::Singular, Gender::Masculine, Case::Gen, Full),
+        Some("tebe".to_string())
+    );
+    assert_eq!(
+        interslavic::personal_pronoun(Person::Third, Number::Singular, Gender::Masculine, Case::Gen, AfterPreposition),
+        Some("njego".to_string())
+    );
+    assert_eq!(interslavic::reflexive_pronoun(Case::Acc, Clitic), Some("sę".to_string()));
+
+    // The l-participle and the declined participles are exposed directly.
+    assert_eq!(interslavic::l_participle("idti", Gender::Feminine, Number::Singular), "šla");
+    assert_eq!(
+        interslavic::passive_participle("osvětliti", Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate),
+        Some("osvětljena".to_string())
+    );
+
     // Dictionary integrations that need a specific present-stem hint can use the
     // explicit typed helper instead of passing a phrase string.
     assert_eq!(
@@ -154,10 +174,20 @@ Latest measured compatible accuracy against sonic16x commit `0fab0c5b4463118d46b
 
 | Scope | Paradigms | Forms | Compatible accuracy | Mismatches |
 |---|---:|---:|---:|---:|
-| nouns | 8,851 | 99,060 | 99.9919% | 8 |
+| nouns | 8,851 | 99,060 | 99.9828% | 17 |
 | adjectives | 3,261 | 156,528 | 100.0000% | 0 |
 | verbs: present, imperfect, perfect, pluperfect, future, conditional, imperative, participles, gerund | 4,345 | 216,339 | 100.0000% | 0 |
-| total core comparable | 16,457 | 471,927 | 99.9983% | 8 |
+| personal/reflexive pronouns: full, clitic, and prepositional n- series | 4 | 198 | 100.0000% | 0 |
+| total core comparable | 16,461 | 472,125 | 99.9964% | 17 |
+
+The pronoun scope compares every cell of the personal and reflexive
+paradigms (`personal_pronoun`/`reflexive_pronoun`) against
+`declensionPronoun`, including the nonexistence of cells (unattested
+clitics, the reflexive nominative). The noun count moved from 8 to 17
+mismatches between measurements because the live dictionary sheet edited a
+handful of rows (soft-o loans like *adadžo*, substantivized adjectives);
+the change reproduces identically on earlier releases, i.e. it is upstream
+data drift, not an engine change.
 
 “Compatible” means the Rust form matched one of sonic16x's accepted alternatives when sonic returns comma/slash/parenthetical variants. Phrase strings from dictionary rows are reported separately because this crate's core APIs accept typed lemmas/metadata rather than arbitrary phrases.
 

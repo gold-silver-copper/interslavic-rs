@@ -67,3 +67,15 @@ pub enum Animacy {
     Animate,
     Inanimate,
 }
+
+/// Which of the three personal-pronoun form series to return: the full
+/// (stressed) form, the clitic (short, unstressed) form where one is
+/// attested, or the form to use after a preposition (the 3rd-person
+/// prepositional n- variant — `njego`, `njim` — falling back to the full
+/// form where no n- variant exists).
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum PronounStyle {
+    Full,
+    Clitic,
+    AfterPreposition,
+}
