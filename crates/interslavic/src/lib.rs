@@ -512,7 +512,50 @@ pub fn perfect_parts(
     verb::perfect_parts_with_hint(trimmed, "", person, number, gender)
 }
 
+/// Flatten the builders' internal intervocalic-j marker `ĵ` to its
+/// surface spelling `j` in every cell of a paradigm. Only the imperative
+/// and present-active-participle cells ever carry the marker; the other
+/// fields pass through untouched. Variant structure, gender-form
+/// conventions, and citation accents are all preserved — they are
+/// documented cell shape, and `cells::variants` remains the flattening
+/// step for them.
+fn surface_paradigm(mut p: VerbParadigm) -> VerbParadigm {
+    fn clean(s: &mut String) {
+        if s.contains('ĵ') {
+            *s = s.replace('ĵ', "j");
+        }
+    }
+    clean(&mut p.infinitive);
+    for cells in [
+        &mut p.present,
+        &mut p.imperfect,
+        &mut p.perfect,
+        &mut p.pluperfect,
+        &mut p.future,
+        &mut p.conditional,
+        &mut p.imperative,
+    ] {
+        cells.iter_mut().for_each(clean);
+    }
+    for cell in [&mut p.prap, &mut p.prpp, &mut p.pfpp] {
+        if let Some(s) = cell.as_mut() {
+            clean(s);
+        }
+    }
+    clean(&mut p.pfap);
+    clean(&mut p.gerund);
+    p
+}
+
 /// Full verb paradigm with dictionary metadata when available.
+///
+/// Cells are surface-ready: the internal `ĵ` marker the builders use is
+/// flattened to `j` (`imperative[0]` of *počivati* is `"počivaj"`, its
+/// `prap` head `"počivajųćí"`). [`verb_forms_raw()`] returns the
+/// marker-carrying cells for integrations that need them (the parity
+/// harness compares those, because the JS reference emits the marker
+/// too). Parenthesized variant conventions are still present — flatten
+/// them with [`cells::variants`].
 ///
 /// The imperative and gerund cells are populated across the conjugation
 /// classes:
@@ -531,8 +574,28 @@ pub fn perfect_parts(
 /// let p = verb_forms("pisati");
 /// assert_eq!(p.imperative[0], "piši");
 /// assert_eq!(p.gerund, "pisańje");
+/// // -ati class without mutation: surface j, not the internal ĵ.
+/// let p = verb_forms("počivati");
+/// assert_eq!(p.imperative[0], "počivaj");
+/// assert_eq!(p.prap.as_deref(), Some("počivajųćí (počivajųćá, počivajųćé)"));
 /// ```
 pub fn verb_forms(word: &str) -> VerbParadigm {
+    surface_paradigm(verb_forms_raw(word))
+}
+
+/// [`verb_forms()`] without the surface cleaning: cells carry the
+/// builders' internal `ĵ` marker exactly as the JS parity reference
+/// emits it (`"počivaĵ"`). This is the escape hatch for integrations
+/// that normalize cells themselves (via [`cells::variants`], which
+/// flattens the marker along with the other conventions) or that compare
+/// against `@interslavic/utils` byte-for-byte.
+///
+/// ```
+/// use interslavic::*;
+/// assert_eq!(verb_forms_raw("počivati").imperative[0], "počivaĵ");
+/// assert_eq!(cells::variants(&verb_forms_raw("počivati").imperative[0]), ["počivaj"]);
+/// ```
+pub fn verb_forms_raw(word: &str) -> VerbParadigm {
     let trimmed = word.trim();
     let entries = lookup_verbs_by_lemma(trimmed);
     if let Some(entry) = entries.first() {
@@ -549,6 +612,8 @@ pub fn verb_forms(word: &str) -> VerbParadigm {
 /// The full verb paradigm, or `None` when an infinitive stem cannot be
 /// derived from `word` — the checked counterpart of [`verb_forms()`].
 /// The check is mechanical (infinitive shape), not a lexical verb lookup.
+/// Cells are surface-ready like [`verb_forms()`]'s; the raw counterpart
+/// is [`try_verb_forms_raw()`].
 ///
 /// ```
 /// use interslavic::*;
@@ -556,6 +621,12 @@ pub fn verb_forms(word: &str) -> VerbParadigm {
 /// assert_eq!(interslavic::try_verb_forms("xyz"), None);
 /// ```
 pub fn try_verb_forms(word: &str) -> Option<VerbParadigm> {
+    try_verb_forms_raw(word).map(surface_paradigm)
+}
+
+/// [`try_verb_forms()`] without the surface cleaning — see
+/// [`verb_forms_raw()`].
+pub fn try_verb_forms_raw(word: &str) -> Option<VerbParadigm> {
     let trimmed = word.trim();
     let entries = lookup_verbs_by_lemma(trimmed);
     if let Some(entry) = entries.first() {
@@ -621,6 +692,8 @@ pub fn passive_participle(
 /// use interslavic::*;
 /// assert_eq!(active_participle("pisati", Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("pišųća".into()));
 /// assert_eq!(active_participle("pisati", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Animate), Some("pišųćego".into()));
+/// // -aj stems come out with the surface j, not the internal ĵ marker.
+/// assert_eq!(active_participle("dělati", Case::Nom, Number::Singular, Gender::Feminine, Animacy::Inanimate), Some("dělajųća".into()));
 /// // Perfective verbs have no present active participle.
 /// assert_eq!(active_participle("ubiti", Case::Nom, Number::Singular, Gender::Masculine, Animacy::Animate), None);
 /// ```
@@ -635,7 +708,12 @@ pub fn active_participle(
     Some(adj(&participle_lemma(&prap), case, number, gender, animacy))
 }
 
-/// Full verb paradigm with explicit dictionary metadata.
+/// Full verb paradigm with explicit dictionary metadata. Cells are RAW
+/// (marker-carrying) like [`verb_forms_raw()`]'s: this is the typed
+/// dictionary-integration entry point, and the parity harness compares
+/// its output byte-for-byte against `@interslavic/utils`, which emits
+/// the internal `ĵ` marker too. Flatten with [`cells::variants`] for
+/// display.
 pub fn verb_forms_with_metadata(
     word: &str,
     present_hint: &str,
