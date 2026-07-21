@@ -189,7 +189,12 @@ hintless rule-engine path on a fixed sample of plausible non-dictionary
 lemmas (membership re-checked against the fetched dictionary each run), so
 OOV behavior is parity-verified too — e.g. the JS reference does **not**
 contract OOV `-jati` presents (`stajati` → `stajaje, staja`, never
-`staje`), and this crate follows it. The noun count moved from 8 to 17
+`staje`), and this crate follows it.
+
+When cross-checking forms against the slovowiki form API, read a hit's
+`lemmas`/analyses fields before crediting it to a lemma: keys are folded
+surfaces, so a homograph hit can belong to an unrelated word (`staje` is
+the noun `staja`'s gen.sg/nom.pl/acc.pl, not a verb form). The noun count moved from 8 to 17
 mismatches between measurements because the live dictionary sheet edited a
 handful of rows (soft-o loans like *adadžo*, substantivized adjectives);
 the change reproduces identically on earlier releases, i.e. it is upstream

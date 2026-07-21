@@ -67,8 +67,14 @@ output change is enumerated below.
 - The `stajati` question is settled against the parity reference: the JS
   implementation does **not** contract OOV `-jati` presents (`stajaje,
   staja`; even `dajati` gives `dajaje, daja`, never `daje`), so this
-  crate keeps `stajaje`. The slovowiki form index's `staje` row diverges
-  from the parity standard on their side — flagged to their team.
+  crate keeps `stajaje`. *(Correction, post-release: this note originally
+  claimed slovowiki's form index carried `staje` as `prez.3jd.` of
+  `stajati` and diverged from the parity standard. That was a folded-key
+  homograph misreading: slovowiki's `staje` record is the noun `staja`
+  — gen.sg/nom.pl/acc.pl — and it has no `stajati` verb record at all,
+  so it never took a position on the contraction. When attributing a
+  slovowiki form-API hit, read the record's `lemmas`/analyses fields
+  before crediting it to a lemma.)*
 
 ## 0.10.0 — 2026-07-20
 
