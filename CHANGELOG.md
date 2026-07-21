@@ -1,5 +1,10 @@
 # Changelog
 
+**Policy — variant order is API.** Multi-byform cells are `" / "`-joined
+strings and consumers bless first-variant outputs into their expectations:
+reordering variants is a breaking change and must be called out explicitly
+in the release notes (fenced by `tests/variant_order.rs`).
+
 ## 0.10.0 — 2026-07-20
 
 Additive API release closing the gaps found by the mrzavec runtime-inflection
