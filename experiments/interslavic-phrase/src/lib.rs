@@ -33,12 +33,16 @@
 //! clusters, genitive of negation, spelled-out numerals.
 
 mod ast;
+pub mod discourse;
 mod realize;
 mod sexpr;
 
 pub use ast::{
-    Clause, Force, Nominal, NounPhrase, Polarity, PrepPhrase, TenseSpec, VerbPhrase, clause, np,
-    pp, pron, vp,
+    Addressee, Clause, ClauseCore, Conj, Coordination, Force, GapRole, Mood, Nominal, NounPhrase,
+    Polarity, PredCase, Predicate, PrepPhrase, RelClause, Relativizer, SlotRef, TenseSpec,
+    VerbPhrase, Voice, clause, coordinate, copular, name, np, pp, pron, pron_clitic, vp,
 };
-pub use realize::{PhraseError, RealizeOpts, realize};
+pub use realize::{
+    CliticStyle, PhraseError, PhraseWarning, RealizeOpts, Realized, realize, realize_checked,
+};
 pub use sexpr::{SexprError, Value, clause_from_str, compile_clause, parse, print};
