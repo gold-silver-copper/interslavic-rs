@@ -47,7 +47,7 @@ and the S-expression reader (`clause_from_str`), with a canonical printer
   flavored orthography and pinned byte-exact.
 - `cargo xtask phrase-check`: renders every golden and runs it through
   slovowiki's independent agreement checker (local sibling checkout;
-  `SLOVOWIKI_DIR` env var). Current status: 40 tokens, 0 unknown,
+  `SLOVOWIKI_DIR` env var). Current status: 112 tokens, 0 unknown,
   0 agreement errors.
 
 ## Deliberately deferred
@@ -59,5 +59,5 @@ li/dat/acc/sę, parsing Interslavic text back into trees (stage 5 of
 `phrase-improvement.md`), and spelled-out numerals (the 0.12.0 decision
 stands).
 
-Published to crates.io as an experiment (`0.1.x`): the API is expected
+Published to crates.io as an experiment (`0.2.x`): the API is expected
 to move; pin exactly if you depend on it.

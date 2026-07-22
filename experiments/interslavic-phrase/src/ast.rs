@@ -137,8 +137,10 @@ impl RelClause {
     }
 }
 
-/// Coordinating conjunctions — a closed table (dictionary-attested:
-/// `i` "and", `ili` "or", `a` "and/while", `ale` "but").
+/// Coordinating conjunctions — a closed table, each entry a dictionary
+/// `conj.` row (preposition-table discipline): `i` "and" (row 718),
+/// `ili` "or" (row 724), `a` "and/while" (row 1855), `ale` "but"
+/// (row 134).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Conj {
     I,

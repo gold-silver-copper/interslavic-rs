@@ -44,8 +44,43 @@ layout does not:
 - Adverbs (preverbal — policy), declinable proper names (`:indecl`
   escape).
 
-All 0.1.0 goldens byte-stable; 16 golden tests + full-node round-trip;
-slovowiki gate: 112 tokens, 0 unknown, 0 agreement errors.
+All 0.1.0 goldens byte-stable; 16 golden tests; slovowiki gate: 112
+tokens, 0 unknown, 0 agreement errors.
+
+### Post-review root-cause revision (same release)
+
+The PR #34 code review confirmed ten defects traceable to five root
+mechanisms; all five were replaced, not patched (the review probes are
+pinned in `tests/review_regressions.rs`):
+
+- **Typed linearization**: labeled constituents with Word/Clitic/Punct
+  tokens carried until one final join — the string-search clitic
+  placement, word-counting second position, and marker-character comma
+  protocol no longer exist. 2P clitics respect constituent boundaries
+  ("Toj dobry krålj go vidi.").
+- **Per-verb-complex clitic clusters** (Franks & King: conjuncts are
+  separate clitic domains): coordinated VPs keep their clitics
+  ("Krålj kupil knigų i viděl go."); clitics inside relatives attach
+  there; unclitickable contexts (conjuncts, PP objects, topic/focus
+  marking) force full forms as a cited rule — a focused clitic object
+  now yields "Jego li vidi krålj?".
+- **One verb-complex builder**: imperative/conditional/passive/copular
+  all route through it; incoherent Force/Mood/Voice combinations error
+  (passive imperative, conditional imperative) instead of silently
+  dropping a member; relatives render through the same VP machinery
+  (valence and adverbs now apply inside them).
+- **Derived order-markedness + pure syncretism probe**: the
+  AmbiguousOrder warning fires only on genuinely inverted subject/object
+  order, once; no probe re-renders through the warning context.
+- **Discourse through the single pipeline**: `realize_with_lead_in`
+  carries connectives; `narrate` (now by-value) assembles no strings and
+  honors the caller's options in every sentence.
+
+Facade 0.14.0 gained `conditional_parts` (the conditional as data, from
+the same auxiliary table the paradigm row uses) — the phrase crate's
+hand-copied slot map is gone. Output changes vs the pre-review branch:
+focused/topicalized clitic pronouns now render full forms; narrate
+applies sentence casing/punctuation uniformly.
 
 ## 0.1.0 — 2026-07-22
 
