@@ -40,7 +40,7 @@ of scope (steen recommends digits; downstream renders digits).
   prepositions page with dictionary translations where steen has no
   entry, source-marked per entry; unit-tested to agree with
   `preposition_cases` case-for-case.
-- **Whole-dictionary paradigm fingerprint**: 568,935 cells (noun,
+- **Whole-dictionary paradigm fingerprint**: 533,286 cells (noun,
   adjective, raw verb, numeral, and closed-class pronoun paradigms)
   hashed (inline FNV-1a) and pinned in a unit test. `cargo xtask
   dump-paradigms [name]` writes the dump; `cargo xtask diff-fingerprint
@@ -68,7 +68,11 @@ of scope (steen recommends digits; downstream renders digits).
   collectives (`dvoje` → `dvojih`…), `nula`/`sto`/`tysęć`/`milion`/
   `miliard`, the declinable hundreds (`dvěstě`…`devęťsȯt`),
   indeclinable `-sto` byforms, the `-desęt` tens, `sedm`/`osm`, and
-  `-ina`/`-ka` fractionals/substantivized numerals.
+  `-ina`/`-ka` fractionals/substantivized numerals. Note the widened
+  shape-based recognition also affects same-shaped non-numeral input,
+  which previously returned `None`: an `-sto` noun (`město`) now hits
+  the indeclinable-hundreds rule and an `-ero` noun (`jezero`) the
+  collective rule — pass nouns to the noun API, not `numeral()`.
 
 ## 0.11.0 — 2026-07-21
 

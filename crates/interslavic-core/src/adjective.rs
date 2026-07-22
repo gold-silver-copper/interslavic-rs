@@ -335,9 +335,13 @@ pub fn decline_pronoun(
 ///
 /// Recognition is by word SHAPE (an i-stem lemma is detected by its final
 /// `-ť`, an ordinal by its `-y`/`-i`), not a closed lexicon, so a same-
-/// shaped non-numeral — a feminine i-stem noun like `kosť` — yields a
-/// (correctly-declined) `Some`. Lemmas are the flavored citation forms
-/// (`desęť`, not `deset`).
+/// shaped non-numeral yields a `Some` rather than `None` — a feminine
+/// i-stem noun like `kosť` declines correctly, but beware the newer
+/// shape branches on non-numeral input: an `-sto` noun (`město`) hits
+/// the indeclinable-hundreds rule and an `-ero` noun (`jezero`) the
+/// collective rule, producing numeral-shaped output. Pass nouns to the
+/// noun API, not here. Lemmas are the flavored citation forms (`desęť`,
+/// not `deset`).
 pub fn decline_numeral(
     lemma: &str,
     case: Case,

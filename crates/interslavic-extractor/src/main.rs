@@ -391,6 +391,32 @@ mod tests {
         assert!(parsed.is_verb);
         assert!(parsed.transitive);
         assert!(parsed.imperfective);
+        assert!(!parsed.perfective);
+        assert!(!parsed.reflexive);
+        assert!(!parsed.intransitive);
+    }
+
+    #[test]
+    fn parse_part_of_speech_extracts_aspect_and_reflexivity() {
+        // Biaspectual: imperfective AND perfective (reference parser
+        // semantics), with the conjugation bool staying imperfective.
+        let parsed = parse_part_of_speech("v.tr. ipf./pf.");
+        assert!(parsed.imperfective);
+        assert!(parsed.perfective);
+        // Plain perfective: not imperfective ("pf" must not match "ipf").
+        let parsed = parse_part_of_speech("v.tr. pf.");
+        assert!(!parsed.imperfective);
+        assert!(parsed.perfective);
+        // Reflexive is its own flag; carries no transitivity marker.
+        let parsed = parse_part_of_speech("v.refl. ipf.");
+        assert!(parsed.reflexive);
+        assert!(!parsed.transitive);
+        assert!(!parsed.intransitive);
+        // Intransitive marker must not read as transitive ("tr" is
+        // token-exact) and must set its own flag.
+        let parsed = parse_part_of_speech("v.intr. ipf.");
+        assert!(!parsed.transitive);
+        assert!(parsed.intransitive);
     }
 
     #[test]

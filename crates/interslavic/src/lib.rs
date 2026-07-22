@@ -514,9 +514,14 @@ pub fn noun_info(lemma: &str) -> NounInfo {
 ///   etažami"): the gen-pl override applies in Nom and Acc only; in an
 ///   oblique slot the noun takes the phrase case, plural (singular for
 ///   1) — "s pęťjų zlåtnikami", not *"s pęť zlåtnikov";
-/// - policy (pan-Slavic pattern, unstated in ISV sources): the animate
-///   accusative of 2–4 takes the genitive plural, agreeing with the
-///   numeral's genitive-shaped accusative ("vidžų dvoh mųžev");
+/// - policy (pan-Slavic pattern, unstated in ISV sources): the MASCULINE
+///   animate accusative of 2–4 takes the genitive plural, agreeing with
+///   the numeral's genitive-shaped accusative ("vidžų dvoh mųžev").
+///   Feminine/neuter animates keep the plain accusative ("vidžų dvě
+///   ženy") because the numeral's feminine column has no animate variant
+///   (`numeral("dva", Acc, …, Feminine, Animate)` is `dvě`, per the JS
+///   reference) — the noun and the numeral must compose into one
+///   coherent phrase;
 /// - sourced: plural-only nouns count with the collective numerals,
 ///   which always take the genitive plural ("dvoje dverij"), and with
 ///   plural jedin for 1 ("jedne dveri"); oblique collective phrases are
@@ -536,12 +541,17 @@ pub fn noun_info(lemma: &str) -> NounInfo {
 /// // Accusative, inanimate: same pattern.
 /// assert_eq!(q(2, Case::Acc), "domy");
 /// assert_eq!(q(5, Case::Acc), "domov");
-/// // Accusative, animate: 2–4 go genitive with the numeral ("vidžų dvoh mųžev").
+/// // Accusative, masculine animate: 2–4 go genitive with the numeral
+/// // ("vidžų dvoh mųžev").
 /// let qa = |n, case| quantified(n, "mųž", case, Gender::Masculine, Animacy::Animate);
 /// assert_eq!(qa(1, Case::Acc), "mųža");
 /// assert_eq!(qa(2, Case::Acc), "mųžev");
 /// assert_eq!(qa(4, Case::Acc), "mųžev");
 /// assert_eq!(qa(5, Case::Acc), "mųžev");
+/// // Feminine animate keeps the plain accusative, agreeing with dvě
+/// // ("vidžų dvě ženy") — the genitive override is masculine-only.
+/// assert_eq!(quantified(2, "žena", Case::Acc, Gender::Feminine, Animacy::Animate), "ženy");
+/// assert_eq!(quantified(5, "žena", Case::Acc, Gender::Feminine, Animacy::Animate), "žen");
 /// // Instrumental: the gen-pl override dissolves — phrase case throughout.
 /// assert_eq!(q(1, Case::Ins), "domom");
 /// assert_eq!(q(2, Case::Ins), "domami");
@@ -572,6 +582,11 @@ pub fn quantified(n: u64, lemma: &str, case: Case, gender: Gender, animacy: Anim
 ///     quantified_with_info(2, "usta", Case::Nom, Gender::Neuter, Animacy::Inanimate, true),
 ///     "ust"
 /// );
+/// // 0 takes the genitive plural here too, like 5+.
+/// assert_eq!(
+///     quantified_with_info(0, "usta", Case::Nom, Gender::Neuter, Animacy::Inanimate, true),
+///     "ust"
+/// );
 /// ```
 pub fn quantified_with_info(
     n: u64,
@@ -586,9 +601,9 @@ pub fn quantified_with_info(
     let direct = matches!(case, Case::Nom | Case::Acc);
     if plural_only {
         // Collective government: gen pl after the collective in a direct
-        // slot ("dvoje dverij"); plural jedin for 1 ("jedne dveri");
-        // oblique slots follow the plain oblique rule.
-        return if direct && n >= 2 {
+        // slot ("dvoje dverij", and likewise for 0); plural jedin for 1
+        // ("jedne dveri"); oblique slots follow the plain oblique rule.
+        return if direct && n != 1 {
             form(Case::Gen, Number::Plural)
         } else {
             form(case, Number::Plural)
@@ -597,7 +612,7 @@ pub fn quantified_with_info(
     match n {
         1 => form(case, Number::Singular),
         2..=4 => {
-            if case == Case::Acc && animacy == Animacy::Animate {
+            if case == Case::Acc && animacy == Animacy::Animate && gender == Gender::Masculine {
                 form(Case::Gen, Number::Plural)
             } else {
                 form(case, Number::Plural)

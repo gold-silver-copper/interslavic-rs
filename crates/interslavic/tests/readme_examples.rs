@@ -76,6 +76,27 @@ fn readme_verb_paradigm_examples_stay_current() {
 }
 
 #[test]
+fn integration_md_assembly_example_stays_current() {
+    // Mirrors the worked runtime-assembly example in INTEGRATION.md.
+    let count = 5u64;
+    let coin = interslavic::quantified(
+        count,
+        "zlåtnik",
+        Case::Acc,
+        Gender::Masculine,
+        Animacy::Inanimate,
+    );
+    let stole = interslavic::perfect_parts(
+        "ukrasti",
+        Person::Third,
+        Number::Singular,
+        Gender::Masculine,
+    );
+    let sentence = format!("Straž {} {} {}.", stole.participle, count, coin);
+    assert_eq!(sentence, "Straž ukradl 5 zlåtnikov.");
+}
+
+#[test]
 fn readme_pronoun_and_participle_examples_stay_current() {
     use PronounStyle::*;
     assert_eq!(

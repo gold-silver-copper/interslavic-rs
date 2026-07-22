@@ -82,8 +82,10 @@ governed noun form for a counted phrase; **you render `n` as digits** ("5
 zlåtnikov") — spelled-out numerals are deliberately out of scope, and the
 grammar itself recommends digits. The rules (1 → nom sg, 2–4 → nom pl,
 5+/0/compounds → gen pl in direct cases; phrase case in oblique slots;
-animate accusative of 2–4 goes genitive) are documented on the function,
-including which parts are sourced and which are stated policy.
+the *masculine* animate accusative of 2–4 goes genitive, agreeing with
+`dvoh`/`trěh`, while feminine/neuter animates stay accusative to agree
+with `dvě`) are documented on the function, including which parts are
+sourced and which are stated policy.
 
 Plural-only nouns take collective government (gen pl — "dvoje novin",
 never \*"dvě noviny"). Detection is automatic for dictionary lemmas; for
@@ -145,6 +147,7 @@ citation form plus grammatical features at the moment you need it.
 use interslavic::*;
 
 // "The guard stole 5 gold coins." — assembled, not stored.
+// (This example is CI-tested in tests/readme_examples.rs.)
 let count = 5u64;
 let coin = quantified(count, "zlåtnik", Case::Acc, Gender::Masculine, Animacy::Inanimate);
 let stole = perfect_parts("ukrasti", Person::Third, Number::Singular, Gender::Masculine);

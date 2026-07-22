@@ -81,7 +81,10 @@ pub fn dump_string(tsv: &str) -> String {
                 nouns.insert(lemma);
             } else if pos.starts_with("adj.") {
                 adjectives.insert(lemma);
-            } else if pos.contains("v.") {
+            } else if pos.starts_with("v.") || pos.starts_with("#v.") {
+                // A prefix match, NOT contains("v."): "adv." contains
+                // "v." and adverbs must not be conjugated into the
+                // corpus.
                 verbs.insert(lemma);
             } else if pos.starts_with("num.") {
                 numerals.insert(lemma);
@@ -208,7 +211,7 @@ mod tests {
     /// changelog, and only then update this constant — in that commit,
     /// deliberately. Byform order and cell content are compatibility
     /// contracts (see CHANGELOG.md policy).
-    const EXPECTED_FINGERPRINT: u64 = 0xb764_648a_4156_27d8; // 568,935 cells, 0.12.0
+    const EXPECTED_FINGERPRINT: u64 = 0x2a36_5540_6ac5_6342; // 533,286 cells, 0.12.0
 
     #[test]
     fn whole_dictionary_paradigm_fingerprint_is_stable() {
