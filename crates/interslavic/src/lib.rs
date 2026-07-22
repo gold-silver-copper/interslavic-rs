@@ -347,6 +347,128 @@ pub fn numeral(
     adjective::decline_numeral(lemma.trim(), case, number, gender, animacy)
 }
 
+/// The correctly-governed noun form for a counted phrase in a given
+/// syntactic slot; `n` is rendered as digits by the caller ("5 zlåtnikov"
+/// — spelled-out numerals are out of scope, and steen itself recommends
+/// digits). Gender/animacy inflect the noun (they override the
+/// dictionary, like [`noun_with()`]); plural-only lemmas are detected
+/// from the dictionary — for out-of-dictionary pluralia tantum use
+/// [`quantified_with_info()`].
+///
+/// Government rules (steen numerals page; where the sources are silent
+/// the rule is documented POLICY, not a citation):
+///
+/// - sourced: 1 → nominative singular, 2–4 → nominative plural, 5+ →
+///   genitive plural ("jedin dom, dva domy, četyri domy, pet domov");
+/// - policy (sources silent on compounds): the rule is value-based —
+///   steen's "all numbers higher than 4" covers 11–14, 21, and every
+///   compound; the East-Slavic last-digit rule (21 + singular) is
+///   deliberately not applied because no ISV source attests it. 0 takes
+///   the genitive plural like 5+;
+/// - policy (implied by the declension tables and steen's "Dom s tri
+///   etažami"): the gen-pl override applies in Nom and Acc only; in an
+///   oblique slot the noun takes the phrase case, plural (singular for
+///   1) — "s pęťjų zlåtnikami", not *"s pęť zlåtnikov";
+/// - policy (pan-Slavic pattern, unstated in ISV sources): the animate
+///   accusative of 2–4 takes the genitive plural, agreeing with the
+///   numeral's genitive-shaped accusative ("vidžų dvoh mųžev");
+/// - sourced: plural-only nouns count with the collective numerals,
+///   which always take the genitive plural ("dvoje dverij"), and with
+///   plural jedin for 1 ("jedne dveri"); oblique collective phrases are
+///   unsourced, so the plain oblique rule applies there.
+///
+/// ```
+/// use interslavic::*;
+/// let q = |n, case| quantified(n, "dom", case, Gender::Masculine, Animacy::Inanimate);
+/// // Nominative: 1 → sg, 2–4 → nom pl, 0/5+/compounds → gen pl.
+/// assert_eq!(q(1, Case::Nom), "dom");
+/// assert_eq!(q(2, Case::Nom), "domy");
+/// assert_eq!(q(4, Case::Nom), "domy");
+/// assert_eq!(q(5, Case::Nom), "domov");
+/// assert_eq!(q(11, Case::Nom), "domov");
+/// assert_eq!(q(21, Case::Nom), "domov");
+/// assert_eq!(q(100, Case::Nom), "domov");
+/// // Accusative, inanimate: same pattern.
+/// assert_eq!(q(2, Case::Acc), "domy");
+/// assert_eq!(q(5, Case::Acc), "domov");
+/// // Accusative, animate: 2–4 go genitive with the numeral ("vidžų dvoh mųžev").
+/// let qa = |n, case| quantified(n, "mųž", case, Gender::Masculine, Animacy::Animate);
+/// assert_eq!(qa(1, Case::Acc), "mųža");
+/// assert_eq!(qa(2, Case::Acc), "mųžev");
+/// assert_eq!(qa(4, Case::Acc), "mųžev");
+/// assert_eq!(qa(5, Case::Acc), "mųžev");
+/// // Instrumental: the gen-pl override dissolves — phrase case throughout.
+/// assert_eq!(q(1, Case::Ins), "domom");
+/// assert_eq!(q(2, Case::Ins), "domami");
+/// assert_eq!(q(5, Case::Ins), "domami");
+/// assert_eq!(q(21, Case::Ins), "domami");
+/// assert_eq!(q(100, Case::Ins), "domami");
+/// // Dictionary pluralia tantum: collective government, never *"dvě noviny".
+/// assert_eq!(quantified(2, "noviny", Case::Nom, Gender::Feminine, Animacy::Inanimate), "novin");
+/// assert_eq!(quantified(1, "noviny", Case::Nom, Gender::Feminine, Animacy::Inanimate), "noviny");
+/// ```
+pub fn quantified(n: u64, lemma: &str, case: Case, gender: Gender, animacy: Animacy) -> String {
+    let trimmed = lemma.trim();
+    let plural_only = lookup_nouns_by_lemma(trimmed)
+        .first()
+        .is_some_and(|entry| entry.plural_only);
+    quantified_with_info(n, trimmed, case, gender, animacy, plural_only)
+}
+
+/// [`quantified()`] with caller-supplied noun metadata, for lemmas the
+/// dictionary does not carry. Steen's canonical pluralia-tantum example
+/// `dveri` is itself not a dictionary row, so automatic detection cannot
+/// see it — pass `plural_only: true` explicitly:
+///
+/// ```
+/// use interslavic::*;
+/// // A dictionary pluralia tantum through the explicit path ("dvoje ust").
+/// assert_eq!(
+///     quantified_with_info(2, "usta", Case::Nom, Gender::Neuter, Animacy::Inanimate, true),
+///     "ust"
+/// );
+/// ```
+pub fn quantified_with_info(
+    n: u64,
+    lemma: &str,
+    case: Case,
+    gender: Gender,
+    animacy: Animacy,
+    plural_only: bool,
+) -> String {
+    let lemma = lemma.trim();
+    let form = |case, number| noun_with(lemma, case, number, gender, animacy);
+    let direct = matches!(case, Case::Nom | Case::Acc);
+    if plural_only {
+        // Collective government: gen pl after the collective in a direct
+        // slot ("dvoje dverij"); plural jedin for 1 ("jedne dveri");
+        // oblique slots follow the plain oblique rule.
+        return if direct && n >= 2 {
+            form(Case::Gen, Number::Plural)
+        } else {
+            form(case, Number::Plural)
+        };
+    }
+    match n {
+        1 => form(case, Number::Singular),
+        2..=4 => {
+            if case == Case::Acc && animacy == Animacy::Animate {
+                form(Case::Gen, Number::Plural)
+            } else {
+                form(case, Number::Plural)
+            }
+        }
+        // 0 and 5+ (value-based; compounds included — see the policy notes).
+        _ => {
+            if direct {
+                form(Case::Gen, Number::Plural)
+            } else {
+                form(case, Number::Plural)
+            }
+        }
+    }
+}
+
 /// The case(s) a preposition governs, or `None` if `prep` is not a
 /// recognized single-word preposition. `prep` is the flavored citation
 /// form; a preposition may govern several cases (the case selects the

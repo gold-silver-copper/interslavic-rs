@@ -7,7 +7,7 @@ const OUT_DIR = path.join(ROOT, 'target/infl-comparison');
 const SONIC_REPO = path.join(ROOT, '.external/sonic16x-interslavic');
 updateSonicCheckout();
 const UTILS = require(path.join(SONIC_REPO, 'node_modules/@interslavic/utils/dist/index.js'));
-const { declensionNoun, declensionAdjective, declensionPronoun, conjugationVerb, parsePos } = UTILS;
+const { declensionNoun, declensionAdjective, declensionPronoun, declensionNumeral, conjugationVerb, parsePos } = UTILS;
 
 const BASIC_URL = 'https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/export?format=tsv&gid=1987833874';
 const CASES = ['nom', 'acc', 'gen', 'loc', 'dat', 'ins'];
@@ -25,6 +25,7 @@ const MIN_COMPATIBLE_RATES = {
   verb: 0.95,
   pronoun: 1,
   'oov-verb': 0.95,
+  numeral: 0.99,
 };
 
 function updateSonicCheckout() {
@@ -138,6 +139,50 @@ function adjectiveForms(result) {
 
 function cleanOptional(value) {
   return value == null ? null : norm(value);
+}
+
+// Map a declensionNumeral paradigm onto the full (case, number, gender,
+// animacy) grid the Rust helper emits, keyed `{case}_{sg|pl}_{m|f|n}_{anim|inan}`.
+// Column semantics vary by shape: dva-type ['masculine','feminine/neuter'],
+// tysęć/sto-type ['singular…','plural…'], single-column ['plural'] (tri,
+// hundreds, collectives, 5+), and adjective-type (jedin, ordinals,
+// differentials/multiplicatives) reuses the adjective column mapping.
+function numeralForms(result) {
+  const forms = {};
+  const set = (c, n, g, a, value) => {
+    if (value != null) forms[`${c}_${n}_${g}_${a}`] = norm(value);
+  };
+  if (result.cases) {
+    const cols = (result.columns || []).map(String);
+    for (const c of CASES) {
+      const row = result.cases[c];
+      if (!row) continue;
+      if (cols.length === 2 && cols[0].startsWith('masculine')) {
+        for (const a of ['anim', 'inan']) set(c, 'pl', 'm', a, row[0]);
+        for (const g of ['f', 'n']) for (const a of ['anim', 'inan']) set(c, 'pl', g, a, row[1]);
+      } else if (cols.length === 2) {
+        for (const g of ['m', 'f', 'n']) for (const a of ['anim', 'inan']) {
+          set(c, 'sg', g, a, row[0]);
+          set(c, 'pl', g, a, row[1]);
+        }
+      } else {
+        const n = cols[0] && cols[0].startsWith('sing') ? 'sg' : 'pl';
+        for (const g of ['m', 'f', 'n']) for (const a of ['anim', 'inan']) set(c, n, g, a, row[0]);
+      }
+    }
+  } else if (result.casesSingular) {
+    const shaped = { singular: result.casesSingular, plural: result.casesPlural };
+    const colMap = { masc_anim: ['m', ['anim']], masc_inan: ['m', ['inan']], fem: ['f', ['anim', 'inan']], neut: ['n', ['anim', 'inan']] };
+    for (const [genderKey, [g, animacies]] of Object.entries(colMap)) {
+      for (const n of NUMBERS) {
+        for (const c of CASES) {
+          const value = adjectiveFormFor(shaped, genderKey, c, n);
+          for (const a of animacies) set(c, n, g, a, value);
+        }
+      }
+    }
+  }
+  return Object.keys(forms).length ? forms : null;
 }
 
 function splitImperative(value) {
@@ -294,7 +339,7 @@ function buildSonicReferences(rows) {
     const details = row.partOfSpeech || '';
     let pos;
     try { pos = parsePos(details); } catch (e) { skipped.push({ id: row.id, isv: row.isv, details, reason: `parsePos: ${e.message}` }); continue; }
-    if (!pos || !['noun', 'adjective', 'verb'].includes(pos.name)) continue;
+    if (!pos || !['noun', 'adjective', 'verb', 'numeral'].includes(pos.name)) continue;
     for (const word of splitWords(row.isv)) {
       if (!isCoreLemma(word)) {
         skippedPhrases.push({ id: row.id, word, kind: pos.name, details, reason: 'phrase strings are not part of the core typed lemma API' });
@@ -327,6 +372,14 @@ function buildSonicReferences(rows) {
           {
             const refKey = `${row.id}|verb|${word}`;
             refs.push({ refKey, input: `${refKey}\tverb\t${word}\t${row.addition || ''}\t${!!pos.transitive}\t${!!pos.imperfective}`, id: row.id, kind: 'verb', word, details, addition: row.addition || '', meta: { reflexive: !!pos.reflexive, transitive: !!pos.transitive, perfective: !!pos.perfective, imperfective: !!pos.imperfective }, forms, allSonicVerbForms: result });
+          }
+        } else if (pos.name === 'numeral') {
+          const result = declensionNumeral(word, pos.type);
+          const forms = result ? numeralForms(result) : null;
+          if (!forms) { skipped.push({ id: row.id, word, kind: 'numeral', details, reason: 'declensionNumeral returned null' }); continue; }
+          {
+            const refKey = `${row.id}|numeral|${word}`;
+            refs.push({ refKey, input: `${refKey}\tnumeral\t${word}`, id: row.id, kind: 'numeral', word, details, addition: row.addition || '', meta: { numeralType: pos.type }, forms });
           }
         }
       } catch (e) {
@@ -417,6 +470,19 @@ fn main() {
             let imperfective = parts.get(5).copied().map(parse_bool).unwrap_or(true);
             for (key, value) in verb_forms(word, present_hint, transitive, imperfective) {
                 emit(ref_key, &key, value);
+            }
+        } else if kind == "numeral" {
+            let genders: [(&str, Gender); 3] = [("m", Gender::Masculine), ("f", Gender::Feminine), ("n", Gender::Neuter)];
+            let animacies: [(&str, Animacy); 2] = [("anim", Animacy::Animate), ("inan", Animacy::Inanimate)];
+            for (c_key, case) in cases {
+                for (n_key, number) in numbers {
+                    for (g_key, g) in genders {
+                        for (a_key, a) in animacies {
+                            let value = interslavic::numeral(word, case, number, g, a).unwrap_or_else(|| "∅".to_string());
+                            emit(ref_key, &format!("{}_{}_{}_{}", c_key, n_key, g_key, a_key), value);
+                        }
+                    }
+                }
             }
         } else if kind == "pronoun" {
             let styles: [(&str, PronounStyle); 3] = [("full", PronounStyle::Full), ("clitic", PronounStyle::Clitic), ("nprep", PronounStyle::AfterPreposition)];
@@ -513,7 +579,7 @@ function thresholdFailures(summary) {
   if (summary.compatibleRate < MIN_COMPATIBLE_RATES.total) {
     failures.push(`total compatible rate ${summary.compatibleRate} < ${MIN_COMPATIBLE_RATES.total}`);
   }
-  for (const kind of ['noun', 'adjective', 'verb', 'pronoun', 'oov-verb']) {
+  for (const kind of ['noun', 'adjective', 'verb', 'pronoun', 'oov-verb', 'numeral']) {
     const item = summary.byKind[kind];
     if (item && item.compatibleRate < MIN_COMPATIBLE_RATES[kind]) {
       failures.push(`${kind} compatible rate ${item.compatibleRate} < ${MIN_COMPATIBLE_RATES[kind]}`);

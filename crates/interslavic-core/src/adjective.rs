@@ -320,10 +320,18 @@ pub fn decline_pronoun(
 
 /// One numeral form, or `None` if `lemma` is not a recognized numeral.
 /// Covers `jedin` (adjectival, with the irregular masculine nominative),
-/// the dual-remnant `dva`/`oba`/`obydva` and `tri`/`četyri`, the i-stem
-/// numerals `pęť`…`desęť` (declining like `kosť`), and the adjectivally-
-/// declined ordinals (`pŕvy`, `drugy`, …). Cardinals return their citation
-/// form for nominative/accusative.
+/// the dual-remnant `dva`/`oba`/`obadva`/`obydva` and `tri`/`četyri`, the
+/// i-stem numerals `pęť`…`desęť` plus the `-nadsęť`/`-desęt` teens and
+/// tens and `sedm`/`osm`, the noun-declined `nula`/`sto`/`tysęć`/
+/// `milion`/`miliard`, the hundreds (`dvěstě`…`devęťsȯt` as an explicit
+/// table; the `-sto` byforms are indeclinable), the collective numerals
+/// (`dvoje`, `četvero`, …, pronominal `-ih`/`-yh` obliques), and the
+/// adjectivally-declined ordinals (`pŕvy`, `drugy`, …). Cardinals return
+/// their citation form for nominative/accusative — except the animate
+/// accusative of 2–4 and of the collectives, which is the genitive form
+/// (steen numerals; `@interslavic/utils` `declensionNumeral`: `dva /
+/// dvoh`, `trěh / tri`). One form per cell: `animacy` selects the
+/// accusative variant instead of a `" / "` string.
 ///
 /// Recognition is by word SHAPE (an i-stem lemma is detected by its final
 /// `-ť`, an ordinal by its `-y`/`-i`), not a closed lexicon, so a same-
@@ -348,15 +356,30 @@ pub fn decline_numeral(
             "jedny", "jedin", case, number, gender, animacy,
         ));
     }
-    // Dual remnants 2 (gender only in nom/acc), oba/obydva likewise.
-    for (base, stem) in [("dva", "dv"), ("oba", "ob"), ("obydva", "obydv")] {
+    // Dual remnants 2 (gender only in nom/acc), oba/obadva/obydva likewise.
+    // The masculine animate accusative is the genitive form (declensionNumeral:
+    // "dva / dvoh"; the feminine/neuter column has no animate variant).
+    for (base, stem) in [
+        ("dva", "dv"),
+        ("oba", "ob"),
+        ("obadva", "obadv"),
+        ("obydva", "obydv"),
+    ] {
         if l == base {
             return Some(match case {
                 Case::Nom | Case::Acc => {
-                    if gender == Gender::Feminine {
-                        format!("{stem}ě")
-                    } else {
+                    if case == Case::Acc
+                        && animacy == Animacy::Animate
+                        && gender == Gender::Masculine
+                    {
+                        format!("{stem}oh")
+                    } else if gender == Gender::Masculine {
                         l.to_string()
+                    } else {
+                        // dvě is feminine AND neuter (steen: dva domy /
+                        // dvě ženy / dvě okna; declensionNumeral's second
+                        // column is "feminine/neuter").
+                        format!("{stem}ě")
                     }
                 }
                 Case::Gen | Case::Loc => format!("{stem}oh"),
@@ -365,28 +388,209 @@ pub fn decline_numeral(
             });
         }
     }
-    // 3 and 4: dual-remnant declension, no gender.
+    // 3 and 4: dual-remnant declension, no gender; the animate accusative
+    // is the genitive form ("trěh / tri" — single column, all genders).
     if l == "tri" || l == "četyri" {
         let stem = l.strip_suffix('i').unwrap_or(l);
         return Some(match case {
+            Case::Acc if animacy == Animacy::Animate => format!("{stem}ěh"),
             Case::Nom | Case::Acc => l.to_string(),
             Case::Gen | Case::Loc => format!("{stem}ěh"),
             Case::Dat => format!("{stem}ěm"),
             Case::Ins => format!("{stem}ěmi"),
         });
     }
-    // 5 and up (pęť…desęť and the -nadsęť/-deset series): the i-stem
-    // (kosť-class) declension.
-    if let Some(stem) = l.strip_suffix('ť').filter(|stem| stem.chars().count() >= 2) {
+    // Collective numerals (dvoje/troje/oboje and the -ero series): citation
+    // form in the nominative, pronominal obliques on the linking vowel
+    // (-e stems take -i-, -o stems -y-): dvojih, dvojim, dvojimi;
+    // četveryh… (declensionNumeral's collective branch). Animate
+    // accusative = genitive, like 2–4.
+    if matches!(l, "dvoje" | "troje" | "oboje") || (l.ends_with("ero") && l.chars().count() >= 5) {
+        let mut stem = l.to_string();
+        let link = if stem.ends_with('o') { 'y' } else { 'i' };
+        stem.pop();
+        return Some(match case {
+            Case::Nom => l.to_string(),
+            Case::Acc if animacy == Animacy::Inanimate => l.to_string(),
+            Case::Acc | Case::Gen | Case::Loc => format!("{stem}{link}h"),
+            Case::Dat => format!("{stem}{link}m"),
+            Case::Ins => format!("{stem}{link}mi"),
+        });
+    }
+    // Noun-declined numerals (steen: nula f., sto n. like slovo, tysęć
+    // m./f., milion/miliard m.). tysęć uses the caller's gender for its
+    // m./f. byforms (neuter callers get the feminine column).
+    let noun_gender = match l {
+        "nula" => Some(Gender::Feminine),
+        "sto" => Some(Gender::Neuter),
+        "milion" | "miliard" => Some(Gender::Masculine),
+        "tysęć" => Some(if gender == Gender::Masculine {
+            Gender::Masculine
+        } else {
+            Gender::Feminine
+        }),
+        _ => None,
+    };
+    if let Some(g) = noun_gender {
+        return Some(crate::noun::decline_noun_explicit(
+            l,
+            case,
+            number,
+            g,
+            Animacy::Inanimate,
+            false,
+            false,
+            false,
+            None,
+        ));
+    }
+    // The declinable hundreds, as an explicit table (both members inflect;
+    // cells from @interslavic/utils declensionNumeral's exclusion list, in
+    // [nom, acc, gen, loc, dat, ins] order).
+    const HUNDREDS: &[(&str, [&str; 6])] = &[
+        (
+            "dvěstě",
+            [
+                "dvěstě",
+                "dvěstě",
+                "dvohsȯt",
+                "dvohstah",
+                "dvomstam",
+                "dvomastami",
+            ],
+        ),
+        (
+            "trista",
+            [
+                "trista",
+                "trista",
+                "trěhsȯt",
+                "trěhstah",
+                "trěmstam",
+                "trěmistami",
+            ],
+        ),
+        (
+            "četyrista",
+            [
+                "četyrista",
+                "četyrista",
+                "četyrěhsȯt",
+                "četyrěhstah",
+                "četyrěmstam",
+                "četyrěmistami",
+            ],
+        ),
+        (
+            "pęťsȯt",
+            [
+                "pęťsȯt",
+                "pęťsȯt",
+                "pętisȯt",
+                "pętistah",
+                "pętistam",
+                "pęťjųstami",
+            ],
+        ),
+        (
+            "šesťsȯt",
+            [
+                "šesťsȯt",
+                "šesťsȯt",
+                "šesťsȯt",
+                "šestistah",
+                "šestistam",
+                "šesťjųstami",
+            ],
+        ),
+        (
+            "sedmsȯt",
+            [
+                "sedmsȯt",
+                "sedmsȯt",
+                "sedmsȯt",
+                "sedmistah",
+                "sedmistam",
+                "sedmjųstami",
+            ],
+        ),
+        (
+            "osmsȯt",
+            [
+                "osmsȯt",
+                "osmsȯt",
+                "osmsȯt",
+                "osmistah",
+                "osmistam",
+                "osmjųstami",
+            ],
+        ),
+        (
+            "devęťsȯt",
+            [
+                "devęťsȯt",
+                "devęťsȯt",
+                "devęťsȯt",
+                "devętistah",
+                "devętistam",
+                "devęťjųstami",
+            ],
+        ),
+    ];
+    if let Some((_, cells)) = HUNDREDS.iter().find(|(k, _)| *k == l) {
+        let index = match case {
+            Case::Nom => 0,
+            Case::Acc => 1,
+            Case::Gen => 2,
+            Case::Loc => 3,
+            Case::Dat => 4,
+            Case::Ins => 5,
+        };
+        return Some(cells[index].to_string());
+    }
+    // The -sto byform hundreds (dvasto, tristo, devęťsto, …) are
+    // indeclinable (declensionNumeral treats every non-"sto" word in -sto
+    // as indeclinable).
+    if l.ends_with("sto") && l != "sto" {
+        return Some(l.to_string());
+    }
+    // 5 and up: the i-stem (kosť-class) declension. Detected by the final
+    // -ť (pęť…desęť, the -nadsęť teens, dvadesęť-type tens), by the
+    // numeral-specific -desęt tens (pęťdesęt…devęťdesęt), and by the two
+    // -m units sedm/osm (declensionNumeral declines [tm]-final cardinals
+    // as i-stems: sedmi, sedmjų).
+    let i_stem = l
+        .strip_suffix('ť')
+        .filter(|stem| stem.chars().count() >= 2)
+        .map(|stem| format!("{stem}t"))
+        .or_else(|| (l.ends_with("desęt") || l == "sedm" || l == "osm").then(|| l.to_string()));
+    if let Some(stem) = i_stem {
         return Some(match case {
             Case::Nom | Case::Acc => l.to_string(),
-            Case::Gen | Case::Dat | Case::Loc => format!("{stem}ti"),
+            Case::Gen | Case::Dat | Case::Loc => format!("{stem}i"),
             Case::Ins => format!("{l}jų"),
         });
     }
-    // Ordinals and other adjectivally-shaped numerals (pŕvy, drugy…).
+    // Ordinals and other adjectivally-shaped numerals (pŕvy, drugy,
+    // dvojaky, dvojny…).
     if l.ends_with(['y', 'i']) && l.chars().count() >= 3 {
         return Some(decline_adj(l, case, number, gender, animacy));
+    }
+    // Fractional and substantivized numerals (tretjina, četvŕtina;
+    // dvojka, devętka…): feminine žena-class nouns (declensionNumeral
+    // routes both types to the f.-noun declension).
+    if l.ends_with('a') && l.chars().count() >= 3 {
+        return Some(crate::noun::decline_noun_explicit(
+            l,
+            case,
+            number,
+            Gender::Feminine,
+            Animacy::Inanimate,
+            false,
+            false,
+            false,
+            None,
+        ));
     }
     None
 }
