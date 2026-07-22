@@ -338,6 +338,12 @@ pub fn reflexive_pronoun(case: Case, style: PronounStyle) -> Option<String> {
 /// assert_eq!(interslavic::numeral("pęť", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("pęti".into()));
 /// assert_eq!(interslavic::numeral("tri", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("trěh".into()));
 /// assert_eq!(interslavic::numeral("pŕvy", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), Some("pŕvogo".into()));
+/// // The masculine animate accusative is the genitive form; feminine
+/// // and neuter animates keep the plain form, agreeing with dvě/tri.
+/// assert_eq!(interslavic::numeral("dva", Case::Acc, Number::Plural, Gender::Masculine, Animacy::Animate), Some("dvoh".into()));
+/// assert_eq!(interslavic::numeral("dva", Case::Acc, Number::Plural, Gender::Feminine, Animacy::Animate), Some("dvě".into()));
+/// assert_eq!(interslavic::numeral("tri", Case::Acc, Number::Plural, Gender::Masculine, Animacy::Animate), Some("trěh".into()));
+/// assert_eq!(interslavic::numeral("tri", Case::Acc, Number::Plural, Gender::Feminine, Animacy::Animate), Some("tri".into()));
 /// // Oblique forms of the low cardinals exist across the paradigm.
 /// assert_eq!(interslavic::numeral("dva", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvoh".into()));
 /// assert_eq!(interslavic::numeral("dva", Case::Dat, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvom".into()));

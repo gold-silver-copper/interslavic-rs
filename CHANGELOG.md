@@ -60,10 +60,13 @@ of scope (steen recommends digits; downstream renders digits).
 
 - `decline_numeral`/`numeral()` now cover the whole numeral inventory.
   Changed cells vs 0.11.0 (all enumerated; numerals were in no previous
-  parity scope): the animate accusatives of `dva`/`oba`/`obydva`
-  (`dva` → `dvoh`) and `tri`/`četyri` (`tri` → `trěh`), and the neuter
-  nominative/accusative of the dva-family, which was `dva` and is now
-  correctly `dvě` (feminine AND neuter, per steen and the reference).
+  parity scope): the MASCULINE animate accusatives of
+  `dva`/`oba`/`obydva` (`dva` → `dvoh`) and `tri`/`četyri`
+  (`tri` → `trěh`) — feminine/neuter animates keep `dvě`/`tri` so the
+  numeral composes with the noun form `quantified` emits — and the
+  neuter nominative/accusative of the dva-family, which was `dva` and
+  is now correctly `dvě` (feminine AND neuter, per steen and the
+  reference).
   Everything else is additive (`None` → `Some`): `obadva`, the
   collectives (`dvoje` → `dvojih`…), `nula`/`sto`/`tysęć`/`milion`/
   `miliard`, the declinable hundreds (`dvěstě`…`devęťsȯt`),

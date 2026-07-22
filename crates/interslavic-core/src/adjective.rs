@@ -327,10 +327,13 @@ pub fn decline_pronoun(
 /// table; the `-sto` byforms are indeclinable), the collective numerals
 /// (`dvoje`, `četvero`, …, pronominal `-ih`/`-yh` obliques), and the
 /// adjectivally-declined ordinals (`pŕvy`, `drugy`, …). Cardinals return
-/// their citation form for nominative/accusative — except the animate
-/// accusative of 2–4 and of the collectives, which is the genitive form
-/// (steen numerals; `@interslavic/utils` `declensionNumeral`: `dva /
-/// dvoh`, `trěh / tri`). One form per cell: `animacy` selects the
+/// their citation form for nominative/accusative — except the MASCULINE
+/// animate accusative of 2–4 (`dvoh`, `trěh`; the feminine/neuter cells
+/// stay `dvě`/`tri`, composing with the noun form the facade's
+/// `quantified()` emits) and the animate accusative of the
+/// collectives, which take the genitive form (steen numerals;
+/// `@interslavic/utils` `declensionNumeral`: `dva / dvoh`, `trěh /
+/// tri`). One form per cell: `animacy` (with `gender`) selects the
 /// accusative variant instead of a `" / "` string.
 ///
 /// Recognition is by word SHAPE (an i-stem lemma is detected by its final
@@ -392,12 +395,18 @@ pub fn decline_numeral(
             });
         }
     }
-    // 3 and 4: dual-remnant declension, no gender; the animate accusative
-    // is the genitive form ("trěh / tri" — single column, all genders).
+    // 3 and 4: dual-remnant declension, no gender in the oblique cells.
+    // The MASCULINE animate accusative is the genitive form; the JS cell
+    // ("trěh / tri") is a single column with both alternatives, so the
+    // gender restriction mirrors dva's explicit feminine column (dvě has
+    // no animate variant) — the numeral must compose with the noun
+    // quantified() emits ("trěh mųžev" but "tri ženy").
     if l == "tri" || l == "četyri" {
         let stem = l.strip_suffix('i').unwrap_or(l);
         return Some(match case {
-            Case::Acc if animacy == Animacy::Animate => format!("{stem}ěh"),
+            Case::Acc if animacy == Animacy::Animate && gender == Gender::Masculine => {
+                format!("{stem}ěh")
+            }
             Case::Nom | Case::Acc => l.to_string(),
             Case::Gen | Case::Loc => format!("{stem}ěh"),
             Case::Dat => format!("{stem}ěm"),
@@ -450,7 +459,12 @@ pub fn decline_numeral(
     }
     // The declinable hundreds, as an explicit table (both members inflect;
     // cells from @interslavic/utils declensionNumeral's exclusion list, in
-    // [nom, acc, gen, loc, dat, ins] order).
+    // [nom, acc, gen, loc, dat, ins] order). NOTE the reference's own
+    // asymmetry is reproduced deliberately: pęťsȯt has a distinct
+    // genitive (pętisȯt) while šesťsȯt/sedmsȯt/osmsȯt/devęťsȯt list the
+    // citation form as their genitive. It looks like a typo — do not
+    // "fix" it here; the numeral parity scope compares these cells
+    // byte-for-byte against the reference.
     const HUNDREDS: &[(&str, [&str; 6])] = &[
         (
             "dvěstě",
