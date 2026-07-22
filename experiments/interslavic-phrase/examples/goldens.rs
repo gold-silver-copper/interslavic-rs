@@ -135,5 +135,5 @@ fn main() {
         )
         .connective(Connective::Potom),
     ];
-    println!("{}", narrate(&story, RealizeOpts::sentence()).unwrap());
+    println!("{}", narrate(story, RealizeOpts::sentence()).unwrap());
 }

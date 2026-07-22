@@ -421,7 +421,7 @@ fn discourse_narrative() {
     // Sentences 1+2 aggregate ("kupil knigų i spal"); sentence 3 keeps
     // its connective and pronominalizes both entities.
     assert_eq!(
-        narrate(&story, RealizeOpts::sentence()).unwrap(),
+        narrate(story, RealizeOpts::sentence()).unwrap(),
         "Toj krålj kupil knigų i spal. Potom on pročital jų."
     );
 
@@ -432,7 +432,7 @@ fn discourse_narrative() {
         DiscourseSentence::new(clause(np("krålj").entity("k"), vp("spati"))),
     ];
     assert_eq!(
-        narrate(&story, RealizeOpts::sentence()).unwrap(),
+        narrate(story, RealizeOpts::sentence()).unwrap(),
         "Krålj spi. Otėc spi. Krålj spi."
     );
 }

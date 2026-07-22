@@ -44,5 +44,6 @@ pub use ast::{
 };
 pub use realize::{
     CliticStyle, PhraseError, PhraseWarning, RealizeOpts, Realized, realize, realize_checked,
+    realize_with_lead_in,
 };
 pub use sexpr::{SexprError, Value, clause_from_str, compile_clause, parse, print};

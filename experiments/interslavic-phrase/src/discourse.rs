@@ -18,11 +18,15 @@
 //!   `i` "and"), rendered sentence-initially.
 
 use crate::ast::*;
-use crate::realize::{PhraseError, RealizeOpts, realize};
+use crate::realize::{PhraseError, RealizeOpts, realize_with_lead_in};
 use interslavic::{Gender, Number, Person, noun_info};
 use std::collections::HashMap;
 
-/// Sentence-initial discourse connectives — a closed table.
+/// Sentence-initial discourse connectives — a closed table, each entry
+/// a dictionary row (preposition-table discipline): `potom` adv. (row
+/// 3150), `ale` conj. (row 134), `zato` adv. (row 3056), `tomu` adv.
+/// (rows 4031/13020 — attested as an adverb, not only the dative of
+/// `to`), `i` conj. (row 718).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Connective {
     /// "then, afterwards"
@@ -206,7 +210,10 @@ fn can_aggregate(first: &Clause, second: &DiscourseSentence) -> bool {
 
 /// Realize a narrative: aggregation first (tree-to-tree), then the
 /// referring-expression pass (tree-to-tree), then one realization per
-/// sentence.
+/// sentence — every sentence, connective-bearing or not, goes through
+/// the ONE realization pipeline (`realize_with_lead_in`), so the
+/// caller's options (strictness, clitic style, sentence mode) apply
+/// uniformly and no string is assembled here.
 ///
 /// ```
 /// use interslavic_phrase::*;
@@ -230,26 +237,29 @@ fn can_aggregate(first: &Clause, second: &DiscourseSentence) -> bool {
 ///     .connective(Connective::Potom),
 /// ];
 /// assert_eq!(
-///     narrate(&story, RealizeOpts::sentence()).unwrap(),
+///     narrate(story, RealizeOpts::sentence()).unwrap(),
 ///     "Toj krålj kupil knigų. Potom on pročital jų."
 /// );
 /// ```
-pub fn narrate(sentences: &[DiscourseSentence], opts: RealizeOpts) -> Result<String, PhraseError> {
+pub fn narrate(
+    sentences: Vec<DiscourseSentence>,
+    opts: RealizeOpts,
+) -> Result<String, PhraseError> {
     // Aggregation pass (tree-to-tree).
     let mut aggregated: Vec<DiscourseSentence> = Vec::new();
     for sentence in sentences {
         if let Some(previous) = aggregated.last_mut() {
-            if can_aggregate(&previous.clause, sentence) {
+            if can_aggregate(&previous.clause, &sentence) {
                 let (ClauseCore::Verbal(target), ClauseCore::Verbal(source)) =
-                    (&mut previous.clause.core, &sentence.clause.core)
+                    (&mut previous.clause.core, sentence.clause.core)
                 else {
                     unreachable!("can_aggregate checked verbal cores");
                 };
-                target.items.extend(source.items.iter().cloned());
+                target.items.extend(source.items);
                 continue;
             }
         }
-        aggregated.push(sentence.clone());
+        aggregated.push(sentence);
     }
 
     // Referring-expression pass (tree-to-tree).
@@ -258,37 +268,19 @@ pub fn narrate(sentences: &[DiscourseSentence], opts: RealizeOpts) -> Result<Str
         pronominalize_clause(&mut sentence.clause, &mut mentions);
     }
 
-    // Realization, one string per sentence.
+    // Realization, one string per sentence, all through the single
+    // pipeline with the caller's options intact.
     let mut out = String::new();
     for sentence in &aggregated {
         if !out.is_empty() {
             out.push(' ');
         }
-        match sentence.connective {
-            Some(connective) => {
-                // The connective takes the capital; the clause itself is
-                // realized without sentence casing, then punctuated.
-                let mut body = realize(&sentence.clause, RealizeOpts::plain())?;
-                let word = connective.word();
-                let mut first = word.chars();
-                let capitalized = match first.next() {
-                    Some(c) => c.to_uppercase().collect::<String>() + first.as_str(),
-                    None => String::new(),
-                };
-                body = format!("{capitalized} {body}");
-                if opts.sentence {
-                    body.push(match sentence.clause.force {
-                        Force::Declarative => '.',
-                        Force::Imperative(_) => '!',
-                        _ => '?',
-                    });
-                }
-                out.push_str(&body);
-            }
-            None => {
-                out.push_str(&realize(&sentence.clause, opts)?);
-            }
-        }
+        let realized = realize_with_lead_in(
+            &sentence.clause,
+            sentence.connective.map(Connective::word),
+            opts,
+        )?;
+        out.push_str(&realized.text);
     }
     Ok(out)
 }
