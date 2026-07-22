@@ -52,5 +52,5 @@ Acc — policy, sources permissive), second-position clitic placement
 (declared as an option, unimplemented), and spelled-out numerals (the
 0.12.0 decision stands).
 
-This is an experiment: `publish = false`, promoted to a published crate
-only after a consumer adopts it.
+Published to crates.io as an experiment (`0.1.x`): the API is expected
+to move; pin exactly if you depend on it.
