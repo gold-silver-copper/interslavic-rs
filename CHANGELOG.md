@@ -5,6 +5,78 @@ strings and consumers bless first-variant outputs into their expectations:
 reordering variants is a breaking change and must be called out explicitly
 in the release notes (fenced by `tests/variant_order.rs`).
 
+## 0.12.0 — 2026-07-21
+
+Capability-and-contract release from the completed mrzavec integration:
+numeral count government, dictionary metadata exposure, per-case
+preposition senses, a whole-dictionary output fingerprint, and the
+downstream integration guide. Spelled-out numerals are deliberately out
+of scope (steen recommends digits; downstream renders digits).
+
+### Added
+
+- **`quantified(n, lemma, case, gender, animacy)`** /
+  `quantified_with_info(…, plural_only)`: the correctly-governed noun
+  form for a counted phrase (`n` rendered as digits by the caller).
+  Steen's base rule is cited (1 → nom sg, 2–4 → nom pl, 5+ → gen pl);
+  the compound-numeral rule (value-based, no East-Slavic last-digit
+  rule), the Nom/Acc-only genitive override, and the animate-accusative
+  genitive are documented policy — the sources are silent and the docs
+  say so. Plural-only nouns take collective government (gen pl, "dvoje
+  novin", never *"dvě noviny"); detection is automatic for dictionary
+  lemmas, explicit via `quantified_with_info` for OOV pluralia tantum
+  (steen's own example `dveri` is not a dictionary row).
+- **`verb_info()` / `noun_info()`** with `Aspect`
+  (`Ipf`/`Pf`/`Biaspectual`) and `Provenance` (`Dictionary`/`Guessed`):
+  the metadata the dictionary carries but never exposed. The extractor
+  now records perfectivity, reflexivity, and intransitivity per row
+  (mirroring `@interslavic/utils` `parsePos`: a biaspectual `ipf./pf.`
+  row is imperfective AND perfective); the conjugation booleans keep
+  their historical semantics untouched. Doc-tests pin the downstream
+  audit answers: `hybiti` is `v.intr. ipf.`, `ukrasti` `v.tr. pf.`,
+  `abstrahovati` biaspectual.
+- **`preposition_senses()`**: each governed case with its English gloss
+  (`s+Gen` "off, down from" vs `s+Ins` "with…"), sourced from the steen
+  prepositions page with dictionary translations where steen has no
+  entry, source-marked per entry; unit-tested to agree with
+  `preposition_cases` case-for-case.
+- **Whole-dictionary paradigm fingerprint**: 533,286 cells (noun,
+  adjective, raw verb, numeral, and closed-class pronoun paradigms)
+  hashed (inline FNV-1a) and pinned in a unit test. `cargo xtask
+  dump-paradigms [name]` writes the dump; `cargo xtask diff-fingerprint
+  <old> <new>` prints the exact cell delta, making the changelog
+  enumeration for any deliberate change mechanical.
+- **`INTEGRATION.md`**: the downstream guide (citation forms, the
+  byform-order contract, clean vs `_raw`, pronoun styles, counting,
+  metadata, the never-post-process rule, slovowiki cross-check caution,
+  a verified runtime-assembly example), linked from the README and
+  lib.rs.
+- Parity harness: a **numeral scope** driven by dictionary rows (every
+  `num.*` row via `declensionNumeral` across the full
+  case/number/gender/animacy grid): 129 paradigms / 7,308 forms, 100%
+  compatible (3 byform rows skipped where the reference returns null).
+
+### Changed
+
+- `decline_numeral`/`numeral()` now cover the whole numeral inventory.
+  Changed cells vs 0.11.0 (all enumerated; numerals were in no previous
+  parity scope): the MASCULINE animate accusatives of
+  `dva`/`oba`/`obydva` (`dva` → `dvoh`) and `tri`/`četyri`
+  (`tri` → `trěh`) — feminine/neuter animates keep `dvě`/`tri` so the
+  numeral composes with the noun form `quantified` emits — and the
+  neuter nominative/accusative of the dva-family, which was `dva` and
+  is now correctly `dvě` (feminine AND neuter, per steen and the
+  reference).
+  Everything else is additive (`None` → `Some`): `obadva`, the
+  collectives (`dvoje` → `dvojih`…), `nula`/`sto`/`tysęć`/`milion`/
+  `miliard`, the declinable hundreds (`dvěstě`…`devęťsȯt`),
+  indeclinable `-sto` byforms, the `-desęt` tens, `sedm`/`osm`, and
+  `-ina`/`-ka` fractionals/substantivized numerals. Note the widened
+  shape-based recognition also affects same-shaped non-numeral input,
+  which previously returned `None`: an `-sto` noun (`město`) now hits
+  the indeclinable-hundreds rule and an `-ero` noun (`jezero`) the
+  collective rule — pass nouns to the noun API, not `numeral()`.
+
 ## 0.11.0 — 2026-07-21
 
 Follow-up release from the mrzavec zero-pre-inflection conversion: one

@@ -120,6 +120,223 @@ pub fn preposition_cases(prep: &str) -> Option<&'static [Case]> {
         .map(|(_, cases)| *cases)
 }
 
+/// Per-case English glosses for every preposition in [`PREPOSITIONS`] —
+/// the case selects the meaning, and the meaning is what a
+/// government-linting or glossing consumer needs (s+Gen "off, down from"
+/// is a different word than s+Ins "with").
+///
+/// Gloss sources, marked per entry: `steen` = the prepositions section of
+/// Jan van Steenbergen's grammar (steen.free.fr/interslavic/
+/// prepositions.html, "With the genitive/dative/accusative/instrumental/
+/// locative" lists, incl. the stable-location-vs-motion rule for the
+/// Acc/Ins and Acc/Loc pairs); `dict` = the community dictionary's
+/// English translation for entries steen does not list (its government
+/// annotation is where the case set came from). A unit test asserts this
+/// table and [`PREPOSITIONS`] agree key-for-key and case-for-case, so the
+/// two can never drift.
+pub const PREPOSITION_SENSES: &[(&str, &[(Case, &str)])] = &[
+    // Single-letter core prepositions and their spelling variants.
+    ("v", &[(Case::Acc, "into"), (Case::Loc, "in, within")]), // steen
+    ("vȯ", &[(Case::Acc, "into"), (Case::Loc, "in, within")]), // steen
+    // s+Gen is absent from steen's lists; the gloss is the dictionary's
+    // (+2) sense. s+Ins is steen.
+    (
+        "s",
+        &[
+            (Case::Gen, "off, down from"),                          // dict
+            (Case::Ins, "with, together with; by means of, using"), // steen
+        ],
+    ),
+    (
+        "so",
+        &[
+            (Case::Gen, "off, down from"),
+            (Case::Ins, "with, together with; by means of, using"),
+        ],
+    ),
+    (
+        "sȯ",
+        &[
+            (Case::Gen, "off, down from"),
+            (Case::Ins, "with, together with; by means of, using"),
+        ],
+    ),
+    ("k", &[(Case::Dat, "to, towards (direction)")]), // steen
+    ("ko", &[(Case::Dat, "to, towards (direction)")]), // steen
+    ("kȯ", &[(Case::Dat, "to, towards (direction)")]), // steen
+    // o/ob+Acc is the "against, on (impact)" reading the case table
+    // already documents as the fuller dictionary reading; +Loc is steen.
+    (
+        "o",
+        &[
+            (Case::Acc, "against, on (impact)"),         // dict
+            (Case::Loc, "about; concerning, regarding"), // steen
+        ],
+    ),
+    (
+        "ob",
+        &[
+            (Case::Acc, "against, on (impact)"),
+            (Case::Loc, "about; concerning, regarding"),
+        ],
+    ),
+    // The rest, in the same order as PREPOSITIONS.
+    ("bez", &[(Case::Gen, "without")]),            // steen
+    ("blizko", &[(Case::Gen, "near, close to")]),  // steen
+    ("blågodarę", &[(Case::Dat, "thanks to")]),    // steen
+    ("dlja", &[(Case::Gen, "for")]),               // steen
+    ("do", &[(Case::Gen, "to, towards, till")]),   // steen
+    ("dovnųtra", &[(Case::Gen, "inside (goal)")]), // dict
+    ("dękujųći", &[(Case::Dat, "thanks to")]),     // steen
+    ("hvala", &[(Case::Dat, "thanks to")]),        // steen
+    ("iz", &[(Case::Gen, "from, out of")]),        // steen
+    ("iz-među", &[(Case::Gen, "from between")]),   // steen
+    ("iz-nad", &[(Case::Gen, "from above")]),      // steen
+    ("iz-pod", &[(Case::Gen, "from under")]),      // steen
+    ("iz-prěd", &[(Case::Gen, "from before")]),    // steen
+    ("iz-srěd", &[(Case::Gen, "from among")]),     // steen
+    ("iz-za", &[(Case::Gen, "from behind")]),      // steen
+    ("izključajųći", &[(Case::Acc, "excluding")]), // dict
+    ("kolo", &[(Case::Gen, "next to, around")]),   // steen
+    ("kromě", &[(Case::Gen, "except")]),           // steen
+    (
+        "među",
+        &[
+            (Case::Acc, "between (direction)"),    // steen (motion)
+            (Case::Ins, "between (place & time)"), // steen (stable)
+        ],
+    ),
+    ("mimo", &[(Case::Gen, "past, by")]), // steen
+    (
+        "na",
+        &[(Case::Acc, "on(to), unto"), (Case::Loc, "on, at")], // steen
+    ),
+    (
+        "nad",
+        &[
+            (Case::Acc, "above, over (direction)"), // steen (motion)
+            (Case::Ins, "above, over, beyond"),     // steen (stable)
+        ],
+    ),
+    ("naprotiv", &[(Case::Gen, "opposite")]), // steen
+    (
+        "od",
+        &[(Case::Gen, "of, from (away from); since; by (agent)")],
+    ), // steen
+    ("odnosno", &[(Case::Gen, "concerning, about")]), // steen
+    ("okolo", &[(Case::Gen, "around; about, approximately")]), // steen
+    (
+        "po",
+        &[
+            (
+                Case::Dat,
+                "according to, per, by, in the manner of; for … each", // steen
+            ),
+            (
+                Case::Acc,
+                "for (in pursuit of); for (the Xth time); up to", // steen
+            ),
+            (
+                Case::Loc,
+                "after, following; along(side); throughout, all over", // steen
+            ),
+        ],
+    ),
+    (
+        "pod",
+        &[
+            (Case::Acc, "under (direction)"), // steen (motion)
+            (Case::Ins, "under"),             // steen (stable)
+        ],
+    ),
+    ("podle", &[(Case::Gen, "near, beside")]), // steen
+    ("podčas", &[(Case::Gen, "during, so long as")]), // steen
+    ("podȯlg", &[(Case::Gen, "according to")]), // dict
+    ("polěv", &[(Case::Gen, "to the left of")]), // steen
+    ("pomimo", &[(Case::Gen, "in spite of")]), // steen
+    ("ponad", &[(Case::Ins, "above, beyond")]), // steen
+    ("poniž", &[(Case::Gen, "below")]),        // steen
+    ("poniže", &[(Case::Gen, "below")]),       // dict (steen lists poniž)
+    ("poprav", &[(Case::Gen, "to the right of")]), // steen
+    ("poprěk", &[(Case::Gen, "across")]),      // steen
+    ("poręd", &[(Case::Gen, "next to")]),      // steen
+    ("poslě", &[(Case::Gen, "after")]),        // steen
+    ("posrěd", &[(Case::Gen, "amidst, in the middle of, among")]), // steen
+    ("posrědstvom", &[(Case::Gen, "by means of, using")]), // steen
+    ("povodom", &[(Case::Gen, "on the occasion of")]), // dict
+    ("povyše", &[(Case::Gen, "above")]),       // dict (steen lists poviž)
+    ("povŕh", &[(Case::Gen, "to the upper side of, atop")]), // steen
+    ("pri", &[(Case::Loc, "near; during, in the presence of")]), // steen
+    ("protiv", &[(Case::Dat, "against")]),     // steen
+    (
+        "prěd",
+        &[
+            (Case::Acc, "before, in front of (direction)"), // steen (motion)
+            (
+                Case::Ins,
+                "before, in front of, ahead of (place & time); prior to, ago", // steen
+            ),
+        ],
+    ),
+    ("prěz", &[(Case::Acc, "through, across, via")]), // steen
+    ("radi", &[(Case::Gen, "for the sake of, on account of")]), // dict
+    ("srěd", &[(Case::Gen, "among, amid")]),          // steen
+    ("sųprotiv", &[(Case::Gen, "contrary to")]),      // steen
+    ("sȯglåsno", &[(Case::Dat, "according to")]),     // steen
+    ("sųglåsno", &[(Case::Dat, "according to")]),     // steen
+    ("u", &[(Case::Gen, "at, at the place of")]),     // steen
+    ("vizavi", &[(Case::Gen, "vis-à-vis")]),          // dict
+    ("vključajųći", &[(Case::Acc, "including")]),     // dict
+    ("vměsto", &[(Case::Gen, "instead of")]),         // steen
+    ("vně", &[(Case::Gen, "outside of")]),            // steen
+    ("vnųtri", &[(Case::Gen, "inside, within")]),     // steen
+    (
+        "vslěd",
+        &[(Case::Gen, "following, because of, as a result of")],
+    ), // steen
+    ("vsrěd", &[(Case::Gen, "amid, among")]),         // dict
+    ("vȯdle", &[(Case::Gen, "beside, near")]),        // dict
+    ("vȯzdȯlž", &[(Case::Gen, "along")]),             // steen (vdolž)
+    (
+        "za",
+        &[
+            (Case::Gen, "during, in times of"), // steen
+            (
+                Case::Acc,
+                "for, because of, in exchange for, in favour of; behind (direction)", // steen
+            ),
+            (Case::Ins, "behind (place), after (time)"), // steen
+        ],
+    ),
+    ("zaměsto", &[(Case::Gen, "instead of")]), // dict
+    ("zaradi", &[(Case::Gen, "for the sake of, on account of")]), // dict
+    ("črěz", &[(Case::Acc, "through, across, via")]), // steen
+];
+
+/// The per-case senses of `prep` — each governed case with its English
+/// gloss — or `None` if it is not a recognized single-word preposition.
+/// Backed by [`PREPOSITION_SENSES`]; agrees with [`preposition_cases`]
+/// case-for-case by construction (unit-tested).
+///
+/// ```
+/// use interslavic_core::{prepositions::preposition_senses, Case};
+/// assert_eq!(
+///     preposition_senses("s"),
+///     Some(&[
+///         (Case::Gen, "off, down from"),
+///         (Case::Ins, "with, together with; by means of, using"),
+///     ][..])
+/// );
+/// assert_eq!(preposition_senses("bez"), Some(&[(Case::Gen, "without")][..]));
+/// assert_eq!(preposition_senses("žaba"), None);
+/// ```
+pub fn preposition_senses(prep: &str) -> Option<&'static [(Case, &'static str)]> {
+    PREPOSITION_SENSES
+        .iter()
+        .find(|(p, _)| *p == prep)
+        .map(|(_, senses)| *senses)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,6 +358,22 @@ mod tests {
         // Non-prepositions and unlisted words.
         assert_eq!(preposition_cases("žaba"), None);
         assert_eq!(preposition_cases(""), None);
+    }
+
+    #[test]
+    fn senses_and_cases_tables_agree() {
+        // The two tables must cover the same prepositions with the same
+        // case sets in the same order — glosses only ever ADD information.
+        assert_eq!(PREPOSITIONS.len(), PREPOSITION_SENSES.len());
+        for (prep, cases) in PREPOSITIONS {
+            let senses = preposition_senses(prep)
+                .unwrap_or_else(|| panic!("{prep} missing from PREPOSITION_SENSES"));
+            let sense_cases: Vec<Case> = senses.iter().map(|(c, _)| *c).collect();
+            assert_eq!(&sense_cases[..], *cases, "{prep} case sets differ");
+            for (case, gloss) in senses {
+                assert!(!gloss.trim().is_empty(), "{prep} +{case:?} gloss empty");
+            }
+        }
     }
 
     #[test]

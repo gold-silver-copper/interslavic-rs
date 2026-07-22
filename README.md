@@ -16,6 +16,10 @@ The project is organized as four crates:
 
 Dictionary source sheet: <https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/edit?gid=1987833874#gid=1987833874>
 
+Integrating this crate into a text pipeline? Read **[INTEGRATION.md](INTEGRATION.md)**
+— citation-form conventions, the byform contract, clean vs raw paradigms,
+pronoun styles, counting, and a worked runtime-assembly example.
+
 ## Installation
 
 ```bash
@@ -179,7 +183,8 @@ Latest measured compatible accuracy against sonic16x commit `0fab0c5b4463118d46b
 | verbs: present, imperfect, perfect, pluperfect, future, conditional, imperative, participles, gerund | 4,345 | 216,339 | 100.0000% | 0 |
 | personal/reflexive pronouns: full, clitic, and prepositional n- series | 4 | 198 | 100.0000% | 0 |
 | out-of-vocabulary verbs (fixed sample: -jati, -nųti, -ovati, prefixed -sti) | 12 | 612 | 100.0000% | 0 |
-| total core comparable | 16,473 | 472,737 | 99.9964% | 17 |
+| numerals (dictionary rows: cardinal, ordinal, collective, fractional, …) | 129 | 7,308 | 100.0000% | 0 |
+| total core comparable | 16,602 | 480,045 | 99.9965% | 17 |
 
 The pronoun scope compares every cell of the personal and reflexive
 paradigms (`personal_pronoun`/`reflexive_pronoun`) against

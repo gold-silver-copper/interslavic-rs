@@ -30,6 +30,9 @@ struct VerbEntry {
     addition: String,
     transitive: bool,
     imperfective: bool,
+    perfective: bool,
+    reflexive: bool,
+    intransitive: bool,
 }
 
 #[derive(Debug)]
@@ -43,6 +46,9 @@ struct ParsedPartOfSpeech {
     indeclinable: bool,
     transitive: bool,
     imperfective: bool,
+    perfective: bool,
+    reflexive: bool,
+    intransitive: bool,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -168,6 +174,9 @@ fn generate(input: &Path) -> Result<GeneratedFiles, Box<dyn Error>> {
                     addition: addition.clone(),
                     transitive: metadata.transitive,
                     imperfective: metadata.imperfective,
+                    perfective: metadata.perfective,
+                    reflexive: metadata.reflexive,
+                    intransitive: metadata.intransitive,
                 };
                 insert_verb_entry(&mut verb_map, lemma.clone(), entry.clone());
                 let lower = lemma.to_lowercase();
@@ -211,6 +220,9 @@ fn insert_verb_entry(map: &mut BTreeMap<String, Vec<VerbEntry>>, key: String, en
             && existing.addition == entry.addition
             && existing.transitive == entry.transitive
             && existing.imperfective == entry.imperfective
+            && existing.perfective == entry.perfective
+            && existing.reflexive == entry.reflexive
+            && existing.intransitive == entry.intransitive
     }) {
         entries.push(entry);
     }
@@ -228,7 +240,10 @@ fn write_verb_phf(map: &BTreeMap<String, Vec<VerbEntry>>) -> String {
             out.push_str(&format!("lemma: {:?}, ", entry.lemma));
             out.push_str(&format!("addition: {:?}, ", entry.addition));
             out.push_str(&format!("transitive: {}, ", entry.transitive));
-            out.push_str(&format!("imperfective: {} ", entry.imperfective));
+            out.push_str(&format!("imperfective: {}, ", entry.imperfective));
+            out.push_str(&format!("perfective: {}, ", entry.perfective));
+            out.push_str(&format!("reflexive: {}, ", entry.reflexive));
+            out.push_str(&format!("intransitive: {} ", entry.intransitive));
             out.push_str("},\n");
         }
         out.push_str("    ],\n");
@@ -320,7 +335,17 @@ fn parse_part_of_speech(details: &str) -> ParsedPartOfSpeech {
         singular_only: has("sg"),
         indeclinable: has("indecl"),
         transitive: has("tr"),
+        // The conjugation booleans above keep their historical semantics
+        // exactly (paradigm output must not change); the aspect/reflexivity
+        // metadata below mirrors the reference parser (@interslavic/utils
+        // src/partOfSpeech/partOfSpeech.ts): a biaspectual "ipf./pf." row is
+        // imperfective AND perfective, reflexivity is its own flag.
         imperfective: normalized.contains("ipf"),
+        perfective: parts
+            .iter()
+            .any(|part| part.split('/').any(|token| token == "pf")),
+        reflexive: has("refl"),
+        intransitive: has("intr"),
     }
 }
 
@@ -366,6 +391,32 @@ mod tests {
         assert!(parsed.is_verb);
         assert!(parsed.transitive);
         assert!(parsed.imperfective);
+        assert!(!parsed.perfective);
+        assert!(!parsed.reflexive);
+        assert!(!parsed.intransitive);
+    }
+
+    #[test]
+    fn parse_part_of_speech_extracts_aspect_and_reflexivity() {
+        // Biaspectual: imperfective AND perfective (reference parser
+        // semantics), with the conjugation bool staying imperfective.
+        let parsed = parse_part_of_speech("v.tr. ipf./pf.");
+        assert!(parsed.imperfective);
+        assert!(parsed.perfective);
+        // Plain perfective: not imperfective ("pf" must not match "ipf").
+        let parsed = parse_part_of_speech("v.tr. pf.");
+        assert!(!parsed.imperfective);
+        assert!(parsed.perfective);
+        // Reflexive is its own flag; carries no transitivity marker.
+        let parsed = parse_part_of_speech("v.refl. ipf.");
+        assert!(parsed.reflexive);
+        assert!(!parsed.transitive);
+        assert!(!parsed.intransitive);
+        // Intransitive marker must not read as transitive ("tr" is
+        // token-exact) and must set its own flag.
+        let parsed = parse_part_of_speech("v.intr. ipf.");
+        assert!(!parsed.transitive);
+        assert!(parsed.intransitive);
     }
 
     #[test]

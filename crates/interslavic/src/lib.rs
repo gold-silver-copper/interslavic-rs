@@ -4,6 +4,11 @@
 //! adds generated dictionary metadata for noun and verb lookup and keeps the public
 //! API focused on single-form inflection.
 //!
+//! Integrating into a text pipeline? See `INTEGRATION.md` in the repository
+//! root for the downstream guide: citation-form conventions, the byform
+//! order contract, clean vs `_raw` paradigms, pronoun styles, counting,
+//! and a worked runtime-assembly example.
+//!
 //! # Examples
 //!
 //! ```
@@ -45,6 +50,9 @@ pub use interslavic_core::{ComplexNoun, Conjugation, HARD_CONSONANTS, J_MERGE_CH
 
 mod dictionary;
 use dictionary::*;
+
+#[doc(hidden)]
+pub mod fingerprint;
 
 /// Return one dictionary-backed noun form. Unknown words fall back to the
 /// core rule engine's gender and animacy inference.
@@ -330,6 +338,12 @@ pub fn reflexive_pronoun(case: Case, style: PronounStyle) -> Option<String> {
 /// assert_eq!(interslavic::numeral("pęť", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("pęti".into()));
 /// assert_eq!(interslavic::numeral("tri", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("trěh".into()));
 /// assert_eq!(interslavic::numeral("pŕvy", Case::Gen, Number::Singular, Gender::Masculine, Animacy::Inanimate), Some("pŕvogo".into()));
+/// // The masculine animate accusative is the genitive form; feminine
+/// // and neuter animates keep the plain form, agreeing with dvě/tri.
+/// assert_eq!(interslavic::numeral("dva", Case::Acc, Number::Plural, Gender::Masculine, Animacy::Animate), Some("dvoh".into()));
+/// assert_eq!(interslavic::numeral("dva", Case::Acc, Number::Plural, Gender::Feminine, Animacy::Animate), Some("dvě".into()));
+/// assert_eq!(interslavic::numeral("tri", Case::Acc, Number::Plural, Gender::Masculine, Animacy::Animate), Some("trěh".into()));
+/// assert_eq!(interslavic::numeral("tri", Case::Acc, Number::Plural, Gender::Feminine, Animacy::Animate), Some("tri".into()));
 /// // Oblique forms of the low cardinals exist across the paradigm.
 /// assert_eq!(interslavic::numeral("dva", Case::Gen, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvoh".into()));
 /// assert_eq!(interslavic::numeral("dva", Case::Dat, Number::Plural, Gender::Masculine, Animacy::Inanimate), Some("dvom".into()));
@@ -347,6 +361,280 @@ pub fn numeral(
     adjective::decline_numeral(lemma.trim(), case, number, gender, animacy)
 }
 
+/// Verb aspect as the dictionary marks it: `ipf.`, `pf.`, or the
+/// biaspectual `ipf./pf.` (120 dictionary rows). Follows the reference
+/// parser (`@interslavic/utils` `parsePos`), where a biaspectual row is
+/// imperfective AND perfective.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Aspect {
+    Ipf,
+    Pf,
+    Biaspectual,
+}
+
+/// Dictionary metadata for a verb lemma — the row's aspect, transitivity,
+/// and reflexivity, which the conjugation API consumes internally but
+/// never exposed. `transitive` is `Some(true)` for `v.tr.` rows,
+/// `Some(false)` for `v.intr.`, and `None` where the row carries no
+/// transitivity marker (`v.ipf.`/`v.pf.`, `v.aux.`, and plain `v.refl.`
+/// rows — reflexivity is its own flag).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VerbInfo {
+    pub aspect: Option<Aspect>,
+    pub transitive: Option<bool>,
+    pub reflexive: bool,
+}
+
+/// Dictionary metadata for a verb lemma, or `None` if the lemma is not in
+/// the embedded dictionary. Multi-entry lemmas follow the same
+/// first-entry convention the inflection lookups use.
+///
+/// ```
+/// use interslavic::*;
+/// // ukrasti: v.tr. pf.
+/// let info = verb_info("ukrasti").unwrap();
+/// assert_eq!(info.aspect, Some(Aspect::Pf));
+/// assert_eq!(info.transitive, Some(true));
+/// assert!(!info.reflexive);
+/// // hybiti: v.intr. ipf. — the dictionary answers the downstream
+/// // valence-audit question: intransitive.
+/// let info = verb_info("hybiti").unwrap();
+/// assert_eq!(info.aspect, Some(Aspect::Ipf));
+/// assert_eq!(info.transitive, Some(false));
+/// // abstrahovati: v.tr. ipf./pf. — biaspectual.
+/// assert_eq!(verb_info("abstrahovati").unwrap().aspect, Some(Aspect::Biaspectual));
+/// // Not a dictionary verb.
+/// assert_eq!(verb_info("xyzzy"), None);
+/// ```
+pub fn verb_info(infinitive: &str) -> Option<VerbInfo> {
+    let entry = lookup_verbs_by_lemma(infinitive.trim()).first()?;
+    let aspect = match (entry.imperfective, entry.perfective) {
+        (true, true) => Some(Aspect::Biaspectual),
+        (true, false) => Some(Aspect::Ipf),
+        (false, true) => Some(Aspect::Pf),
+        (false, false) => None,
+    };
+    let transitive = if entry.transitive {
+        Some(true)
+    } else if entry.intransitive {
+        Some(false)
+    } else {
+        None
+    };
+    Some(VerbInfo {
+        aspect,
+        transitive,
+        reflexive: entry.reflexive,
+    })
+}
+
+/// Whether a [`NounInfo`] came from a dictionary row or from the same
+/// ending heuristics [`noun()`] applies to out-of-lexicon words.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Provenance {
+    Dictionary,
+    Guessed,
+}
+
+/// Gender, animacy, and restriction metadata for a noun lemma. Always
+/// answers: a lemma without a dictionary row reports the rule engine's
+/// guess (`Provenance::Guessed`, restrictions all `false`), which is
+/// exactly what [`noun()`] inflects with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NounInfo {
+    pub gender: Gender,
+    pub animacy: Animacy,
+    pub provenance: Provenance,
+    pub plural_only: bool,
+    pub singular_only: bool,
+    pub indeclinable: bool,
+}
+
+/// Metadata for a noun lemma — what [`noun()`] knows or guesses about
+/// it. Multi-entry lemmas follow the same first-entry convention the
+/// inflection lookups use.
+///
+/// ```
+/// use interslavic::*;
+/// // A dictionary row.
+/// let info = noun_info("sliva");
+/// assert_eq!(info.gender, Gender::Feminine);
+/// assert_eq!(info.animacy, Animacy::Inanimate);
+/// assert_eq!(info.provenance, Provenance::Dictionary);
+/// // A plural-only row.
+/// assert!(noun_info("noviny").plural_only);
+/// // Out-of-lexicon: the rule engine's guess, marked as such.
+/// let info = noun_info("glorbina");
+/// assert_eq!(info.provenance, Provenance::Guessed);
+/// assert_eq!(info.gender, Gender::Feminine); // -a heuristic
+/// ```
+pub fn noun_info(lemma: &str) -> NounInfo {
+    let trimmed = lemma.trim();
+    if let Some(entry) = lookup_nouns_by_lemma(trimmed).first() {
+        return NounInfo {
+            gender: dictionary_gender_to_api(entry.gender),
+            animacy: if entry.animate {
+                Animacy::Animate
+            } else {
+                Animacy::Inanimate
+            },
+            provenance: Provenance::Dictionary,
+            plural_only: entry.plural_only,
+            singular_only: entry.singular_only,
+            indeclinable: entry.indeclinable,
+        };
+    }
+    NounInfo {
+        gender: noun::guess_gender(trimmed),
+        animacy: if noun::noun_is_animate(trimmed) {
+            Animacy::Animate
+        } else {
+            Animacy::Inanimate
+        },
+        provenance: Provenance::Guessed,
+        plural_only: false,
+        singular_only: false,
+        indeclinable: false,
+    }
+}
+
+/// The correctly-governed noun form for a counted phrase in a given
+/// syntactic slot; `n` is rendered as digits by the caller ("5 zlåtnikov"
+/// — spelled-out numerals are out of scope, and steen itself recommends
+/// digits). Gender/animacy inflect the noun (they override the
+/// dictionary, like [`noun_with()`]); plural-only lemmas are detected
+/// from the dictionary — for out-of-dictionary pluralia tantum use
+/// [`quantified_with_info()`].
+///
+/// Government rules (steen numerals page; where the sources are silent
+/// the rule is documented POLICY, not a citation):
+///
+/// - sourced: 1 → nominative singular, 2–4 → nominative plural, 5+ →
+///   genitive plural ("jedin dom, dva domy, četyri domy, pet domov");
+/// - policy (sources silent on compounds): the rule is value-based —
+///   steen's "all numbers higher than 4" covers 11–14, 21, and every
+///   compound; the East-Slavic last-digit rule (21 + singular) is
+///   deliberately not applied because no ISV source attests it. 0 takes
+///   the genitive plural like 5+;
+/// - policy (implied by the declension tables and steen's "Dom s tri
+///   etažami"): the gen-pl override applies in Nom and Acc only; in an
+///   oblique slot the noun takes the phrase case, plural (singular for
+///   1) — "s pęťjų zlåtnikami", not *"s pęť zlåtnikov";
+/// - policy (pan-Slavic pattern, unstated in ISV sources): the MASCULINE
+///   animate accusative of 2–4 takes the genitive plural, agreeing with
+///   the numeral's genitive-shaped accusative ("vidžų dvoh mųžev").
+///   Feminine/neuter animates keep the plain accusative ("vidžų dvě
+///   ženy") because the numeral's feminine column has no animate variant
+///   (`numeral("dva", Acc, …, Feminine, Animate)` is `dvě`, per the JS
+///   reference) — the noun and the numeral must compose into one
+///   coherent phrase;
+/// - sourced: plural-only nouns count with the collective numerals,
+///   which always take the genitive plural ("dvoje dverij"), and with
+///   plural jedin for 1 ("jedne dveri"); oblique collective phrases are
+///   unsourced, so the plain oblique rule applies there.
+///
+/// ```
+/// use interslavic::*;
+/// let q = |n, case| quantified(n, "dom", case, Gender::Masculine, Animacy::Inanimate);
+/// // Nominative: 1 → sg, 2–4 → nom pl, 0/5+/compounds → gen pl.
+/// assert_eq!(q(1, Case::Nom), "dom");
+/// assert_eq!(q(2, Case::Nom), "domy");
+/// assert_eq!(q(4, Case::Nom), "domy");
+/// assert_eq!(q(5, Case::Nom), "domov");
+/// assert_eq!(q(11, Case::Nom), "domov");
+/// assert_eq!(q(21, Case::Nom), "domov");
+/// assert_eq!(q(100, Case::Nom), "domov");
+/// // Accusative, inanimate: same pattern.
+/// assert_eq!(q(2, Case::Acc), "domy");
+/// assert_eq!(q(5, Case::Acc), "domov");
+/// // Accusative, masculine animate: 2–4 go genitive with the numeral
+/// // ("vidžų dvoh mųžev").
+/// let qa = |n, case| quantified(n, "mųž", case, Gender::Masculine, Animacy::Animate);
+/// assert_eq!(qa(1, Case::Acc), "mųža");
+/// assert_eq!(qa(2, Case::Acc), "mųžev");
+/// assert_eq!(qa(4, Case::Acc), "mųžev");
+/// assert_eq!(qa(5, Case::Acc), "mųžev");
+/// // Feminine animate keeps the plain accusative, agreeing with dvě
+/// // ("vidžų dvě ženy") — the genitive override is masculine-only.
+/// assert_eq!(quantified(2, "žena", Case::Acc, Gender::Feminine, Animacy::Animate), "ženy");
+/// assert_eq!(quantified(5, "žena", Case::Acc, Gender::Feminine, Animacy::Animate), "žen");
+/// // Instrumental: the gen-pl override dissolves — phrase case throughout.
+/// assert_eq!(q(1, Case::Ins), "domom");
+/// assert_eq!(q(2, Case::Ins), "domami");
+/// assert_eq!(q(5, Case::Ins), "domami");
+/// assert_eq!(q(21, Case::Ins), "domami");
+/// assert_eq!(q(100, Case::Ins), "domami");
+/// // Dictionary pluralia tantum: collective government, never *"dvě noviny".
+/// assert_eq!(quantified(2, "noviny", Case::Nom, Gender::Feminine, Animacy::Inanimate), "novin");
+/// assert_eq!(quantified(1, "noviny", Case::Nom, Gender::Feminine, Animacy::Inanimate), "noviny");
+/// ```
+pub fn quantified(n: u64, lemma: &str, case: Case, gender: Gender, animacy: Animacy) -> String {
+    let trimmed = lemma.trim();
+    let plural_only = lookup_nouns_by_lemma(trimmed)
+        .first()
+        .is_some_and(|entry| entry.plural_only);
+    quantified_with_info(n, trimmed, case, gender, animacy, plural_only)
+}
+
+/// [`quantified()`] with caller-supplied noun metadata, for lemmas the
+/// dictionary does not carry. Steen's canonical pluralia-tantum example
+/// `dveri` is itself not a dictionary row, so automatic detection cannot
+/// see it — pass `plural_only: true` explicitly:
+///
+/// ```
+/// use interslavic::*;
+/// // A dictionary pluralia tantum through the explicit path ("dvoje ust").
+/// assert_eq!(
+///     quantified_with_info(2, "usta", Case::Nom, Gender::Neuter, Animacy::Inanimate, true),
+///     "ust"
+/// );
+/// // 0 takes the genitive plural here too, like 5+.
+/// assert_eq!(
+///     quantified_with_info(0, "usta", Case::Nom, Gender::Neuter, Animacy::Inanimate, true),
+///     "ust"
+/// );
+/// ```
+pub fn quantified_with_info(
+    n: u64,
+    lemma: &str,
+    case: Case,
+    gender: Gender,
+    animacy: Animacy,
+    plural_only: bool,
+) -> String {
+    let lemma = lemma.trim();
+    let form = |case, number| noun_with(lemma, case, number, gender, animacy);
+    let direct = matches!(case, Case::Nom | Case::Acc);
+    if plural_only {
+        // Collective government: gen pl after the collective in a direct
+        // slot ("dvoje dverij", and likewise for 0); plural jedin for 1
+        // ("jedne dveri"); oblique slots follow the plain oblique rule.
+        return if direct && n != 1 {
+            form(Case::Gen, Number::Plural)
+        } else {
+            form(case, Number::Plural)
+        };
+    }
+    match n {
+        1 => form(case, Number::Singular),
+        2..=4 => {
+            if case == Case::Acc && animacy == Animacy::Animate && gender == Gender::Masculine {
+                form(Case::Gen, Number::Plural)
+            } else {
+                form(case, Number::Plural)
+            }
+        }
+        // 0 and 5+ (value-based; compounds included — see the policy notes).
+        _ => {
+            if direct {
+                form(Case::Gen, Number::Plural)
+            } else {
+                form(case, Number::Plural)
+            }
+        }
+    }
+}
+
 /// The case(s) a preposition governs, or `None` if `prep` is not a
 /// recognized single-word preposition. `prep` is the flavored citation
 /// form; a preposition may govern several cases (the case selects the
@@ -360,6 +648,32 @@ pub fn numeral(
 /// ```
 pub fn preposition_cases(prep: &str) -> Option<&'static [Case]> {
     prepositions::preposition_cases(prep.trim())
+}
+
+/// The per-case senses of a preposition — each governed case paired with
+/// its English gloss, because the case selects the meaning (s+Gen "off,
+/// down from" is a different word than s+Ins "with"). `None` if `prep`
+/// is not a recognized single-word preposition. Agrees with
+/// [`preposition_cases()`] case-for-case (same curated table; glosses
+/// sourced from the steen prepositions page, dictionary translations
+/// where steen has no entry). A government lint can drive "multiple
+/// senses exist → warn on ambiguous pairings" from this instead of a
+/// hand-copied suspicious-pair set.
+///
+/// ```
+/// use interslavic::*;
+/// assert_eq!(
+///     preposition_senses("s"),
+///     Some(&[
+///         (Case::Gen, "off, down from"),
+///         (Case::Ins, "with, together with; by means of, using"),
+///     ][..])
+/// );
+/// assert_eq!(preposition_senses("na").unwrap().len(), 2); // on(to) vs on/at
+/// assert_eq!(preposition_senses("žaba"), None);
+/// ```
+pub fn preposition_senses(prep: &str) -> Option<&'static [(Case, &'static str)]> {
+    prepositions::preposition_senses(prep.trim())
 }
 
 /// One finite verb form. Present, imperfect, future, perfect, pluperfect,
