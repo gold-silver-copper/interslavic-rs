@@ -613,7 +613,8 @@ pub struct QuantifiedParts {
     /// The slot case after count government: `Gen` where the genitive
     /// override applies (0/5+/compounds in Nom/Acc slots; the masculine
     /// animate accusative of 2–4; the collective construction for
-    /// plural-only lemmas), the phrase case everywhere else. This is the
+    /// plural-only lemmas, likewise in Nom/Acc slots only), the phrase
+    /// case everywhere else. This is the
     /// SURFACE-driving case: for "vidžų dvoh velikyh mųžev" it reports
     /// `Gen`, because the agreeing adjective needs the genitive too —
     /// the syntactic slot is still an accusative, but nothing in the
