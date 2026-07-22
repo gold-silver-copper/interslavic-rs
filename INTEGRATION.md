@@ -93,6 +93,13 @@ out-of-dictionary pluralia tantum pass `quantified_with_info(…,
 plural_only: true)` — the canonical example `dveri` is itself not a
 dictionary row.
 
+Counting a *phrase* (agreeing adjective + noun)? Use
+`quantified_parts()`: it returns the governed noun **plus** the case and
+number the slot resolved to, which is what the adjective must decline
+with (`quantified_parts(2, "mųž", Acc, M, Animate)` reports `Gen`/`Plural`
+— "vidžų **dvoh velikyh mųžev**"). Never re-derive the government rules
+locally to decline a modifier.
+
 `numeral()` declines the numerals themselves, including the animate
 accusatives (`dvoh`, `trěh`) selected by the `animacy` parameter.
 
