@@ -51,6 +51,9 @@ pub use interslavic_core::{ComplexNoun, Conjugation, HARD_CONSONANTS, J_MERGE_CH
 mod dictionary;
 use dictionary::*;
 
+#[doc(hidden)]
+pub mod fingerprint;
+
 /// Return one dictionary-backed noun form. Unknown words fall back to the
 /// core rule engine's gender and animacy inference.
 pub fn noun(lemma: &str, case: Case, number: Number) -> String {
