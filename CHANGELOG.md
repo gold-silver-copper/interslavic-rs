@@ -5,6 +5,22 @@ strings and consumers bless first-variant outputs into their expectations:
 reordering variants is a breaking change and must be called out explicitly
 in the release notes (fenced by `tests/variant_order.rs`).
 
+## 0.14.0 — 2026-07-22
+
+One-item additive release supporting interslavic-phrase 0.2.0.
+
+### Added
+
+- **`verb_info().governs: Option<Case>`** — the dictionary's `(+N)`
+  object-government annotations (78 verb rows; 2=Gen, 3=Dat, 4=Acc,
+  5=Ins, 7=Loc, the same community-dictionary numbering the preposition
+  table was curated from), extracted into the verb PHF. A marker
+  coexisting with a present-stem hint survives on both sides
+  (`izběgti (izběži) (+2)`). Conjugation inputs untouched: paradigm
+  fingerprint and parity scopes byte-stable. Multi-entry lemmas follow
+  the first-entry convention (`izbaviti`'s plain row precedes its
+  `(+2)` row → `None`; documented and pinned).
+
 ## 0.13.0 — 2026-07-22
 
 One-item additive patch from the mrzavec 0.12.0 adoption.
