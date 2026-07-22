@@ -569,11 +569,7 @@ pub fn noun_info(lemma: &str) -> NounInfo {
 /// assert_eq!(quantified(1, "noviny", Case::Nom, Gender::Feminine, Animacy::Inanimate), "noviny");
 /// ```
 pub fn quantified(n: u64, lemma: &str, case: Case, gender: Gender, animacy: Animacy) -> String {
-    let trimmed = lemma.trim();
-    let plural_only = lookup_nouns_by_lemma(trimmed)
-        .first()
-        .is_some_and(|entry| entry.plural_only);
-    quantified_with_info(n, trimmed, case, gender, animacy, plural_only)
+    quantified_parts(n, lemma, case, gender, animacy).noun
 }
 
 /// [`quantified()`] with caller-supplied noun metadata, for lemmas the
@@ -602,36 +598,139 @@ pub fn quantified_with_info(
     animacy: Animacy,
     plural_only: bool,
 ) -> String {
+    quantified_parts_with_info(n, lemma, case, gender, animacy, plural_only).noun
+}
+
+/// The government decision behind [`quantified()`], as data: the case and
+/// number the counted slot resolves to — which is what an AGREEING
+/// adjective or determiner in the phrase must be declined with — plus the
+/// governed noun itself. Exists so no consumer ever re-derives the
+/// government policy locally to decline a modifier; there is exactly one
+/// implementation of the rules ([`quantified()`] is a thin wrapper over
+/// this).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuantifiedParts {
+    /// The slot case after count government: `Gen` where the genitive
+    /// override applies (0/5+/compounds in Nom/Acc slots; the masculine
+    /// animate accusative of 2–4; the collective construction for
+    /// plural-only lemmas), the phrase case everywhere else. This is the
+    /// SURFACE-driving case: for "vidžų dvoh velikyh mųžev" it reports
+    /// `Gen`, because the agreeing adjective needs the genitive too —
+    /// the syntactic slot is still an accusative, but nothing in the
+    /// phrase declines with `Acc` there.
+    pub case: Case,
+    /// `Singular` for n == 1 (except plural-only lemmas, which are
+    /// always `Plural`), `Plural` otherwise.
+    pub number: Number,
+    /// The governed noun form — byte-identical to what [`quantified()`]
+    /// returns for the same arguments.
+    pub noun: String,
+}
+
+/// The counted-phrase government decision for `n` — see
+/// [`QuantifiedParts`]. Same rules and policy notes as [`quantified()`];
+/// plural-only detection is automatic for dictionary lemmas
+/// ([`quantified_parts_with_info()`] takes the explicit override).
+///
+/// ```
+/// use interslavic::*;
+/// let p = |n, case| quantified_parts(n, "dom", case, Gender::Masculine, Animacy::Inanimate);
+/// // Nominative slot: the number and the genitive override both show.
+/// assert_eq!(p(1, Case::Nom), QuantifiedParts { case: Case::Nom, number: Number::Singular, noun: "dom".into() });
+/// assert_eq!(p(3, Case::Nom), QuantifiedParts { case: Case::Nom, number: Number::Plural, noun: "domy".into() });
+/// assert_eq!(p(5, Case::Nom), QuantifiedParts { case: Case::Gen, number: Number::Plural, noun: "domov".into() });
+/// assert_eq!(p(21, Case::Nom), QuantifiedParts { case: Case::Gen, number: Number::Plural, noun: "domov".into() });
+/// // Instrumental slot: the override dissolves — adjectives agree in Ins.
+/// assert_eq!(p(1, Case::Ins), QuantifiedParts { case: Case::Ins, number: Number::Singular, noun: "domom".into() });
+/// assert_eq!(p(3, Case::Ins), QuantifiedParts { case: Case::Ins, number: Number::Plural, noun: "domami".into() });
+/// assert_eq!(p(5, Case::Ins), QuantifiedParts { case: Case::Ins, number: Number::Plural, noun: "domami".into() });
+/// assert_eq!(p(21, Case::Ins), QuantifiedParts { case: Case::Ins, number: Number::Plural, noun: "domami".into() });
+/// // Masculine animate accusative of 2–4: reports Gen — "vidžų dvoh
+/// // velikyh mųžev" declines its adjective in the genitive too.
+/// let p = quantified_parts(2, "mųž", Case::Acc, Gender::Masculine, Animacy::Animate);
+/// assert_eq!((p.case, p.number, p.noun.as_str()), (Case::Gen, Number::Plural, "mųžev"));
+/// // The adjective for the phrase, driven entirely by the parts:
+/// assert_eq!(adj("veliky", p.case, p.number, Gender::Masculine, Animacy::Animate), "velikyh");
+/// ```
+pub fn quantified_parts(
+    n: u64,
+    lemma: &str,
+    case: Case,
+    gender: Gender,
+    animacy: Animacy,
+) -> QuantifiedParts {
+    let trimmed = lemma.trim();
+    let plural_only = lookup_nouns_by_lemma(trimmed)
+        .first()
+        .is_some_and(|entry| entry.plural_only);
+    quantified_parts_with_info(n, trimmed, case, gender, animacy, plural_only)
+}
+
+/// [`quantified_parts()`] with the explicit `plural_only` override, for
+/// out-of-dictionary pluralia tantum — the parts counterpart of
+/// [`quantified_with_info()`], and the single implementation of the
+/// government rules that every `quantified*` entry point resolves to.
+///
+/// In the collective construction (plural-only lemma, direct slot,
+/// n ≠ 1) the parts report `Gen`/`Plural`. Steen states the noun after a
+/// collective is genitive plural and a collective subject takes a
+/// 3sg-neuter verb, but is SILENT on attributive adjective agreement in
+/// that construction; reporting `Gen`/`Plural` — the adjective follows
+/// the noun, "dvoje velikyh dverij" — is documented policy, consistent
+/// with how this crate labels every decision the sources don't make.
+///
+/// ```
+/// use interslavic::*;
+/// let p = quantified_parts_with_info(2, "usta", Case::Nom, Gender::Neuter, Animacy::Inanimate, true);
+/// assert_eq!((p.case, p.number, p.noun.as_str()), (Case::Gen, Number::Plural, "ust"));
+/// // n = 1 keeps the phrase case, plural ("jedne dveri" nominative).
+/// let p = quantified_parts_with_info(1, "usta", Case::Nom, Gender::Neuter, Animacy::Inanimate, true);
+/// assert_eq!((p.case, p.number, p.noun.as_str()), (Case::Nom, Number::Plural, "usta"));
+/// ```
+pub fn quantified_parts_with_info(
+    n: u64,
+    lemma: &str,
+    case: Case,
+    gender: Gender,
+    animacy: Animacy,
+    plural_only: bool,
+) -> QuantifiedParts {
     let lemma = lemma.trim();
-    let form = |case, number| noun_with(lemma, case, number, gender, animacy);
     let direct = matches!(case, Case::Nom | Case::Acc);
-    if plural_only {
+    let (slot_case, number) = if plural_only {
         // Collective government: gen pl after the collective in a direct
         // slot ("dvoje dverij", and likewise for 0); plural jedin for 1
         // ("jedne dveri"); oblique slots follow the plain oblique rule.
-        return if direct && n != 1 {
-            form(Case::Gen, Number::Plural)
+        if direct && n != 1 {
+            (Case::Gen, Number::Plural)
         } else {
-            form(case, Number::Plural)
-        };
-    }
-    match n {
-        1 => form(case, Number::Singular),
-        2..=4 => {
-            if case == Case::Acc && animacy == Animacy::Animate && gender == Gender::Masculine {
-                form(Case::Gen, Number::Plural)
-            } else {
-                form(case, Number::Plural)
+            (case, Number::Plural)
+        }
+    } else {
+        match n {
+            1 => (case, Number::Singular),
+            2..=4 => {
+                if case == Case::Acc && animacy == Animacy::Animate && gender == Gender::Masculine {
+                    (Case::Gen, Number::Plural)
+                } else {
+                    (case, Number::Plural)
+                }
+            }
+            // 0 and 5+ (value-based; compounds included — see the
+            // policy notes on `quantified`).
+            _ => {
+                if direct {
+                    (Case::Gen, Number::Plural)
+                } else {
+                    (case, Number::Plural)
+                }
             }
         }
-        // 0 and 5+ (value-based; compounds included — see the policy notes).
-        _ => {
-            if direct {
-                form(Case::Gen, Number::Plural)
-            } else {
-                form(case, Number::Plural)
-            }
-        }
+    };
+    QuantifiedParts {
+        case: slot_case,
+        number,
+        noun: noun_with(lemma, slot_case, number, gender, animacy),
     }
 }
 
