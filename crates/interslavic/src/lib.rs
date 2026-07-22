@@ -621,6 +621,32 @@ pub fn preposition_cases(prep: &str) -> Option<&'static [Case]> {
     prepositions::preposition_cases(prep.trim())
 }
 
+/// The per-case senses of a preposition — each governed case paired with
+/// its English gloss, because the case selects the meaning (s+Gen "off,
+/// down from" is a different word than s+Ins "with"). `None` if `prep`
+/// is not a recognized single-word preposition. Agrees with
+/// [`preposition_cases()`] case-for-case (same curated table; glosses
+/// sourced from the steen prepositions page, dictionary translations
+/// where steen has no entry). A government lint can drive "multiple
+/// senses exist → warn on ambiguous pairings" from this instead of a
+/// hand-copied suspicious-pair set.
+///
+/// ```
+/// use interslavic::*;
+/// assert_eq!(
+///     preposition_senses("s"),
+///     Some(&[
+///         (Case::Gen, "off, down from"),
+///         (Case::Ins, "with, together with; by means of, using"),
+///     ][..])
+/// );
+/// assert_eq!(preposition_senses("na").unwrap().len(), 2); // on(to) vs on/at
+/// assert_eq!(preposition_senses("žaba"), None);
+/// ```
+pub fn preposition_senses(prep: &str) -> Option<&'static [(Case, &'static str)]> {
+    prepositions::preposition_senses(prep.trim())
+}
+
 /// One finite verb form. Present, imperfect, future, perfect, pluperfect,
 /// and conditional are supported; imperative and participial/gerund forms
 /// are available through `verb_forms`.
