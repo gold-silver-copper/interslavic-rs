@@ -674,7 +674,11 @@ fn compile_pp(items: &[Value], at: usize) -> Result<PrepPhrase, SexprError> {
 // ---------------------------------------------------------------------------
 
 /// Print a clause in canonical form: children in fixed order, only
-/// non-default keys emitted. `compile_clause(parse(print(c)))? == *c`.
+/// non-default keys emitted, single-item coordinations normalized to
+/// their item. The round-trip contract: `compile_clause(parse(print(c)))`
+/// equals `c` for every CANONICAL tree, and `print` is idempotent under
+/// re-parsing (`print(parse(print(c))) == print(c)`) for every tree —
+/// printing canonicalizes.
 pub fn print(clause: &Clause) -> String {
     let mut out = String::from("(clause ");
     print_nominal(&clause.subject, &mut out);
@@ -801,6 +805,14 @@ fn print_nominal(nominal: &Nominal, out: &mut String) {
             out.push(')');
         }
         Nominal::Coord(coordination) => {
+            // Canonicalization: a single-item coordination prints as its
+            // item — the reader requires >= 2 conjuncts, and the two
+            // trees are surface-indistinguishable anyway. See the
+            // round-trip contract on [`print`].
+            if let [only] = coordination.items.as_slice() {
+                print_nominal(only, out);
+                return;
+            }
             out.push_str(&format!("(coord {}", coordination.conjunction.word()));
             for item in &coordination.items {
                 out.push(' ');
