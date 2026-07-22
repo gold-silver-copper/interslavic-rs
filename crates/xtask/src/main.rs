@@ -26,6 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Some("accuracy") => run_accuracy(),
         Some("dump-paradigms") => dump_paradigms(&mut args),
         Some("diff-fingerprint") => diff_fingerprint(&mut args),
+        Some("phrase-check") => phrase_check(),
         Some("-h") | Some("--help") | Some("help") | None => {
             print_usage();
             Ok(())
@@ -158,6 +159,73 @@ fn diff_fingerprint(args: &mut impl Iterator<Item = String>) -> Result<(), Box<d
     Ok(())
 }
 
+/// Render the interslavic-phrase golden sentences and run them through
+/// slovowiki's independent agreement checker (`check-text --json`). A
+/// manual/local gate like `accuracy`: it needs a slovowiki checkout,
+/// found via the SLOVOWIKI_DIR env var (default: ../slovowiki next to
+/// this repository). Fails if any token is unknown or any agreement
+/// error is reported. Interpret hits per the folded-key rule: a surface
+/// match can belong to a homograph — the JSON's `lemmas` field is the
+/// truth, and this gate only checks statuses, not lemma attribution.
+fn phrase_check() -> Result<(), Box<dyn Error>> {
+    let root = workspace_root()?;
+    let slovowiki = env::var("SLOVOWIKI_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| root.join("../slovowiki"));
+    if !slovowiki.join("Cargo.toml").exists() {
+        return Err(format!(
+            "no slovowiki checkout at {} (set SLOVOWIKI_DIR)",
+            slovowiki.display()
+        )
+        .into());
+    }
+    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let goldens = Command::new(&cargo)
+        .current_dir(&root)
+        .args([
+            "run",
+            "-q",
+            "-p",
+            "interslavic-phrase",
+            "--example",
+            "goldens",
+        ])
+        .output()?;
+    exit_if_failed(goldens.status.code(), goldens.status.success());
+    let dir = root.join("target/phrase-check");
+    std::fs::create_dir_all(&dir)?;
+    let text_path = dir.join("goldens.txt");
+    std::fs::write(&text_path, &goldens.stdout)?;
+    // Plain `cargo` (not the +toolchain-resolved $CARGO of this workspace):
+    // slovowiki pins its own toolchain via rust-toolchain.toml.
+    let check = Command::new("cargo")
+        .current_dir(&slovowiki)
+        .args(["run", "--release", "-q", "--", "check-text"])
+        .arg(&text_path)
+        .arg("--json")
+        .output()?;
+    exit_if_failed(check.status.code(), check.status.success());
+    let json = String::from_utf8_lossy(&check.stdout);
+    // Dependency-free verdict: count status fields in the token array.
+    let count = |needle: &str| json.matches(needle).count();
+    let unknown = count("\"unknown\"");
+    let tokens = count("\"token\"");
+    let agreement_errors = count("\"agreement_error\"");
+    println!(
+        "{} tokens checked, {} unknown, {} agreement errors",
+        tokens, unknown, agreement_errors
+    );
+    if unknown > 0 || agreement_errors > 0 {
+        std::fs::write(dir.join("check.json"), check.stdout)?;
+        return Err(format!(
+            "phrase-check failed; full report at {}",
+            dir.join("check.json").display()
+        )
+        .into());
+    }
+    Ok(())
+}
+
 fn run_extractor(check_only: bool) -> Result<(), Box<dyn Error>> {
     let root = workspace_root()?;
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
@@ -204,4 +272,5 @@ fn print_usage() {
     eprintln!("  accuracy         Run sonic16x parity comparison");
     eprintln!("  dump-paradigms   Write the whole-dictionary paradigm dump [name]");
     eprintln!("  diff-fingerprint Print the cell delta between two dumps <old> <new>");
+    eprintln!("  phrase-check     Run interslavic-phrase goldens through slovowiki (local)");
 }

@@ -18,7 +18,10 @@ Dictionary source sheet: <https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d02
 
 Integrating this crate into a text pipeline? Read **[INTEGRATION.md](INTEGRATION.md)**
 — citation-form conventions, the byform contract, clean vs raw paradigms,
-pronoun styles, counting, and a worked runtime-assembly example.
+pronoun styles, counting, and a worked runtime-assembly example. For
+whole sentences from syntax trees, see the
+**[interslavic-phrase](experiments/interslavic-phrase)** experiment
+(S-expressions in, inflected sentences out).
 
 ## Installation
 
