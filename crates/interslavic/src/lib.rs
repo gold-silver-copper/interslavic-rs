@@ -4,6 +4,11 @@
 //! adds generated dictionary metadata for noun and verb lookup and keeps the public
 //! API focused on single-form inflection.
 //!
+//! Integrating into a text pipeline? See `INTEGRATION.md` in the repository
+//! root for the downstream guide: citation-form conventions, the byform
+//! order contract, clean vs `_raw` paradigms, pronoun styles, counting,
+//! and a worked runtime-assembly example.
+//!
 //! # Examples
 //!
 //! ```

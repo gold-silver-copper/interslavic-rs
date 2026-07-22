@@ -16,6 +16,10 @@ The project is organized as four crates:
 
 Dictionary source sheet: <https://docs.google.com/spreadsheets/d/1N79e_yVHDo-d026HljueuKJlAAdeELAiPzdFzdBuKbY/edit?gid=1987833874#gid=1987833874>
 
+Integrating this crate into a text pipeline? Read **[INTEGRATION.md](INTEGRATION.md)**
+— citation-form conventions, the byform contract, clean vs raw paradigms,
+pronoun styles, counting, and a worked runtime-assembly example.
+
 ## Installation
 
 ```bash
