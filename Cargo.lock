@@ -25,6 +25,13 @@ name = "interslavic-extractor"
 version = "0.1.0"
 
 [[package]]
+name = "interslavic-phrase"
+version = "0.1.0"
+dependencies = [
+ "interslavic",
+]
+
+[[package]]
 name = "phf"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

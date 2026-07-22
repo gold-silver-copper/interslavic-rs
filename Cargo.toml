@@ -4,12 +4,14 @@ members = [
     "crates/interslavic-core",
     "crates/interslavic-extractor",
     "crates/xtask",
+    "experiments/interslavic-phrase",
 ]
 default-members = [
     "crates/interslavic",
     "crates/interslavic-core",
     "crates/interslavic-extractor",
     "crates/xtask",
+    "experiments/interslavic-phrase",
 ]
 exclude = ["coallescor"]
 resolver = "3"
