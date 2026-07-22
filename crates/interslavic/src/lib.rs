@@ -347,6 +347,143 @@ pub fn numeral(
     adjective::decline_numeral(lemma.trim(), case, number, gender, animacy)
 }
 
+/// Verb aspect as the dictionary marks it: `ipf.`, `pf.`, or the
+/// biaspectual `ipf./pf.` (120 dictionary rows). Follows the reference
+/// parser (`@interslavic/utils` `parsePos`), where a biaspectual row is
+/// imperfective AND perfective.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Aspect {
+    Ipf,
+    Pf,
+    Biaspectual,
+}
+
+/// Dictionary metadata for a verb lemma — the row's aspect, transitivity,
+/// and reflexivity, which the conjugation API consumes internally but
+/// never exposed. `transitive` is `Some(true)` for `v.tr.` rows,
+/// `Some(false)` for `v.intr.`, and `None` where the row carries no
+/// transitivity marker (`v.ipf.`/`v.pf.`, `v.aux.`, and plain `v.refl.`
+/// rows — reflexivity is its own flag).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VerbInfo {
+    pub aspect: Option<Aspect>,
+    pub transitive: Option<bool>,
+    pub reflexive: bool,
+}
+
+/// Dictionary metadata for a verb lemma, or `None` if the lemma is not in
+/// the embedded dictionary. Multi-entry lemmas follow the same
+/// first-entry convention the inflection lookups use.
+///
+/// ```
+/// use interslavic::*;
+/// // ukrasti: v.tr. pf.
+/// let info = verb_info("ukrasti").unwrap();
+/// assert_eq!(info.aspect, Some(Aspect::Pf));
+/// assert_eq!(info.transitive, Some(true));
+/// assert!(!info.reflexive);
+/// // hybiti: v.intr. ipf. — the dictionary answers the downstream
+/// // valence-audit question: intransitive.
+/// let info = verb_info("hybiti").unwrap();
+/// assert_eq!(info.aspect, Some(Aspect::Ipf));
+/// assert_eq!(info.transitive, Some(false));
+/// // abstrahovati: v.tr. ipf./pf. — biaspectual.
+/// assert_eq!(verb_info("abstrahovati").unwrap().aspect, Some(Aspect::Biaspectual));
+/// // Not a dictionary verb.
+/// assert_eq!(verb_info("xyzzy"), None);
+/// ```
+pub fn verb_info(infinitive: &str) -> Option<VerbInfo> {
+    let entry = lookup_verbs_by_lemma(infinitive.trim()).first()?;
+    let aspect = match (entry.imperfective, entry.perfective) {
+        (true, true) => Some(Aspect::Biaspectual),
+        (true, false) => Some(Aspect::Ipf),
+        (false, true) => Some(Aspect::Pf),
+        (false, false) => None,
+    };
+    let transitive = if entry.transitive {
+        Some(true)
+    } else if entry.intransitive {
+        Some(false)
+    } else {
+        None
+    };
+    Some(VerbInfo {
+        aspect,
+        transitive,
+        reflexive: entry.reflexive,
+    })
+}
+
+/// Whether a [`NounInfo`] came from a dictionary row or from the same
+/// ending heuristics [`noun()`] applies to out-of-lexicon words.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Provenance {
+    Dictionary,
+    Guessed,
+}
+
+/// Gender, animacy, and restriction metadata for a noun lemma. Always
+/// answers: a lemma without a dictionary row reports the rule engine's
+/// guess (`Provenance::Guessed`, restrictions all `false`), which is
+/// exactly what [`noun()`] inflects with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NounInfo {
+    pub gender: Gender,
+    pub animacy: Animacy,
+    pub provenance: Provenance,
+    pub plural_only: bool,
+    pub singular_only: bool,
+    pub indeclinable: bool,
+}
+
+/// Metadata for a noun lemma — what [`noun()`] knows or guesses about
+/// it. Multi-entry lemmas follow the same first-entry convention the
+/// inflection lookups use.
+///
+/// ```
+/// use interslavic::*;
+/// // A dictionary row.
+/// let info = noun_info("sliva");
+/// assert_eq!(info.gender, Gender::Feminine);
+/// assert_eq!(info.animacy, Animacy::Inanimate);
+/// assert_eq!(info.provenance, Provenance::Dictionary);
+/// // A plural-only row.
+/// assert!(noun_info("noviny").plural_only);
+/// // Out-of-lexicon: the rule engine's guess, marked as such.
+/// let info = noun_info("glorbina");
+/// assert_eq!(info.provenance, Provenance::Guessed);
+/// assert_eq!(info.gender, Gender::Feminine); // -a heuristic
+/// ```
+pub fn noun_info(lemma: &str) -> NounInfo {
+    let trimmed = lemma.trim();
+    if let Some(entry) = lookup_nouns_by_lemma(trimmed).first() {
+        return NounInfo {
+            gender: dictionary_gender_to_api(entry.gender),
+            animacy: if entry.animate {
+                Animacy::Animate
+            } else {
+                Animacy::Inanimate
+            },
+            provenance: Provenance::Dictionary,
+            plural_only: entry.plural_only,
+            singular_only: entry.singular_only,
+            indeclinable: entry.indeclinable,
+        };
+    }
+    NounInfo {
+        gender: noun::guess_gender(trimmed),
+        animacy: if noun::noun_is_animate(trimmed) {
+            Animacy::Animate
+        } else {
+            Animacy::Inanimate
+        },
+        provenance: Provenance::Guessed,
+        plural_only: false,
+        singular_only: false,
+        indeclinable: false,
+    }
+}
+
 /// The correctly-governed noun form for a counted phrase in a given
 /// syntactic slot; `n` is rendered as digits by the caller ("5 zlåtnikov"
 /// — spelled-out numerals are out of scope, and steen itself recommends

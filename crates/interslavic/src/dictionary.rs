@@ -21,8 +21,18 @@ pub(crate) struct DictionaryEntry {
 pub(crate) struct VerbDictionaryEntry {
     pub lemma: &'static str,
     pub addition: &'static str,
+    /// Conjugation booleans, historical semantics (`transitive` gates
+    /// pfpp/prpp, `imperfective` gates prap): a biaspectual row is
+    /// `imperfective = true` here, exactly as before.
     pub transitive: bool,
     pub imperfective: bool,
+    /// Metadata mirroring the reference parser (`@interslavic/utils`
+    /// `parsePos`): biaspectual `ipf./pf.` rows are imperfective AND
+    /// perfective; reflexivity is its own flag. Not consumed by the
+    /// conjugation path.
+    pub perfective: bool,
+    pub reflexive: bool,
+    pub intransitive: bool,
 }
 
 mod noun_generated {
