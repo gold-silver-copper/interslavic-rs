@@ -5,6 +5,27 @@ strings and consumers bless first-variant outputs into their expectations:
 reordering variants is a breaking change and must be called out explicitly
 in the release notes (fenced by `tests/variant_order.rs`).
 
+## 0.13.0 — 2026-07-22
+
+One-item additive patch from the mrzavec 0.12.0 adoption.
+
+### Added
+
+- **`quantified_parts()` / `quantified_parts_with_info()`** returning
+  `QuantifiedParts { case, number, noun }`: the count-government
+  decision as data, so a consumer counting a *phrase* can decline an
+  agreeing adjective/determiner from `parts.case`/`parts.number`
+  instead of re-deriving the rules locally. The `case` field is the
+  surface-driving case: the masculine animate accusative of 2–4
+  reports `Gen` ("vidžų dvoh **velikyh** mųžev" declines its adjective
+  in the genitive too), and the collective construction reports
+  `Gen`/`Plural` (steen is silent on attributive agreement with
+  collectives; adjective-follows-the-noun is documented policy).
+  `quantified`/`quantified_with_info` are now thin wrappers over the
+  parts path — one implementation, the variants cannot disagree.
+  Outputs are byte-identical: the paradigm fingerprint and every prior
+  doc-test are unchanged.
+
 ## 0.12.0 — 2026-07-21
 
 Capability-and-contract release from the completed mrzavec integration:
