@@ -39,9 +39,9 @@
 //! ```
 
 pub use interslavic_core::{
-    AdjParadigm, Animacy, CASE_ORDER, Case, Gender, NounParadigm, Number, PerfectParts, Person,
-    PronounStyle, Tense, VerbParadigm, adjective, cells, derivation, noun, orthography, paradigm,
-    phono, prepositions, pronoun, types, utils, verb,
+    AdjParadigm, Animacy, CASE_ORDER, Case, ConditionalParts, Gender, NounParadigm, Number,
+    PerfectParts, Person, PronounStyle, Tense, VerbParadigm, adjective, cells, derivation, noun,
+    orthography, paradigm, phono, prepositions, pronoun, types, utils, verb,
 };
 // The dependency-free rule engine is also re-exported, so consumers can reach
 // the lower-level dictionary-less API (and the shared morphophonemics helpers)
@@ -383,11 +383,24 @@ pub struct VerbInfo {
     pub aspect: Option<Aspect>,
     pub transitive: Option<bool>,
     pub reflexive: bool,
+    /// The object case the dictionary's `(+N)` government annotation
+    /// marks (`dękovati (+3)` → dative), `None` for unmarked rows —
+    /// callers default to the accusative. Sourced from the same
+    /// annotation convention the preposition table was curated from.
+    pub governs: Option<Case>,
 }
 
 /// Dictionary metadata for a verb lemma, or `None` if the lemma is not in
 /// the embedded dictionary. Multi-entry lemmas follow the same
 /// first-entry convention the inflection lookups use.
+///
+/// Reflexive constructions are their own lemmas: an `X sę` dictionary row
+/// is queryable as `verb_info("X sę")` — its metadata (notably its
+/// government) is distinct from any bare `X` row, and it never disturbs
+/// the bare key's first-entry order. Extraction covers bare and `X sę`
+/// lemmas only: phrasal rows with a named preposition ("bazovati na
+/// (+6)") are NOT extracted, because their annotation belongs to the
+/// preposition and `governs: Option<Case>` cannot represent that.
 ///
 /// ```
 /// use interslavic::*;
@@ -403,6 +416,20 @@ pub struct VerbInfo {
 /// assert_eq!(info.transitive, Some(false));
 /// // abstrahovati: v.tr. ipf./pf. — biaspectual.
 /// assert_eq!(verb_info("abstrahovati").unwrap().aspect, Some(Aspect::Biaspectual));
+/// // Object government from the dictionary's (+N) annotation.
+/// assert_eq!(verb_info("dękovati").unwrap().governs, Some(Case::Dat));
+/// assert_eq!(verb_info("izběgti").unwrap().governs, Some(Case::Gen)); // hint + (+2) coexist
+/// assert_eq!(verb_info("vladati").unwrap().governs, Some(Case::Ins));
+/// // A reflexive construction's row lives under its full lemma; the
+/// // bare row keeps its own (here unannotated) metadata.
+/// let refl = verb_info("ostrěgati sę").unwrap();
+/// assert!(refl.reflexive);
+/// assert_eq!(refl.governs, Some(Case::Gen));
+/// assert_eq!(verb_info("ostrěgati").unwrap().governs, None);
+/// // Multi-entry lemmas follow the first-entry convention: izbaviti has
+/// // a plain v.tr. row before its (+2) row, so its governs is None.
+/// assert_eq!(verb_info("izbaviti").unwrap().governs, None);
+/// assert_eq!(verb_info("ukrasti").unwrap().governs, None);
 /// // Not a dictionary verb.
 /// assert_eq!(verb_info("xyzzy"), None);
 /// ```
@@ -421,10 +448,19 @@ pub fn verb_info(infinitive: &str) -> Option<VerbInfo> {
     } else {
         None
     };
+    let governs = match entry.governs {
+        Some(2) => Some(Case::Gen),
+        Some(3) => Some(Case::Dat),
+        Some(4) => Some(Case::Acc),
+        Some(5) => Some(Case::Ins),
+        Some(7) => Some(Case::Loc),
+        _ => None,
+    };
     Some(VerbInfo {
         aspect,
         transitive,
         reflexive: entry.reflexive,
+        governs,
     })
 }
 
@@ -959,6 +995,44 @@ fn surface_paradigm(mut p: VerbParadigm) -> VerbParadigm {
     clean(&mut p.pfap);
     clean(&mut p.gerund);
     p
+}
+
+/// The conditional mood as structured parts: the person-marked
+/// auxiliary (`byh`/`bys`/`by`/`byhmo`/`byste`/`by`) and the correctly
+/// gendered l-participle — the conditional counterpart of
+/// [`perfect_parts()`], drawn from the same tables and stem context as
+/// the paradigm's own conditional row, so the two can never disagree.
+///
+/// ```
+/// use interslavic::*;
+/// let p = conditional_parts("kupiti", Person::Third, Number::Singular, Gender::Masculine);
+/// assert_eq!((p.auxiliary.as_str(), p.participle.as_str()), ("by", "kupil"));
+/// // 1sg feminine — the cell whose "(a)" convention makes string
+/// // parsing unreliable comes out as data.
+/// let p = conditional_parts("kupiti", Person::First, Number::Singular, Gender::Feminine);
+/// assert_eq!((p.auxiliary.as_str(), p.participle.as_str()), ("byh", "kupila"));
+/// // The d/t-stem hint path applies, as everywhere.
+/// let p = conditional_parts("ukrasti", Person::Second, Number::Plural, Gender::Masculine);
+/// assert_eq!((p.auxiliary.as_str(), p.participle.as_str()), ("byste", "ukradli"));
+/// ```
+pub fn conditional_parts(
+    infinitive: &str,
+    person: Person,
+    number: Number,
+    gender: Gender,
+) -> ConditionalParts {
+    let trimmed = infinitive.trim();
+    let entries = lookup_verbs_by_lemma(trimmed);
+    if let Some(entry) = entries.first() {
+        return verb::conditional_parts_with_hint(
+            entry.lemma,
+            entry.addition,
+            person,
+            number,
+            gender,
+        );
+    }
+    verb::conditional_parts_with_hint(trimmed, "", person, number, gender)
 }
 
 /// Full verb paradigm with dictionary metadata when available.
