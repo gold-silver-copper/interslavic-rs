@@ -53,7 +53,8 @@ pub enum CliticStyle {
     /// postverbal there). A fronted `či` is part of the domain and hosts
     /// the cluster ("Či sę krålj myl?"); a discourse lead-in (the
     /// connective of `realize_with_lead_in`) stands OUTSIDE it ("Potom
-    /// krålj sę myl.") — both POLICY.
+    /// krålj sę myl."). In a `li` question, `li` must remain first in its
+    /// cluster even when a topic precedes the focused host — both POLICY.
     SecondPosition,
 }
 
@@ -598,6 +599,16 @@ fn build_complex(
             "passive imperative (not yet implemented)",
         ));
     }
+    if imperative && shape.tense != TenseSpec::Present {
+        return Err(PhraseError::IncoherentClause(
+            "imperative with past or future tense",
+        ));
+    }
+    if shape.mood == Mood::Conditional && shape.tense != TenseSpec::Present {
+        return Err(PhraseError::IncoherentClause(
+            "conditional mood with an independently specified past or future tense",
+        ));
+    }
 
     let mut tokens = Vec::new();
     if shape.polarity == Polarity::Negative {
@@ -716,7 +727,12 @@ fn render_vp(
     let (bare, lemma_reflexive, info) = vp_verb_info(&verb_phrase.verb);
     let reflexive = lemma_reflexive || info.as_ref().is_some_and(|entry| entry.reflexive);
 
-    let object_present = verb_phrase.object.is_some() && gap != Some(&GapRole::Object);
+    if gap == Some(&GapRole::Object) && verb_phrase.object.is_some() {
+        return Err(PhraseError::IncoherentClause(
+            "object-gap relative clause also supplies an object",
+        ));
+    }
+    let object_present = verb_phrase.object.is_some();
     if object_present || gap == Some(&GapRole::Object) {
         if shape.voice == Voice::Passive {
             return Err(PhraseError::ObjectInPassive {
@@ -838,6 +854,11 @@ fn render_relative(
     if rel.relativizer == Relativizer::Iže {
         return Err(PhraseError::Unsupported(
             "the iže relativizer (no facade paradigm)",
+        ));
+    }
+    if rel.gap == GapRole::Subject && rel.subject.is_some() {
+        return Err(PhraseError::IncoherentClause(
+            "subject-gap relative clause also supplies a subject",
         ));
     }
     let rel_case = match &rel.gap {
@@ -1295,9 +1316,9 @@ fn clause_first_object(clause: &Clause) -> Option<&Nominal> {
 
 /// Order constituents by information structure: default S V O; `:topic`
 /// fronts its slot, `:focus` moves its slot last (theme-first,
-/// rheme-last — functional sentence perspective). LiQuestions front the
-/// focused slot (default: the verb) and follow with verb–subject–object
-/// (steen's own example order).
+/// rheme-last — functional sentence perspective). LiQuestions front an
+/// explicit topic, then the focused slot (default: the verb), and follow
+/// with verb–subject–object (steen's own example order).
 fn order_constituents(constituents: &mut Vec<Constituent>, clause: &Clause) {
     let take = |constituents: &mut Vec<Constituent>, slot: SlotKind| -> Option<Constituent> {
         constituents
@@ -1311,12 +1332,16 @@ fn order_constituents(constituents: &mut Vec<Constituent>, clause: &Clause) {
     };
 
     if clause.force == Force::LiQuestion {
+        let topic = clause
+            .topic
+            .and_then(|topic| take(constituents, slot_of(topic)));
         let focus_slot = clause.focus.map(slot_of).unwrap_or(SlotKind::Verb(0));
         let focus = take(constituents, focus_slot);
         let verb = take(constituents, SlotKind::Verb(0));
         let subject = take(constituents, SlotKind::Subject);
         let object = take(constituents, SlotKind::Object(0));
         let mut ordered = Vec::new();
+        ordered.extend(topic);
         ordered.extend(focus);
         for item in [verb, subject, object].into_iter().flatten() {
             ordered.push(item);
@@ -1349,17 +1374,22 @@ fn place_cluster(
     cluster: Vec<Token>,
     style: CliticStyle,
 ) {
+    let is_li_particle = |constituent: &Constituent| {
+        constituent.slot == SlotKind::Fixed && constituent.tokens == vec![word("li")]
+    };
     let after_li = |constituents: &[Constituent], mut index: usize| -> usize {
-        if constituents
-            .get(index)
-            .is_some_and(|c| c.tokens == vec![word("li")])
-        {
+        if constituents.get(index).is_some_and(is_li_particle) {
             index += 1;
         }
         index
     };
     let insert_at = match (style, vp_index) {
-        (CliticStyle::SecondPosition, 0) => after_li(constituents, 1.min(constituents.len())),
+        (CliticStyle::SecondPosition, 0) => {
+            constituents.iter().position(is_li_particle).map_or_else(
+                || 1.min(constituents.len()),
+                |li_at| after_li(constituents, li_at),
+            )
+        }
         _ => match constituents
             .iter()
             .position(|c| c.slot == SlotKind::Verb(vp_index))

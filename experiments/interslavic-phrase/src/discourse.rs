@@ -117,16 +117,18 @@ impl Mentions {
 
 fn np_features(np: &NounPhrase) -> EntityFeatures {
     let info = noun_info(&np.head);
-    // Discourse number is the SEMANTIC number of the referent: an
-    // explicit count of 1 is singular, any other count refers to a
-    // plurality (0 included — POLICY), so later pronouns say "jih", not
-    // "jų". Distinct from the 3sg-neuter finite-verb agreement the
-    // realizer applies to gen-pl quantified subjects.
-    let number = match np.count {
-        Some(1) => Number::Singular,
-        Some(_) => Number::Plural,
-        None if info.plural_only => Number::Plural,
-        None => Number::Singular,
+    // Discourse number is the SEMANTIC number of the referent.
+    // Plural-only lexemes stay plural under every count; otherwise an
+    // explicit count of 1 is singular and every other count denotes a
+    // plurality (0 included — POLICY). Distinct from the 3sg-neuter
+    // finite-verb agreement policy for gen-pl quantified subjects.
+    let number = if info.plural_only {
+        Number::Plural
+    } else {
+        match np.count {
+            Some(1) | None => Number::Singular,
+            Some(_) => Number::Plural,
+        }
     };
     EntityFeatures {
         gender: info.gender,
@@ -140,14 +142,21 @@ fn pronominalize_nominal(nominal: &mut Nominal, mentions: &mut Mentions) {
         Nominal::Np(np) => {
             if let Some(id) = np.entity.clone() {
                 let features = np_features(np);
-                if mentions.mention(&id, features) {
+                // A relative contributes a proposition of its own. Only
+                // replace a repeated NP when doing so cannot discard that
+                // content or its nested mentions.
+                if mentions.mention(&id, features) && np.relative.is_none() {
                     *nominal = Nominal::Pron {
                         person: Person::Third,
                         number: features.number,
                         gender: features.gender,
                         clitic: false,
                     };
+                    return;
                 }
+            }
+            if let Some(relative) = &mut np.relative {
+                pronominalize_relative(relative, mentions);
             }
         }
         Nominal::Coord(coordination) => {
@@ -156,6 +165,20 @@ fn pronominalize_nominal(nominal: &mut Nominal, mentions: &mut Mentions) {
             }
         }
         _ => {}
+    }
+}
+
+/// Traverse the overt arguments nested inside a relative clause in their
+/// surface order. The gapped role has no nominal node to register.
+fn pronominalize_relative(relative: &mut RelClause, mentions: &mut Mentions) {
+    if let Some(subject) = &mut relative.subject {
+        pronominalize_nominal(subject, mentions);
+    }
+    if let Some(object) = &mut relative.vp.object {
+        pronominalize_nominal(object, mentions);
+    }
+    for pp in &mut relative.vp.pps {
+        pronominalize_nominal(&mut pp.object, mentions);
     }
 }
 
@@ -187,15 +210,29 @@ fn pronominalize_clause(clause: &mut Clause, mentions: &mut Mentions) {
     }
 }
 
-/// Do two subjects refer to the same thing — identical trees, or NPs
-/// tagged with the same entity id (the surface NPs may differ: first
-/// mention "toj krålj", second bare)?
-fn same_subject(first: &Nominal, second: &Nominal) -> bool {
+/// Can the first subject safely stand for the second during aggregation?
+/// Exact trees are safe. For same-entity NPs, the first surface must
+/// contain every modifier/proposition present on the second; a later bare
+/// reference may be elided, but later-added content must keep its sentence.
+fn first_subject_covers_second(first: &Nominal, second: &Nominal) -> bool {
     if first == second {
         return true;
     }
     match (first, second) {
-        (Nominal::Np(a), Nominal::Np(b)) => a.entity.is_some() && a.entity == b.entity,
+        (Nominal::Np(a), Nominal::Np(b)) => {
+            a.entity.is_some()
+                && a.entity == b.entity
+                && a.head == b.head
+                && a.count == b.count
+                && a.case_override == b.case_override
+                && b.determiner
+                    .as_ref()
+                    .is_none_or(|det| a.determiner.as_ref() == Some(det))
+                && (b.adjectives.is_empty() || a.adjectives == b.adjectives)
+                && b.relative
+                    .as_ref()
+                    .is_none_or(|relative| a.relative.as_ref() == Some(relative))
+        }
         _ => false,
     }
 }
@@ -215,7 +252,7 @@ fn can_aggregate(first: &Clause, second: &DiscourseSentence) -> bool {
         ClauseCore::Copular { .. } => false,
     };
     second.connective.is_none()
-        && same_subject(&first.subject, &second.clause.subject)
+        && first_subject_covers_second(&first.subject, &second.clause.subject)
         && first.tense == second.clause.tense
         && first.polarity == second.clause.polarity
         && first.mood == second.clause.mood

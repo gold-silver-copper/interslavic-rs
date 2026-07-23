@@ -209,6 +209,13 @@ fn key_sym<'a>(
     }
 }
 
+fn mark_once(seen_at: &mut Option<usize>, at: usize, what: &str) -> Result<(), SexprError> {
+    if seen_at.replace(at).is_some() {
+        return err(at, format!("duplicate {what}"));
+    }
+    Ok(())
+}
+
 pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
     let Value::List(items, at) = value else {
         return err(value.at(), "expected `(clause …)`");
@@ -221,27 +228,40 @@ pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
     let mut vps: Vec<VerbPhrase> = Vec::new();
     let mut predicate: Option<Predicate> = None;
     let mut pred_case = PredCase::default();
+    let mut pred_case_at = None;
     let mut conjunction = Conj::I;
+    let mut conjunction_at = None;
     let mut tense = TenseSpec::Present;
+    let mut tense_at = None;
     let mut polarity = Polarity::Affirmative;
+    let mut polarity_at = None;
     let mut force = Force::Declarative;
+    let mut force_at = None;
     let mut addressee = Addressee::default();
+    let mut addressee_at = None;
     let mut force_imperative = false;
     let mut mood = Mood::default();
+    let mut mood_at = None;
     let mut voice = Voice::default();
+    let mut voice_at = None;
     let mut prodrop = false;
+    let mut prodrop_at = None;
     let mut topic = None;
+    let mut topic_at = None;
     let mut focus = None;
+    let mut focus_at = None;
 
     let mut rest = items[1..].iter().peekable();
     while let Some(item) = rest.next() {
         match item {
             Value::Key(key, key_at) => match key.as_str() {
                 "tense" => {
+                    mark_once(&mut tense_at, *key_at, "`:tense`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":tense")?;
                     tense = tense_of(s, s_at)?;
                 }
                 "force" => {
+                    mark_once(&mut force_at, *key_at, "`:force`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":force")?;
                     match s {
                         "li" => force = Force::LiQuestion,
@@ -252,6 +272,7 @@ pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
                     }
                 }
                 "addressee" => {
+                    mark_once(&mut addressee_at, *key_at, "`:addressee`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":addressee")?;
                     addressee = match s {
                         "2sg" => Addressee::You,
@@ -261,6 +282,7 @@ pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
                     };
                 }
                 "mood" => {
+                    mark_once(&mut mood_at, *key_at, "`:mood`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":mood")?;
                     mood = match s {
                         "cond" | "conditional" => Mood::Conditional,
@@ -268,6 +290,7 @@ pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
                     };
                 }
                 "voice" => {
+                    mark_once(&mut voice_at, *key_at, "`:voice`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":voice")?;
                     voice = match s {
                         "passive" => Voice::Passive,
@@ -275,10 +298,12 @@ pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
                     };
                 }
                 "conj" => {
+                    mark_once(&mut conjunction_at, *key_at, "`:conj`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":conj")?;
                     conjunction = conj_of(s, s_at)?;
                 }
                 "pred-case" => {
+                    mark_once(&mut pred_case_at, *key_at, "`:pred-case`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":pred-case")?;
                     pred_case = match s {
                         "nom" => PredCase::Nominative,
@@ -287,20 +312,33 @@ pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
                     };
                 }
                 "topic" => {
+                    mark_once(&mut topic_at, *key_at, "`:topic`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":topic")?;
                     topic = Some(slot_ref_of(s, s_at)?);
                 }
                 "focus" => {
+                    mark_once(&mut focus_at, *key_at, "`:focus`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":focus")?;
                     focus = Some(slot_ref_of(s, s_at)?);
                 }
-                "neg" => polarity = Polarity::Negative,
-                "prodrop" => prodrop = true,
+                "neg" => {
+                    mark_once(&mut polarity_at, *key_at, "`:neg`")?;
+                    polarity = Polarity::Negative;
+                }
+                "prodrop" => {
+                    mark_once(&mut prodrop_at, *key_at, "`:prodrop`")?;
+                    prodrop = true;
+                }
                 other => return err(*key_at, format!("unknown clause key `:{other}`")),
             },
             Value::List(child, child_at) => match head_of(child, *child_at)? {
                 ("vp", _) => vps.push(compile_vp(child, *child_at)?),
-                ("pred", _) => predicate = Some(compile_pred(child, *child_at)?),
+                ("pred", _) => {
+                    if predicate.is_some() {
+                        return err(*child_at, "`clause` takes at most one `(pred …)`");
+                    }
+                    predicate = Some(compile_pred(child, *child_at)?);
+                }
                 ("np" | "pron" | "name" | "coord", _) => {
                     if subject.is_some() {
                         return err(*child_at, "clause already has a subject");
@@ -315,6 +353,11 @@ pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
         }
     }
 
+    if let Some(addressee_at) = addressee_at
+        && !force_imperative
+    {
+        return err(addressee_at, "`:addressee` requires `:force imp`");
+    }
     if force_imperative {
         force = Force::Imperative(addressee);
     }
@@ -323,21 +366,31 @@ pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
     };
     let core = match (predicate, vps.is_empty()) {
         (Some(predicate), true) => {
-            // `:pred-case ins` is a nominal-predicate option; on an
-            // adjectival or participial predicate it is rejected here,
-            // mirroring the realizer's own check.
-            if pred_case == PredCase::Instrumental && !matches!(predicate, Predicate::Nominal(_)) {
-                return err(*at, "`:pred-case ins` needs a nominal `(pred (np …))`");
+            if let Some(conjunction_at) = conjunction_at {
+                return err(conjunction_at, "`:conj` requires a verbal clause");
+            }
+            // `:pred-case` is a nominal-predicate option. Reject it on
+            // adjectival or participial predicates instead of accepting
+            // and canonicalizing the option away.
+            if let Some(pred_case_at) = pred_case_at
+                && !matches!(predicate, Predicate::Nominal(_))
+            {
+                return err(pred_case_at, "`:pred-case` needs a nominal `(pred (np …))`");
             }
             ClauseCore::Copular {
                 predicate,
                 pred_case,
             }
         }
-        (None, false) => ClauseCore::Verbal(Coordination {
-            conjunction,
-            items: vps,
-        }),
+        (None, false) => {
+            if let Some(pred_case_at) = pred_case_at {
+                return err(pred_case_at, "`:pred-case` needs a nominal `(pred (np …))`");
+            }
+            ClauseCore::Verbal(Coordination {
+                conjunction,
+                items: vps,
+            })
+        }
         (Some(_), false) => return err(*at, "`clause` cannot have both vp and pred"),
         (None, true) => return err(*at, "`clause` needs a `(vp …)` or `(pred …)`"),
     };
@@ -403,30 +456,50 @@ fn compile_nominal(value: &Value) -> Result<Nominal, SexprError> {
 fn compile_np(items: &[Value], at: usize) -> Result<NounPhrase, SexprError> {
     let mut np = NounPhrase::new("");
     let mut head_seen = false;
+    let mut case_at = None;
+    let mut entity_at = None;
     let mut rest = items[1..].iter().peekable();
     while let Some(item) = rest.next() {
         match item {
             Value::Key(key, key_at) if key == "case" => {
+                mark_once(&mut case_at, *key_at, "`:case`")?;
                 let (s, s_at) = key_sym(&mut rest, *key_at, ":case")?;
                 np.case_override = Some(case_of(s, s_at)?);
             }
             Value::Key(key, key_at) if key == "entity" => {
+                mark_once(&mut entity_at, *key_at, "`:entity`")?;
                 let (s, _) = key_sym(&mut rest, *key_at, ":entity")?;
                 np.entity = Some(s.to_string());
             }
             Value::Key(key, key_at) => return err(*key_at, format!("unknown np key `:{key}`")),
             Value::List(child, child_at) => match head_of(child, *child_at)? {
-                ("det", _) => np.determiner = Some(sym_arg(child, "det", *child_at)?),
+                ("det", _) => {
+                    if np.determiner.is_some() {
+                        return err(*child_at, "`(np …)` takes at most one `(det …)`");
+                    }
+                    np.determiner = Some(sym_arg(child, "det", *child_at)?);
+                }
                 ("adj", _) => np.adjectives.push(sym_arg(child, "adj", *child_at)?),
                 ("n", _) => {
+                    if head_seen {
+                        return err(*child_at, "`(np …)` takes exactly one `(n …)` head");
+                    }
                     np.head = sym_arg(child, "n", *child_at)?;
                     head_seen = true;
                 }
                 ("num", _) => match child.as_slice() {
-                    [_, Value::Int(n, _)] => np.count = Some(*n),
+                    [_, Value::Int(n, _)] if np.count.is_none() => np.count = Some(*n),
+                    [_, Value::Int(_, _)] => {
+                        return err(*child_at, "`(np …)` takes at most one `(num …)`");
+                    }
                     _ => return err(*child_at, "`(num …)` takes one integer"),
                 },
-                ("rel", _) => np.relative = Some(Box::new(compile_rel(child, *child_at)?)),
+                ("rel", _) => {
+                    if np.relative.is_some() {
+                        return err(*child_at, "`(np …)` takes at most one `(rel …)`");
+                    }
+                    np.relative = Some(Box::new(compile_rel(child, *child_at)?));
+                }
                 (other, other_at) => {
                     return err(other_at, format!("unknown np child `{other}`"));
                 }
@@ -443,18 +516,25 @@ fn compile_np(items: &[Value], at: usize) -> Result<NounPhrase, SexprError> {
 fn compile_rel(items: &[Value], at: usize) -> Result<RelClause, SexprError> {
     let mut gap_kind: Option<&str> = None;
     let mut gap_prep: Option<String> = None;
+    let mut gap_prep_at = None;
     let mut gap_case: Option<Case> = None;
+    let mut gap_case_at = None;
     let mut subject: Option<Nominal> = None;
     let mut vp: Option<VerbPhrase> = None;
     let mut tense = TenseSpec::Present;
+    let mut tense_at = None;
     let mut polarity = Polarity::Affirmative;
+    let mut polarity_at = None;
     let mut relativizer = Relativizer::default();
+    let mut relativizer_at = None;
+    let mut gap_at = None;
 
     let mut rest = items[1..].iter().peekable();
     while let Some(item) = rest.next() {
         match item {
             Value::Key(key, key_at) => match key.as_str() {
                 "gap" => {
+                    mark_once(&mut gap_at, *key_at, "`:gap`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":gap")?;
                     gap_kind = Some(match s {
                         "subj" => "subj",
@@ -464,14 +544,17 @@ fn compile_rel(items: &[Value], at: usize) -> Result<RelClause, SexprError> {
                     });
                 }
                 "case" => {
+                    mark_once(&mut gap_case_at, *key_at, "`:case`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":case")?;
                     gap_case = Some(case_of(s, s_at)?);
                 }
                 "tense" => {
+                    mark_once(&mut tense_at, *key_at, "`:tense`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":tense")?;
                     tense = tense_of(s, s_at)?;
                 }
                 "relativizer" => {
+                    mark_once(&mut relativizer_at, *key_at, "`:relativizer`")?;
                     let (s, s_at) = key_sym(&mut rest, *key_at, ":relativizer")?;
                     relativizer = match s {
                         "ktory" => Relativizer::Ktory,
@@ -479,13 +562,35 @@ fn compile_rel(items: &[Value], at: usize) -> Result<RelClause, SexprError> {
                         other => return err(s_at, format!("unknown relativizer `{other}`")),
                     };
                 }
-                "neg" => polarity = Polarity::Negative,
+                "neg" => {
+                    mark_once(&mut polarity_at, *key_at, "`:neg`")?;
+                    polarity = Polarity::Negative;
+                }
                 other => return err(*key_at, format!("unknown rel key `:{other}`")),
             },
             Value::List(child, child_at) => match head_of(child, *child_at)? {
-                ("vp", _) => vp = Some(compile_vp(child, *child_at)?),
-                ("prep", _) => gap_prep = Some(sym_arg(child, "prep", *child_at)?),
-                ("np" | "pron" | "name" | "coord", _) => subject = Some(compile_nominal(item)?),
+                ("vp", _) => {
+                    if vp.is_some() {
+                        return err(*child_at, "`(rel …)` takes exactly one `(vp …)`");
+                    }
+                    vp = Some(compile_vp(child, *child_at)?);
+                }
+                ("prep", _) => {
+                    if gap_prep.is_some() {
+                        return err(*child_at, "`(rel …)` takes at most one `(prep …)`");
+                    }
+                    gap_prep_at = Some(*child_at);
+                    gap_prep = Some(sym_arg(child, "prep", *child_at)?);
+                }
+                ("np" | "pron" | "name" | "coord", _) => {
+                    if subject.is_some() {
+                        return err(
+                            *child_at,
+                            "`(rel …)` takes at most one overt subject nominal",
+                        );
+                    }
+                    subject = Some(compile_nominal(item)?);
+                }
                 (other, other_at) => return err(other_at, format!("unknown rel child `{other}`")),
             },
             other => return err(other.at(), "unexpected atom inside `(rel …)`"),
@@ -493,8 +598,24 @@ fn compile_rel(items: &[Value], at: usize) -> Result<RelClause, SexprError> {
     }
 
     let gap = match gap_kind {
-        Some("subj") => GapRole::Subject,
-        Some("obj") => GapRole::Object,
+        Some("subj") => {
+            if let Some(gap_prep_at) = gap_prep_at {
+                return err(gap_prep_at, "`(prep …)` requires `:gap pp`");
+            }
+            if let Some(gap_case_at) = gap_case_at {
+                return err(gap_case_at, "`:case` requires `:gap pp`");
+            }
+            GapRole::Subject
+        }
+        Some("obj") => {
+            if let Some(gap_prep_at) = gap_prep_at {
+                return err(gap_prep_at, "`(prep …)` requires `:gap pp`");
+            }
+            if let Some(gap_case_at) = gap_case_at {
+                return err(gap_case_at, "`:case` requires `:gap pp`");
+            }
+            GapRole::Object
+        }
         Some("pp") => GapRole::PpObject {
             preposition: gap_prep.ok_or_else(|| SexprError {
                 at,
@@ -510,8 +631,17 @@ fn compile_rel(items: &[Value], at: usize) -> Result<RelClause, SexprError> {
     let Some(vp) = vp else {
         return err(at, "`(rel …)` needs a `(vp …)`");
     };
+    if gap == GapRole::Subject && subject.is_some() {
+        return err(
+            at,
+            "a subject gap cannot also have an overt subject nominal",
+        );
+    }
     if gap != GapRole::Subject && subject.is_none() {
         return err(at, "a non-subject gap needs an overt subject nominal");
+    }
+    if gap == GapRole::Object && vp.object.is_some() {
+        return err(at, "an object gap cannot also have a VP object");
     }
     Ok(RelClause {
         gap,
@@ -530,15 +660,42 @@ fn compile_pron(items: &[Value], at: usize) -> Result<Nominal, SexprError> {
             return err(item.at(), "`(pron …)` takes only keywords");
         };
         match key.as_str() {
-            "1" => person = Some(Person::First),
-            "2" => person = Some(Person::Second),
-            "3" => person = Some(Person::Third),
-            "sg" => number = Some(Number::Singular),
-            "pl" => number = Some(Number::Plural),
-            "m" => gender = Some(Gender::Masculine),
-            "f" => gender = Some(Gender::Feminine),
-            "n" => gender = Some(Gender::Neuter),
-            "clitic" => clitic = true,
+            "1" | "2" | "3" => {
+                if person.is_some() {
+                    return err(*key_at, "`(pron …)` takes exactly one person");
+                }
+                person = Some(match key.as_str() {
+                    "1" => Person::First,
+                    "2" => Person::Second,
+                    _ => Person::Third,
+                });
+            }
+            "sg" | "pl" => {
+                if number.is_some() {
+                    return err(*key_at, "`(pron …)` takes exactly one number");
+                }
+                number = Some(if key == "sg" {
+                    Number::Singular
+                } else {
+                    Number::Plural
+                });
+            }
+            "m" | "f" | "n" => {
+                if gender.is_some() {
+                    return err(*key_at, "`(pron …)` takes at most one gender");
+                }
+                gender = Some(match key.as_str() {
+                    "m" => Gender::Masculine,
+                    "f" => Gender::Feminine,
+                    _ => Gender::Neuter,
+                });
+            }
+            "clitic" => {
+                if clitic {
+                    return err(*key_at, "duplicate `:clitic`");
+                }
+                clitic = true;
+            }
             other => return err(*key_at, format!("unknown pron key `:{other}`")),
         }
     }
@@ -562,12 +719,29 @@ fn compile_name(items: &[Value], at: usize) -> Result<Nominal, SexprError> {
     let mut indeclinable = false;
     for item in &items[1..] {
         match item {
-            Value::Sym(s, _) => text = Some(s.clone()),
+            Value::Sym(s, s_at) => {
+                if text.is_some() {
+                    return err(*s_at, "`(name …)` takes exactly one name");
+                }
+                text = Some(s.clone());
+            }
             Value::Key(key, key_at) => match key.as_str() {
-                "m" => gender = Some(Gender::Masculine),
-                "f" => gender = Some(Gender::Feminine),
-                "n" => gender = Some(Gender::Neuter),
-                "indecl" => indeclinable = true,
+                "m" | "f" | "n" => {
+                    if gender.is_some() {
+                        return err(*key_at, "`(name …)` takes exactly one gender");
+                    }
+                    gender = Some(match key.as_str() {
+                        "m" => Gender::Masculine,
+                        "f" => Gender::Feminine,
+                        _ => Gender::Neuter,
+                    });
+                }
+                "indecl" => {
+                    if indeclinable {
+                        return err(*key_at, "duplicate `:indecl`");
+                    }
+                    indeclinable = true;
+                }
                 other => return err(*key_at, format!("unknown name key `:{other}`")),
             },
             other => return err(other.at(), "unexpected value inside `(name …)`"),
@@ -613,6 +787,9 @@ fn compile_vp(items: &[Value], at: usize) -> Result<VerbPhrase, SexprError> {
         };
         match head_of(child, *child_at)? {
             ("v", _) => {
+                if verb.is_some() {
+                    return err(*child_at, "`(vp …)` takes exactly one `(v …)`");
+                }
                 let words: Vec<&str> = child[1..]
                     .iter()
                     .map(|value| match value {
@@ -650,18 +827,30 @@ fn compile_vp(items: &[Value], at: usize) -> Result<VerbPhrase, SexprError> {
 fn compile_pp(items: &[Value], at: usize) -> Result<PrepPhrase, SexprError> {
     let mut preposition = None;
     let mut case = None;
+    let mut case_at = None;
     let mut object = None;
     let mut rest = items[1..].iter().peekable();
     while let Some(item) = rest.next() {
         match item {
             Value::Key(key, key_at) if key == "case" => {
+                mark_once(&mut case_at, *key_at, "`:case`")?;
                 let (s, s_at) = key_sym(&mut rest, *key_at, ":case")?;
                 case = Some(case_of(s, s_at)?);
             }
             Value::Key(key, key_at) => return err(*key_at, format!("unknown pp key `:{key}`")),
             Value::List(child, child_at) => match head_of(child, *child_at)? {
-                ("prep", _) => preposition = Some(sym_arg(child, "prep", *child_at)?),
-                ("np" | "pron" | "name" | "coord", _) => object = Some(compile_nominal(item)?),
+                ("prep", _) => {
+                    if preposition.is_some() {
+                        return err(*child_at, "`(pp …)` takes exactly one `(prep …)`");
+                    }
+                    preposition = Some(sym_arg(child, "prep", *child_at)?);
+                }
+                ("np" | "pron" | "name" | "coord", _) => {
+                    if object.is_some() {
+                        return err(*child_at, "`(pp …)` takes exactly one object");
+                    }
+                    object = Some(compile_nominal(item)?);
+                }
                 (other, other_at) => return err(other_at, format!("unknown pp child `{other}`")),
             },
             other => return err(other.at(), "unexpected atom inside `(pp …)`"),
