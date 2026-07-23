@@ -28,9 +28,9 @@
 //! );
 //! ```
 //!
-//! Deferred by design (do not look for them here): relative clauses,
-//! coordination, topicalization beyond the question focus, clitic
-//! clusters, genitive of negation, spelled-out numerals.
+//! Deferred by design (do not look for them here): genitive of
+//! negation, spelled-out numerals, the `iže` relativizer, the passive
+//! imperative, preposition-phrasal verb government ("bazovati na").
 
 mod ast;
 pub mod discourse;

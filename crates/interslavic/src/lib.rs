@@ -394,6 +394,14 @@ pub struct VerbInfo {
 /// the embedded dictionary. Multi-entry lemmas follow the same
 /// first-entry convention the inflection lookups use.
 ///
+/// Reflexive constructions are their own lemmas: an `X sę` dictionary row
+/// is queryable as `verb_info("X sę")` — its metadata (notably its
+/// government) is distinct from any bare `X` row, and it never disturbs
+/// the bare key's first-entry order. Extraction covers bare and `X sę`
+/// lemmas only: phrasal rows with a named preposition ("bazovati na
+/// (+6)") are NOT extracted, because their annotation belongs to the
+/// preposition and `governs: Option<Case>` cannot represent that.
+///
 /// ```
 /// use interslavic::*;
 /// // ukrasti: v.tr. pf.
@@ -412,6 +420,12 @@ pub struct VerbInfo {
 /// assert_eq!(verb_info("dękovati").unwrap().governs, Some(Case::Dat));
 /// assert_eq!(verb_info("izběgti").unwrap().governs, Some(Case::Gen)); // hint + (+2) coexist
 /// assert_eq!(verb_info("vladati").unwrap().governs, Some(Case::Ins));
+/// // A reflexive construction's row lives under its full lemma; the
+/// // bare row keeps its own (here unannotated) metadata.
+/// let refl = verb_info("ostrěgati sę").unwrap();
+/// assert!(refl.reflexive);
+/// assert_eq!(refl.governs, Some(Case::Gen));
+/// assert_eq!(verb_info("ostrěgati").unwrap().governs, None);
 /// // Multi-entry lemmas follow the first-entry convention: izbaviti has
 /// // a plain v.tr. row before its (+2) row, so its governs is None.
 /// assert_eq!(verb_info("izbaviti").unwrap().governs, None);

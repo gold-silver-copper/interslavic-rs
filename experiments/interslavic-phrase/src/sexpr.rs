@@ -322,10 +322,18 @@ pub fn compile_clause(value: &Value) -> Result<Clause, SexprError> {
         return err(*at, "`clause` needs a subject nominal");
     };
     let core = match (predicate, vps.is_empty()) {
-        (Some(predicate), true) => ClauseCore::Copular {
-            predicate,
-            pred_case,
-        },
+        (Some(predicate), true) => {
+            // `:pred-case ins` is a nominal-predicate option; on an
+            // adjectival or participial predicate it is rejected here,
+            // mirroring the realizer's own check.
+            if pred_case == PredCase::Instrumental && !matches!(predicate, Predicate::Nominal(_)) {
+                return err(*at, "`:pred-case ins` needs a nominal `(pred (np …))`");
+            }
+            ClauseCore::Copular {
+                predicate,
+                pred_case,
+            }
+        }
         (None, false) => ClauseCore::Verbal(Coordination {
             conjunction,
             items: vps,

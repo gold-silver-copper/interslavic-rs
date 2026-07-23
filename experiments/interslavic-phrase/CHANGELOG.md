@@ -82,6 +82,51 @@ hand-copied slot map is gone. Output changes vs the pre-review branch:
 focused/topicalized clitic pronouns now render full forms; narrate
 applies sentence casing/punctuation uniformly.
 
+### Second review round (same release)
+
+A second review (review/pr34-code-review.txt) confirmed nine further
+defects; all are fixed, with the corrected reproductions pinned in
+`tests/review_pr34_round2.rs`:
+
+- **Construction-aware government**: reflexive `X sę` dictionary rows
+  are extracted under their full lemma (facade 0.14.0) and a reflexive
+  VP consults its own row before the bare one — "Krålj ostrěgaje sę
+  vody" (the row's annotated genitive), inside relative gaps too.
+  Preposition-phrasal rows stay out of scope, now stated everywhere
+  the claim appears.
+- **Scope-safe aggregation**: only plain-conjunction cores merge (a
+  clause coordinated with `ili`/`a`/`ale` keeps its scope and stays
+  its own sentence); the merged list is explicitly `i`, canonicalizing
+  a singleton's dormant conjunction; `prodrop` joined the
+  compatibility check.
+- **Semantic discourse number**: a counted entity's number comes from
+  its count (1 → singular, any other count — 0 included — plural,
+  POLICY), so "5 knig" pronominalizes as plural "je", not singular
+  "jų". Distinct from the 3sg-neuter finite-verb agreement policy.
+- **Validated information structure**: `topic`/`focus` on a slot the
+  clause does not surface (absent object; dropped or imperative
+  subject) is `IncoherentClause` for every force — a li-question can
+  no longer silently lose its `li`.
+- **`či` joins the clitic domain**: the fronted particle is inserted
+  before cluster placement, so second-position clitics follow it
+  ("Či sę krålj myl?"); discourse lead-ins stand outside the domain
+  ("Potom krålj sę myl.") — both POLICY, documented on `CliticStyle`.
+- **Member-derived coordination animacy**: an all-inanimate
+  coordination projects inanimate agreement ("Dom i stol sųt nove");
+  any animate member makes the group animate (POLICY, mirroring the
+  mixed-gender → masculine rule).
+- **Nominal-only `PredCase`**: the instrumental on an adjectival or
+  participial predicate is rejected by the realizer and the
+  S-expression reader alike; those predicates always agree in the
+  nominative.
+- **Validated PP gaps**: `GapRole::PpObject` passes the same
+  preposition-government check as an ordinary PP (one shared
+  `resolve_preposition_case`), erroring identically on unknown
+  prepositions and unlicensed cases.
+- **Accusative-gated syncretism warning**: `AmbiguousOrder` reasons
+  over the case the object was ACTUALLY rendered in — governed or
+  overridden oblique objects ("Oknu stol dękuje") no longer warn.
+
 ## 0.1.0 — 2026-07-22
 
 Initial experiment: declaratives, questions (li/či/intonation),

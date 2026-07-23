@@ -272,7 +272,10 @@ pub enum Predicate {
 /// The predicate case of a NOMINAL copular predicate. Nominative is the
 /// default; the instrumental predicate ("on byl kråljem") exists across
 /// Slavic — steen's pages state no preference (verified), so the choice
-/// is exposed and the default is POLICY.
+/// is exposed and the default is POLICY. Adjectival and participial
+/// predicates always agree in the nominative: requesting the
+/// instrumental on them is rejected — by the realizer and the
+/// S-expression reader both — never silently applied or dropped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PredCase {
     #[default]

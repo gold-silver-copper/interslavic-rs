@@ -12,9 +12,16 @@ One-item additive release supporting interslavic-phrase 0.2.0.
 ### Added
 
 - **`verb_info().governs: Option<Case>`** — the dictionary's `(+N)`
-  object-government annotations (78 verb rows; 2=Gen, 3=Dat, 4=Acc,
-  5=Ins, 7=Loc, the same community-dictionary numbering the preposition
-  table was curated from), extracted into the verb PHF. A marker
+  object-government annotations (2=Gen, 3=Dat, 4=Acc, 5=Ins, 7=Loc,
+  the same community-dictionary numbering the preposition table was
+  curated from), extracted into the verb PHF for single-word lemmas
+  AND reflexive `X sę` constructions. A reflexive row is stored under
+  its FULL lemma (`verb_info("ostrěgati sę")` → `Some(Gen)`,
+  `verb_info("ostrěgati")` → `None`), so its metadata never disturbs
+  the bare key's first-entry order. Scope is deliberate: of the 78
+  annotated verb rows, phrasal lemmas naming a preposition
+  ("bazovati na (+6)") are NOT extracted — their annotation belongs to
+  the preposition, which `Option<Case>` cannot represent. A marker
   coexisting with a present-stem hint survives on both sides
   (`izběgti (izběži) (+2)`). Conjugation inputs untouched: paradigm
   fingerprint and parity scopes byte-stable. Multi-entry lemmas follow

@@ -11,8 +11,11 @@
 //!   entity. The salience model is deliberately just recency +
 //!   interference — no scoring.
 //! - **Aggregation**: adjacent clauses sharing subject entity, tense,
-//!   polarity, mood, voice, and declarative force merge into one clause
-//!   with VP coordination ("Krålj kupil knigų i pročital jų"-shaped).
+//!   polarity, mood, voice, prodrop, and declarative force merge into
+//!   one clause with `i` VP coordination ("Krålj kupil knigų i pročital
+//!   jų"-shaped). Only plain-conjunction cores merge: a clause already
+//!   coordinated with `ili`/`a`/`ale` keeps its scope and stays its own
+//!   sentence.
 //! - **Connectives**: a small curated, dictionary-attested table
 //!   (`potom` "then", `ale` "but", `zato` "therefore", `tomu` "hence",
 //!   `i` "and"), rendered sentence-initially.
@@ -114,13 +117,20 @@ impl Mentions {
 
 fn np_features(np: &NounPhrase) -> EntityFeatures {
     let info = noun_info(&np.head);
+    // Discourse number is the SEMANTIC number of the referent: an
+    // explicit count of 1 is singular, any other count refers to a
+    // plurality (0 included — POLICY), so later pronouns say "jih", not
+    // "jų". Distinct from the 3sg-neuter finite-verb agreement the
+    // realizer applies to gen-pl quantified subjects.
+    let number = match np.count {
+        Some(1) => Number::Singular,
+        Some(_) => Number::Plural,
+        None if info.plural_only => Number::Plural,
+        None => Number::Singular,
+    };
     EntityFeatures {
         gender: info.gender,
-        number: if info.plural_only {
-            Number::Plural
-        } else {
-            Number::Singular
-        },
+        number,
     }
 }
 
@@ -190,22 +200,35 @@ fn same_subject(first: &Nominal, second: &Nominal) -> bool {
     }
 }
 
-/// Can `second` be aggregated into `first` as VP coordination?
+/// Can `second` be aggregated into `first` as VP coordination? Both
+/// cores must carry plain-conjunction semantics — a single VP (whose
+/// dormant conjunction is meaningless: "a single item realizes as
+/// itself") or an `i` list. Any other conjunction has scope a flat
+/// merge would corrupt: appending an asserted clause to "čitaje ili
+/// piše" would demote it to an alternative. Every surface-significant
+/// clause feature, `prodrop` included, must also match.
 fn can_aggregate(first: &Clause, second: &DiscourseSentence) -> bool {
+    let plain_and = |core: &ClauseCore| match core {
+        ClauseCore::Verbal(coordination) => {
+            coordination.items.len() == 1 || coordination.conjunction == Conj::I
+        }
+        ClauseCore::Copular { .. } => false,
+    };
     second.connective.is_none()
         && same_subject(&first.subject, &second.clause.subject)
         && first.tense == second.clause.tense
         && first.polarity == second.clause.polarity
         && first.mood == second.clause.mood
         && first.voice == second.clause.voice
+        && first.prodrop == second.clause.prodrop
         && first.force == Force::Declarative
         && second.clause.force == Force::Declarative
         && first.topic.is_none()
         && first.focus.is_none()
         && second.clause.topic.is_none()
         && second.clause.focus.is_none()
-        && matches!(first.core, ClauseCore::Verbal(_))
-        && matches!(second.clause.core, ClauseCore::Verbal(_))
+        && plain_and(&first.core)
+        && plain_and(&second.clause.core)
 }
 
 /// Realize a narrative: aggregation first (tree-to-tree), then the
@@ -256,6 +279,10 @@ pub fn narrate(
                     unreachable!("can_aggregate checked verbal cores");
                 };
                 target.items.extend(source.items);
+                // Both sides passed `plain_and`, so the merged list is
+                // an `i` list — set it explicitly, canonicalizing away
+                // a singleton's dormant conjunction.
+                target.conjunction = Conj::I;
                 continue;
             }
         }
